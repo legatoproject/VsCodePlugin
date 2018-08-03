@@ -1,0 +1,66 @@
+{
+    "component_init": {
+        "prefix": "comp_init",
+        "body": [
+            "COMPONENT_INIT",
+            "{",
+            "\t$0",
+            "}"
+        ],
+        "description": "Initialization function for a component."
+    },
+    "timer_create": {
+        "description": "Create and start a one-shot timer.",
+        "prefix": "le_timer",
+        "body": [
+            "le_timer_Ref_t ${1:my}TimerPtr = le_timer_Create(\"${1:my}\");",
+            "le_clk_Time_t ${1:my}Interval = {.sec = ${2:1}, .usec = 0};",
+            "le_timer_SetInterval(${1:my}TimerPtr, ${1:my}Interval);",
+            "le_timer_SetHandler(${1:my}TimerPtr, ${3:${1:my}Handler});",
+            "le_timer_Start(${1:my}TimerPtr);"
+        ]
+    },
+    "timer_handler": {
+        "description": "Handle timer event",
+        "prefix": "le_timer_handler",
+        "body": [
+            "static void ${1:myTimer}Handler",
+            "(",
+            "\tle_timer_Ref_t timerRef",
+            ")",
+            "{",
+            "\t$0",
+            "}"
+        ]
+    },
+    "le_result": {
+        "description": "Idiom to check the le_result of a Legato function.",
+        "prefix": "res =",
+        "body": [
+            "${1:res} = $0;",
+            "if (${1:res} == LE_OK)",
+            "{",
+            "\tLE_INFO(\"Success!\");",
+            "}",
+            "else",
+            "{",
+            "\tLE_ERROR(\"Failed.\");",
+            "\treturn;",
+            "}"
+        ]
+    },
+    "createRefMap": {
+        "description": "Create a ref map",
+        "prefix": "le_ref_createMap",
+        "body": [
+            "${1:Foo}RefMap = le_ref_CreateMap(\"${1:Foo}Map\", ${2:MAX_FOO_OBJECTS});"
+        ]
+    },
+    "refToPtr": {
+        "description": "Get pointer from ref",
+        "prefix": "le_ref_refToPtr",
+        "body": [
+            "${1:Foo}RefMap = le_ref_CreateMap(\"${1:Foo}Map\", ${2:MAX_FOO_OBJECTS});"
+        ]
+    }
+}

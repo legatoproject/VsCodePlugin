@@ -1,0 +1,9 @@
+{
+    "binding":{
+        "prefix":"bind",
+        "description":"bind a component in this app to an API",
+        "body":[
+            "$TM_FILENAME_BASE.${1:myComp}.${2:le_api} -> ${3:someService}.${2:le_api}"
+        ]
+    }
+}

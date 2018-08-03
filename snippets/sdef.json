@@ -1,0 +1,14 @@
+{
+    "binding": {
+        "prefix": "Blank .sdef",
+        "description": "Starting point for a Legato system",
+        "body": [
+            "#include \\$LEGATO_ROOT/default.sdef",
+            "",
+            "apps:",
+            "{",
+            "",
+            "}"
+        ]
+    }
+}

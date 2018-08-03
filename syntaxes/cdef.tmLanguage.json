@@ -1,0 +1,12 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "cdef",
+	"scopeName": "source.xdef.cdef",
+    "begin": "^START_MARKER",
+    "end": "^END_MARKER",
+    "patterns": [
+        {
+            "include": "source.xdef"
+        }
+    ]       
+}

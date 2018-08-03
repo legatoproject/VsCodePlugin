@@ -1,0 +1,204 @@
+{
+  "name": "legato-client",
+  "displayName": "legato",
+  "description": "Legato support",
+  "version": "0.0.1",
+  "publisher": "legato",
+  "engines": {
+    "vscode": "^1.23.0"
+  },
+  "categories": ["Other", "Snippets", "Language Packs"],
+  "activationEvents": [
+    "workspaceContains:*.[acsm]def",
+    "workspaceContains:\\.?leaf-data",
+    "onLanguage:sdef",
+    "onLanguage:cdef",
+    "onLanguage:adef",
+    "onLanguage:mdef",
+    "onCommand:legato.*"
+  ],
+  "main": "./client/out/extension",
+  "keywords": [
+		"multi-root ready"
+	],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "title": "Legato System",
+          "id": "legatoSystemContainer",
+          "icon": "resources/legato-bw.png"
+        },
+        {
+          "title": "Legato App",
+          "id": "legatoAppContainer",
+          "icon": "resources/legato-bw.png"
+        }
+      ]
+    },
+    "views": {
+      "legatoSystemContainer": [
+        {
+          "id": "legato.systemView",
+          "name": "Hierarchy View",
+          "when": "legato.systemViewEnabled"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "cdef",
+        "aliases": ["Legato Component Definition", "cdef"],
+        "extensions": [".cdef"],
+        "configuration": "./xdef-language-config.json"
+      },
+      {
+        "id": "adef",
+        "aliases": ["Legato App Definition", "adef"],
+        "extensions": [".adef"],
+        "configuration": "./xdef-language-config.json"
+      },
+      {
+        "id": "sdef",
+        "aliases": ["Legato System Definition", "sdef"],
+        "extensions": [".sdef"],
+        "configuration": "./xdef-language-config.json"
+      },
+      {
+        "id": "xdef",
+        "aliases": ["Legato Definition", "xdef"],
+        "configuration": "./xdef-language-config.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "cdef",
+        "scopeName": "source.xdef.cdef",
+        "path": "./syntaxes/cdef.tmLanguage.json"
+      },
+      {
+        "language": "adef",
+        "scopeName": "source.xdef.adef",
+        "path": "./syntaxes/adef.tmLanguage.json"
+      },
+      {
+        "language": "sdef",
+        "scopeName": "source.xdef.sdef",
+        "path": "./syntaxes/sdef.tmLanguage.json"
+      },
+      {
+        "language": "xdef",
+        "scopeName": "source.xdef",
+        "path": "./syntaxes/xdef.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "adef",
+        "path": "./snippets/adef.json"
+      },
+      {
+        "language": "sdef",
+        "path": "./snippets/sdef.json"
+      },
+      {
+        "language": "c",
+        "path": "./snippets/c.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "legato.pickSdef",
+        "title": "Legato: Select active .sdef"
+      },
+      {
+        "command": "legato.instapp",
+        "title": "Legato: Build and push app to target"
+      },
+      {
+        "command": "legato.genLaunchConfig",
+        "title": "Legato: Generate launch configuration."
+      },
+      {
+        "command": "legato.genStubs",
+        "title": "Legato: Generate C stubs for an API"
+      },
+      {
+        "command": "legato.createApp",
+        "title": "Legato: Create Application in Active Sdef"
+      },
+      {
+        "command": "legato.leaf.profile.create",
+        "title": "Legato: Create Leaf profile"
+      },
+      {
+        "command": "legato.leaf.profile.choose",
+        "title": "Legato: Choose Leaf profile"
+      }
+    ],
+    "menus": {
+      "view/item/context": [
+          {
+              "command": "legato.createApp",
+              "when": "viewItem == system",
+              "title": "Create App"
+          }
+      ]
+  },
+    "configuration": {
+      "type": "object",
+      "title": "Legato",
+      "properties": {
+   
+            "legato.root":{
+              "scope": "resource",
+              "type":"string",
+              "description": "Root directory of Legato (i.e. $LEGATO_ROOT)",
+              "default":""
+            }
+           
+        ,
+        "LSP": {
+          "type": "object",
+          "description": "Language Server",
+          "properties": {
+            "lspMultiServerSample.enable": {
+              "scope": "resource",
+              "type": "boolean",
+              "default": true,
+              "description": "Controls the enablement."
+            },
+            "lspMultiServerSample.options": {
+              "scope": "resource",
+              "type": "object",
+              "default": {},
+              "description": "Additional options."
+            },
+            "lspMultiServerSample.trace.server": {
+              "scope": "window",
+              "type": "string",
+              "enum": ["off", "messages", "verbose"],
+              "default": "off",
+              "description":
+                "Traces the communication between VSCode and the language server."
+            }
+          }
+        }
+      }
+    }
+  },
+	"scripts": {
+		"vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+		"compile:client": "tsc -p ./client/tsconfig.json",
+		"compile:server": "tsc -p ./server/tsconfig.json",
+		"watch:client": "tsc -w -p ./client/tsconfig.json",
+		"watch:server": "tsc -w -p ./server/tsconfig.json",
+		"compile": "npm run compile:client && npm run compile:server",
+		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+	},
+	"devDependencies": {
+		"@types/mocha": "^5.2.0",
+		"@types/node": "^8.0.0",
+		"typescript": "2.8.3"
+	}
+}

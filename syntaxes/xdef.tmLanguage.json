@@ -1,0 +1,97 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "xdef",
+	"patterns": [
+		{
+			"include": "#sectionName"
+		},
+		{
+			"include": "#sectionContent"
+		},
+		{
+			"include": "#itemName"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"match": "\\b\\d+[K]?\\b",
+			"name":"constant.numeric"
+		},
+		{
+			"match": "^\\s*(#(?:define|if|elif|else|endif|include))(.*)",
+			"name": "meta.preprocessor",
+			"captures": {
+				"1":{"name":"keyword.control.directive.xdef"},
+				"2":{"name":"meta.preprocessor.string"}
+			}
+		},
+		{
+			"match": "^\\s*//.*",
+			"name":"comment.line.double-slash"
+		},
+		{
+			"begin": "/\\*",
+			"end": "\\*/",
+			"name":"comment.block"
+		}
+	],
+	"repository": {
+		"sectionName": {
+			"patterns": [
+				{
+					"match": "\\b(\\w+)\\b\\s*:",
+					"captures": {
+						"1": {
+							"name": "support.class"
+						}
+					}
+				}
+			]
+		},
+		"sectionContent": {
+			"patterns": [
+				{
+					"begin": "{",
+					"end": "}",
+					"name": "comment.block",
+					"include": "#sectionName"
+				}
+			]
+		},
+		"itemName": {
+			"patterns": [
+				{
+					"match": "(\\w+)\\s*=\\s*(.+)",
+					"captures": {
+						"1": {
+							"name": "variable.name"
+						},
+						"2":
+						{
+							"name":"constant",
+							"patterns": [
+								{
+									"match": "\\$(?:\\w+|{\\w+})",
+									"name":"meta.preprocessor.string"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.xdef",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.xdef",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.xdef"
+}
