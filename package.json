@@ -2,7 +2,7 @@
     "name": "legato-plugin",
     "displayName": "Legato",
     "description": "Legato plugin for Visual Studio Code",
-    "version": "0.0.1",
+    "version": "0.0.0",
     "publisher": "SWIR",
     "engines": {
         "vscode": "^1.27.0"

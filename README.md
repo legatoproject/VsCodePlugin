@@ -1,6 +1,6 @@
-# Legato plugin README
+# Legato for VS Code
 
-This is the README for your extension "Legato plugin". After writing up a brief description, we recommend including the following sections.
+This extension enables integration for Legato application framework development in VS Code.
 
 ## Features
 
