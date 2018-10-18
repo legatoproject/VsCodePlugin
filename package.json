@@ -17,7 +17,11 @@
         "commands": [
             {
                 "command": "leaf.openShell",
-                "title": "Open Leaf Shell"
+                "title": "Leaf: Open Shell"
+            },
+            {
+                "command": "leaf.switchProfile",
+                "title": "Leaf: Switch to Another Profile"
             }
         ]
     },
@@ -34,6 +38,8 @@
         "vscode": "^1.1.21",
         "tslint": "^5.8.0",
         "@types/node": "^8.10.25",
-        "@types/mocha": "^2.2.42"
+        "@types/mocha": "^2.2.42",
+        "dotenv": "^6.1.0",
+        "@types/dotenv": "^4.0.3"
     }
 }

@@ -1,28 +1,34 @@
 'use strict';
 
-import { execFileSync, execSync } from "child_process";
 import { EventEmitter } from "events";
 import { join } from "path";
-import { workspace } from "vscode";
-import { unwatchFile, watchFile, readlink } from "fs";
+import { workspace, ExtensionContext } from "vscode";
+import { unwatchFile, watchFile, readlinkSync } from "fs";
 export const LEAF_ENV = {
   LEAF_PROFILE: 'LEAF_PROFILE'
 };
 export const LEAF_COMMANDS = {
-  version: "--version",
   shell: "shell"
 };
+export const LEAF_EVENT = {
+  leafEnvReady: "leafEnvReady",
+  profileChanged: "profileChanged"
+};
+
 
 /**
  * LeafManager is responsible for the leaf lifecycle.
  */
 export class LeafManager extends EventEmitter {
-  private static instance:LeafManager;
+  private static instance: LeafManager;
   private currentProfile: LeafProfile | undefined;
-  private leafPath:string|undefined;
-  private leafWorkspaceDirectory: string | undefined;
+  private leafPath: Promise<string> = LeafManager.executeInWsShell(`which leaf`);
+  private leafVersion: Promise<string> = LeafManager.executeInWsShell(`leaf --version`);
+  private leafWorkspaceDirectory: Promise<string> = LeafManager.computeWorkspacePath();
+
   private constructor() {
     super();
+    this.watchCurrentProfile();
   }
 
   static getInstance(): LeafManager {
@@ -30,155 +36,128 @@ export class LeafManager extends EventEmitter {
     return LeafManager.instance;
   }
 
-  public getLeafBinPath(): string | undefined {
-    if (this.leafPath === undefined) {
-      try {
-        this.leafPath = execSync("which leaf").toString().trim();
-      } catch {
-        this.leafPath = undefined;
-      }
+  public init(context: ExtensionContext) {
+    context.subscriptions.push(this);  // Dispose on extension/deactivate
+  }
+
+  private static async computeWorkspacePath(): Promise<string> {
+    let statusOut = await LeafManager.executeInWsShell(`leaf status -q`);
+    let m = statusOut.match(/^Workspace (.*)$/);
+    if (m === null || m.length !== 2) {
+      throw new Error("Impossible to parse leaf output: " + statusOut);
     }
+    return m[1];
+  }
+
+  private static async executeInWsShell(command: string, cwd = workspace.rootPath): Promise<string> {
+    return await new Promise<string>((resolve, reject) => {
+      var childp = require('child_process');
+      const options = {
+        encoding: 'utf8',
+        timeout: 0,
+        cwd: cwd
+      };
+      childp.exec(`${command}`, options, (error: string, stdout: string, stderr: string) => {
+        if (stderr) {
+          reject(new Error(stderr));
+        } else if (error) {
+          reject(new Error(error));
+        } else {
+          let out = stdout.trim().length === 0 ? undefined : stdout.trim();
+          resolve(out);
+        }
+      });
+    });
+  }
+
+  public async getLeafPath(): Promise<string> {
     return this.leafPath;
   }
 
-  public getLeafVersion(leafPath?: string): string | undefined {
-    let leafExecutable: string | undefined = leafPath || this.getLeafBinPath();
-    if (leafExecutable) {
-      return execFileSync(leafExecutable, [
-        LEAF_COMMANDS.version
-      ]).toString();
-    }
-    return undefined;
+  public async getLeafVersion(): Promise<string> {
+    return this.leafVersion;
   }
 
-  public isLeafInstalled(): boolean {
-    try {
-      this.getLeafVersion();
-      return true;
-    } catch (err) {
-      {
-        console.log(err);
-      }
-    }
-    return false;
-  }
-    /**
+  /**
    * @event leafEnvReady event triggered to inform that the envionnement has been sourced from
    * a new leaf profile.
    */
-  public prepareLeafEnv() {
-    this.getLeafWorkspaceDirectory()
-      .then(path => {
-        this.leafWorkspaceDirectory = path;
-        this.sourceLeafEnv(path)
-            .then(leafProfile => {
-              this.emit('leafEnvReady', leafProfile);
-          }).catch((reason) => console.log(`Leaf workspace not found! - reason:${reason}`)); }
-        )
-      .catch((reason) => {
-        console.log(`It was impossible to source from leaf env. Reason: ${reason}`);
-      });
-  }
-
-  public sourceLeafEnv(cwd:string ) {
-      return new Promise<LeafProfile>((resolve, reject) => {
-        let command = `cd ${cwd} && eval \`leaf env print -q\` && env`;
-        var childp = require('child_process');
-        console.log(`Leaf workspace initialized to: ${cwd}`);
-        const dotenv = require('dotenv');
-        childp.exec(`${command}`, (error:string, stdout:string, stderr:string) => {
-          if( error ) {
-            console.log(`ERROR:${error}`);
-            reject(error);
-          }
-          if( stderr ) {
-            console.log(`stderr:${stderr}`);
-            reject(stderr);
-          }
-          const config = dotenv.parse(Buffer.from(stdout));
-          this.currentProfile = new LeafProfile(config);
-          resolve(this.currentProfile);
-        });
-      });
-  }
-
-  public getCwd(): string|undefined {
-    return workspace.rootPath;
-  }
-
-  public getLeafWorkspaceDirectory(cwd?: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      if (this.leafWorkspaceDirectory) {
-        resolve(this.leafWorkspaceDirectory);
-      } else {
-        var command = `leaf shell -c 'echo $LEAF_WORKSPACE'`;
-        const options = {
-          encoding: 'utf8',
-          timeout: 0,
-          cwd: cwd ? cwd : this.getCwd()
-        };
-        var childp = require('child_process');
-        childp.exec(`${command}`, options, (error: string, stdout: string, stderr: string) => {
-          if (stderr) {
-            reject(stderr);
-          } else if (error) {
-            reject(error);
-          } else {
-            let leafWorkspace = stdout.trim().length === 0 ? undefined : stdout.trim();
-            resolve(leafWorkspace);
-          }
-        });
-      }
-    });
-    }
-
-    public getCurrentProfile():LeafProfile | undefined {
-      return this.currentProfile;
-    }
-
-    public watchCurrentProfile() {
-      this.getLeafWorkspaceDirectory().then( (leafWorkspace:string) =>
-        {
-          let currentProfilePath = LeafProfile.getCurrentProfileSymlink(leafWorkspace);
-          watchFile(currentProfilePath, (curr, prev) => {
-            readlink(currentProfilePath, (error, target)=> {
-                this.emit('profileChanged', target);
-            });
-          });          
-      });
-    }
-  
-    public stopWatchCurrentProfile() {
-      if(this.leafWorkspaceDirectory ) {
-        unwatchFile(this.leafWorkspaceDirectory);
-      }
+  private async prepareLeafEnv() {
+    try {
+      this.currentProfile = await this.sourceLeafEnv();
+      this.emit(LEAF_EVENT.leafEnvReady, this.currentProfile);
+    } catch (e) {
+      console.log(`Leaf workspace not found! - reason:${e}`);
     }
   }
-  
-  interface LeafEnv {
-    [key: string]: string;
+
+  private async sourceLeafEnv() {
+    let leafWs = await this.leafWorkspaceDirectory;
+    let stdout = await LeafManager.executeInWsShell('eval \`leaf env print -q\` && env', leafWs);
+    console.log(`Leaf workspace initialized to: ${leafWs}`);
+    const dotenv = require('dotenv');
+    const config = dotenv.parse(Buffer.from(stdout));
+    return new LeafProfile(config);
   }
 
-  export class LeafProfile {
-    public name : string;
-    public env : LeafEnv;
-    constructor(env : LeafEnv){
-      this.env = env;
-      this.name = this.getEnvValue(LEAF_ENV.LEAF_PROFILE);
+  public getCurrentProfile(): LeafProfile | undefined {
+    return this.currentProfile;
+  }
+
+  public async watchCurrentProfile() {
+    let currentProfilePath = LeafProfile.getCurrentProfileSymlink(await this.leafWorkspaceDirectory);
+    // 'watch' is recomanded and have better performance than 'watchfFile', but it seems that it does not work with symlinks
+    watchFile(currentProfilePath, (_curr, _prev) => this.readCurrentProfile(currentProfilePath));
+    // Read current state
+    this.readCurrentProfile(currentProfilePath);
+  }
+
+  private readCurrentProfile(currentProfilePath: string) {
+    let target = readlinkSync(currentProfilePath);
+    this.emit(LEAF_EVENT.profileChanged, target);
+    this.prepareLeafEnv();
+  }
+
+  public async dispose() {
+    if (this.leafWorkspaceDirectory) {
+      unwatchFile(await this.leafWorkspaceDirectory);
     }
-  
-    public hasEnvVar(envVar:string): boolean {
-      return this.listEnvVars().indexOf(envVar)!==-1;
-    }
-  
-    public listEnvVars(): string[] {
-      return Object.keys(this.env);
-    }
-    public getEnvValue(envVar:string):string {
-      return this.env[envVar].toString();
-    }
-  
-    public static getCurrentProfileSymlink(leafWorkspace:string):string {
-      return join(leafWorkspace, 'leaf-data','current');
-    }
+  }
+
+  public switchProfile(profile: string) {
+    LeafManager.executeInWsShell(`leaf profile switch ${profile}`);
+  }
+
+  public async listProfiles(): Promise<string[]> {
+    let stdout = await LeafManager.executeInWsShell(`leaf profile list -q`);
+    return stdout.split('\n');
+  }
+}
+
+interface LeafEnv {
+  [key: string]: string;
+}
+
+export class LeafProfile {
+  public name: string;
+  public env: LeafEnv;
+  constructor(env: LeafEnv) {
+    this.env = env;
+    this.name = this.getEnvValue(LEAF_ENV.LEAF_PROFILE);
+  }
+
+  public hasEnvVar(envVar: string): boolean {
+    return this.listEnvVars().indexOf(envVar) !== -1;
+  }
+
+  public listEnvVars(): string[] {
+    return Object.keys(this.env);
+  }
+  public getEnvValue(envVar: string): string {
+    return this.env[envVar].toString();
+  }
+
+  public static getCurrentProfileSymlink(leafWorkspace: string): string {
+    return join(leafWorkspace, 'leaf-data', 'current');
+  }
 }

@@ -9,8 +9,11 @@ This extension enables integration for Legato application framework development 
 This extension integrates the `leaf` command-line package/workspace management tool,
  and provides the following features:
 
-- leaf workspace detection
-- open leaf shell terminal (`Open Leaf Shell` command)
+- leaf tool and workspace detection
+- open leaf shell terminal (`Leaf: Open shell` command)
+- leaf profile status bar
+- leaf profile change detection
+- `Leaf: Switch to Another Profile` command (or click on the status bar) to select another profile
 
 ## Requirements
 
@@ -23,9 +26,3 @@ This extension requires the `leaf` tool to be installed.
 ## Limitations
 
 This extension only works on Linux hosts.
-
-## Release Notes
-
-### 0.1
-
-Initial release
