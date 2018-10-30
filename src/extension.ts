@@ -12,6 +12,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     LeafManager.getInstance().init(context);
     LeafUiManager.getInstance().init(context);
+
+    // Exclude leaf-data from file watcher
+    let config = vscode.workspace.getConfiguration(undefined, null);
+    config.update("files.watcherExclude", { "**/leaf-data/**": true }, vscode.ConfigurationTarget.Global);
 }
 
 // this method is called when your extension is deactivated

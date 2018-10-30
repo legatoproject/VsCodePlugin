@@ -15,6 +15,14 @@ This extension integrates the `leaf` command-line package/workspace management t
 - leaf profile change detection
 - `Leaf: Switch to Another Profile` command (or click on the status bar) to select another profile
 
+## Settings
+
+### Updated settings
+
+This extension updates the following default settings for a better integration of leaf and Legato into VS Code workflows:
+
+- `files.watcherExclude`: the extension makes sure that `**/leaf-data/**` folders are excluded from file watching
+
 ## Requirements
 
 This extension requires the `leaf` tool to be installed.
