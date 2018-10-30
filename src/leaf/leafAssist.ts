@@ -1,7 +1,7 @@
 'use strict';
 
 import { Terminal, window, commands, ExtensionContext, StatusBarItem, StatusBarAlignment } from "vscode";
-import { LeafManager, LEAF_COMMANDS, LeafProfile, LEAF_EVENT } from './leafCore';
+import { LeafManager, LEAF_COMMANDS, LEAF_EVENT } from './leafCore';
 const EXTENSION_COMMANDS = {
   showTerminal: "leaf.openShell",
   switchProfile: "leaf.switchProfile"
@@ -31,7 +31,6 @@ export class LeafUiManager {
     try {
       window.showInformationMessage(`Found: ${await this.leafManager.getLeafVersion()}`);
       this.leafManager.addListener(LEAF_EVENT.profileChanged, (selectedProfile: string) => this.onProfileChanged(selectedProfile));
-      this.leafManager.addListener(LEAF_EVENT.leafEnvReady, (leafProfile: LeafProfile) => this.onLeafEnvReady(leafProfile));
       this.registerCommands(context);
       context.subscriptions.push(this);  // Dispose on extension/deactivate
     } catch {
@@ -72,10 +71,6 @@ export class LeafUiManager {
       window.showInformationMessage(`Update Leaf shell based on ${selectedProfile}`);
       this.leafTerminal.sendText("leaf status");
     }
-  }
-
-  private async onLeafEnvReady(_leafProfile: LeafProfile) {
-    // This stub will be used by Samuel to implement LETOOLS-530
   }
 
   private async showTerminal() {

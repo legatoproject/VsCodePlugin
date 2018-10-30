@@ -78,6 +78,10 @@ export class LeafManager extends EventEmitter {
     return this.leafVersion;
   }
 
+  public async getLeafWorkspaceDirectory(): Promise<string> {
+    return this.leafWorkspaceDirectory;
+  }
+
   /**
    * @event leafEnvReady event triggered to inform that the envionnement has been sourced from
    * a new leaf profile.

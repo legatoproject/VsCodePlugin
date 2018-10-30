@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import { LeafUiManager } from './leaf/leafAssist';
 import { LeafManager } from './leaf/leafCore';
+import { LegatoUiManager } from './legato/legatoAssist';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -12,6 +13,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     LeafManager.getInstance().init(context);
     LeafUiManager.getInstance().init(context);
+    LegatoUiManager.getInstance().init(context);
 
     // Exclude leaf-data from file watcher
     let config = vscode.workspace.getConfiguration(undefined, null);

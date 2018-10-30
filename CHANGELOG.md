@@ -3,3 +3,4 @@
 ## 0.1.0
 - Initial release
 - Leaf tool integration
+- Legato build integration

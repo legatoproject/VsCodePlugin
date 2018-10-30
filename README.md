@@ -15,6 +15,12 @@ This extension integrates the `leaf` command-line package/workspace management t
 - leaf profile change detection
 - `Leaf: Switch to Another Profile` command (or click on the status bar) to select another profile
 
+### Legato integration
+
+This extension provides the following features to ease Legato development in VS Code:
+
+- build task to invoke `mkapp`/`mksys` on the opened **adef**/**sdef** file editor on `Ctrl+Shift+B`
+
 ## Settings
 
 ### Updated settings

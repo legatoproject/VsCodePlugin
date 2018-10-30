@@ -23,6 +23,37 @@
                 "command": "leaf.switchProfile",
                 "title": "Leaf: Switch to Another Profile"
             }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "Legato",
+                "required": [
+                    "mktool"
+                ],
+                "properties": {
+                    "mktool": {
+                        "type": "string",
+                        "description": "The Legato (mktools) task to customize"
+                    }
+                }
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "legato",
+                "owner": "legato",
+                "fileLocation": [
+                    "absolute"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
         ]
     },
     "main": "./out/extension",
