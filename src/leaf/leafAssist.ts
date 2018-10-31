@@ -10,38 +10,38 @@ const EXTENSION_COMMANDS = {
 const LEAF_SHELL_LABEL = `Leaf shell`;
 export class LeafUiManager {
 
-  private static instance: LeafUiManager;
   private leafManager: LeafManager = LeafManager.getInstance();
   private leafTerminal: Terminal | undefined;
-  private leafStatusbar: StatusBarItem;
+  private leafStatusbar: StatusBarItem | undefined;
   private terminalCreated = false;
 
-  private constructor() {
-    this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
-    this.leafStatusbar.text = "Loading current profile...";
-    this.leafStatusbar.show();
-  }
-
-  static getInstance(): LeafUiManager {
-    LeafUiManager.instance = LeafUiManager.instance || new LeafUiManager();
-    return LeafUiManager.instance;
-  }
-
-  public async init(context: ExtensionContext) {
+  public async start(context: ExtensionContext) {
     try {
-      window.showInformationMessage(`Found: ${await this.leafManager.getLeafVersion()}`);
+      // Check if leaf is available
+      let leafVersion = await this.leafManager.getLeafVersion();
+      window.showInformationMessage(`Found: ${leafVersion}`);
+
+      // It's available !
+
+      // So lets add status bar
+      this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
+      context.subscriptions.push(this.leafStatusbar); // Dispose status bar on deactivate
+      this.leafStatusbar.text = "Loading current profile...";
+      this.leafStatusbar.show();
+
+      // Also, let's add leaf commands
+      context.subscriptions.push(commands.registerCommand(EXTENSION_COMMANDS.showTerminal, () => this.showTerminal(), this));
+      context.subscriptions.push(commands.registerCommand(EXTENSION_COMMANDS.switchProfile, () => this.switchProfile(), this));
+      this.leafStatusbar.command = EXTENSION_COMMANDS.switchProfile;
+
+      // Subscribe to leaf events
       this.leafManager.addListener(LEAF_EVENT.profileChanged, (selectedProfile: string) => this.onProfileChanged(selectedProfile));
-      this.registerCommands(context);
-      context.subscriptions.push(this);  // Dispose on extension/deactivate
+
+      // Set current profile
+      this.onProfileChanged(await this.leafManager.getCurrentProfileName())
     } catch {
       window.showErrorMessage(`Leaf not found! Please install leaf and ensure a profile is set`);
     }
-  }
-
-  private registerCommands(context: ExtensionContext) {
-    context.subscriptions.push(commands.registerCommand(EXTENSION_COMMANDS.showTerminal, () => this.showTerminal(), this));
-    context.subscriptions.push(commands.registerCommand(EXTENSION_COMMANDS.switchProfile, () => this.switchProfile(), this));
-    this.leafStatusbar.command = EXTENSION_COMMANDS.switchProfile;
   }
 
   private async switchProfile() {
@@ -61,7 +61,7 @@ export class LeafUiManager {
     } else {
       window.showInformationMessage(`Profile ${selectedProfile} selected`);
     }
-    if (this.leafStatusbar !== undefined) {
+    if (this.leafStatusbar) {
       this.leafStatusbar.text = selectedProfile ? selectedProfile : 'No profile';
     }
     if (!this.terminalCreated) {
@@ -87,9 +87,5 @@ export class LeafUiManager {
       }, this);
     }
     this.leafTerminal.show();
-  }
-
-  dispose(): void {
-    this.leafStatusbar.dispose();
   }
 }

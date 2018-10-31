@@ -5,24 +5,11 @@ import { LeafManager } from '../leaf/leafCore';
 
 export class LegatoUiManager {
 
-  private static instance: LegatoUiManager;
-  private legatoTaskProvider!: vscode.Disposable;
   private legatoBuildTasks: vscode.Task[] = [];
 
-  private constructor() {
-  }
-
-  static getInstance(): LegatoUiManager {
-    LegatoUiManager.instance = LegatoUiManager.instance || new LegatoUiManager();
-    return LegatoUiManager.instance;
-  }
-
-  /**
-   * init
-   */
-  public init(context: vscode.ExtensionContext) {
+  public start(context: vscode.ExtensionContext) {
     // Tasks definition
-    this.legatoTaskProvider = vscode.tasks.registerTaskProvider('Legato', {
+    let legatoTaskProvider = vscode.tasks.registerTaskProvider('Legato', {
       provideTasks: () => {
         return this.getLegatoTasks();
       },
@@ -31,9 +18,8 @@ export class LegatoUiManager {
       }
     });
 
-    context.subscriptions.push(this);  // Dispose on extension/deactivate
+    context.subscriptions.push(legatoTaskProvider);  // Dispose on extension/deactivate
   }
-
 
   private async getLegatoTasks(): Promise<vscode.Task[]> {
     if (this.legatoBuildTasks.length > 0) {
@@ -72,10 +58,6 @@ export class LegatoUiManager {
       "panel": vscode.TaskPanelKind.New
     };
     return task;
-  }
-
-  dispose(): void {
-    this.legatoTaskProvider.dispose();
   }
 }
 
