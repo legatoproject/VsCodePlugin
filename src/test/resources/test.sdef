@@ -1,0 +1,7 @@
+// Just include Legato default sdef file
+#include $LEGATO_ROOT/default.sdef
+
+// No apps at the moment
+apps: {
+
+}

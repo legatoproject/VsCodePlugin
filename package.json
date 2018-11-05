@@ -22,6 +22,10 @@
             {
                 "command": "leaf.switchProfile",
                 "title": "Leaf: Switch to Another Profile"
+            },
+            {
+                "command": "legato.pickSdef",
+                "title": "Legato: Select active SDEF"
             }
         ],
         "taskDefinitions": [

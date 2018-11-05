@@ -38,7 +38,7 @@ export class LeafUiManager {
       this.leafManager.addListener(LEAF_EVENT.profileChanged, (selectedProfile: string) => this.onProfileChanged(selectedProfile));
 
       // Set current profile
-      this.onProfileChanged(await this.leafManager.getCurrentProfileName())
+      this.onProfileChanged(await this.leafManager.getCurrentProfileName());
     } catch {
       window.showErrorMessage(`Leaf not found! Please install leaf and ensure a profile is set`);
     }

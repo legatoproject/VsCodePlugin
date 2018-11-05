@@ -30,6 +30,7 @@ leafWks:
 	rm -Rf $(LEAF_TEST_WORKSPACE)
 	mkdir -p $(LEAF_TEST_WORKSPACE)
 	yes | leaf -w $(LEAF_TEST_WORKSPACE) setup -p $(LEAF_TEST_SDK)
+	cp -a src/test/resources/* $(LEAF_TEST_WORKSPACE)
 
 tests: leafWks
 	export CODE_TESTS_WORKSPACE=$(LEAF_TEST_WORKSPACE) && \

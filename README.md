@@ -19,7 +19,8 @@ This extension integrates the `leaf` command-line package/workspace management t
 
 This extension provides the following features to ease Legato development in VS Code:
 
-- build task to invoke `mkapp`/`mksys` on the opened **adef**/**sdef** file editor on `Ctrl+Shift+B`
+- active **SDEF** file status bar + `Legato: Select active SDEF` command (or click on the status bar) to pick one
+- build task to invoke `mksys` on the active **SDEF** on `Ctrl+Shift+B`
 
 ## Settings
 
