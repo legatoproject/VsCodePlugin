@@ -1,5 +1,6 @@
 out
 node_modules
 package
+leafWks
 .vscode-test/
 *.vsix
