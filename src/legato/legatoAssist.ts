@@ -72,12 +72,6 @@ export class LegatoUiManager {
     return legatoBuildTasks;
   }
 
-  private raiseNoBuildTask() {
-    vscode.window.showErrorMessage("Please select the active definition file first");
-    throw new Error('Missing active definition file to build');
-  }
-
-
   private async xdefBuildTask(): Promise<undefined | vscode.Task> {
     let activeDefFile: vscode.Uri | undefined = LegatoManager.getInstance().getActiveDefFile();
     let mktool: undefined | string;
@@ -101,12 +95,12 @@ export class LegatoUiManager {
           type: 'Legato'
         };
         let shellOptions: vscode.ShellExecutionOptions = {
-          executable: await LeafManager.getInstance().getLeafPath(),
+          executable: await LeafManager.INSTANCE.getLeafPath(),
           shellArgs: ['shell', '-c']
         };
 
         let legatoTaskTarget: vscode.WorkspaceFolder = {
-          uri: vscode.Uri.file(await LeafManager.getInstance().getLeafWorkspaceDirectory()),
+          uri: vscode.Uri.file(LeafManager.INSTANCE.getLeafWorkspaceDirectory()),
           name: 'leaf-workspace',
           index: 0
         };
@@ -120,6 +114,5 @@ export class LegatoUiManager {
         return task;
       }
     }
-    this.raiseNoBuildTask();
   }
 }

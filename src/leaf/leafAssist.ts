@@ -2,15 +2,12 @@
 
 import { Terminal, window, commands, ExtensionContext, StatusBarItem, StatusBarAlignment } from "vscode";
 import { LeafManager, LEAF_COMMANDS, LEAF_EVENT } from './leafCore';
-const EXTENSION_COMMANDS = {
-  showTerminal: "leaf.openShell",
-  switchProfile: "leaf.switchProfile"
-};
+import { IDS } from '../identifiers';
 
 const LEAF_SHELL_LABEL = `Leaf shell`;
 export class LeafUiManager {
 
-  private leafManager: LeafManager = LeafManager.getInstance();
+  private leafManager: LeafManager = LeafManager.INSTANCE;
   private leafTerminal: Terminal | undefined;
   private leafStatusbar: StatusBarItem | undefined;
   private terminalCreated = false;
@@ -30,23 +27,23 @@ export class LeafUiManager {
       this.leafStatusbar.show();
 
       // Also, let's add leaf commands
-      context.subscriptions.push(commands.registerCommand(EXTENSION_COMMANDS.showTerminal, () => this.showTerminal(), this));
-      context.subscriptions.push(commands.registerCommand(EXTENSION_COMMANDS.switchProfile, () => this.switchProfile(), this));
-      this.leafStatusbar.command = EXTENSION_COMMANDS.switchProfile;
+      context.subscriptions.push(commands.registerCommand(IDS.COMMANDS.TERMINAL.OPENLEAF, () => this.showTerminal(), this));
+      context.subscriptions.push(commands.registerCommand(IDS.COMMANDS.PROFILE.SWITCH, () => this.switchProfile(), this));
+      this.leafStatusbar.command = IDS.COMMANDS.PROFILE.SWITCH;
 
       // Subscribe to leaf events
       this.leafManager.addListener(LEAF_EVENT.profileChanged, (selectedProfile: string) => this.onProfileChanged(selectedProfile));
 
       // Set current profile
-      this.onProfileChanged(await this.leafManager.getCurrentProfileName());
-    } catch {
-      window.showErrorMessage(`Leaf not found! Please install leaf and ensure a profile is set`);
+      this.onProfileChanged(this.leafManager.getCurrentProfileName());
+    } catch (e) {
+      window.showErrorMessage(`Leaf not found! Please install leaf and ensure a profile is set: ${e}`);
     }
   }
 
   private async switchProfile() {
     let profiles = await this.leafManager.listProfiles();
-    let result = await window.showQuickPick(profiles, {
+    let result = await window.showQuickPick(Object.keys(profiles), {
       placeHolder: 'Please select the profile you want to  switch to...'
     });
     if (result) {

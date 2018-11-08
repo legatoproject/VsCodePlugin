@@ -4,6 +4,9 @@ import { EventEmitter } from "events";
 import { join } from "path";
 import { workspace } from "vscode";
 import { unwatchFile, watchFile, readlinkSync } from "fs";
+import { exec } from 'child_process';
+import { AbstractLeafTaskManager, ParallelLeafTaskManager } from './leafTaskManager';
+import { LEAF_INTERFACE_COMMANDS, LeafInterface } from './leafInterface';
 export const LEAF_ENV = {
   LEAF_PROFILE: 'LEAF_PROFILE'
 };
@@ -19,64 +22,47 @@ export const LEAF_EVENT = {
  * LeafManager is responsible for the leaf lifecycle.
  */
 export class LeafManager extends EventEmitter {
-  private static instance: LeafManager;
-  private leafPath: Promise<string>;
-  private leafVersion: Promise<string>;
-  private leafWorkspaceDirectory: Promise<string>;
-  private currentProfilePath: Promise<string>;
-
-  static getInstance(): LeafManager {
-    LeafManager.instance = LeafManager.instance || new LeafManager();
-    return LeafManager.instance;
-  }
+  public static readonly INSTANCE: LeafManager = new LeafManager();
+  private readonly leafPath: Promise<string>;
+  private readonly leafVersion: Promise<string>;
+  private readonly currentProfilePath: string;
+  private readonly taskManager: AbstractLeafTaskManager = new ParallelLeafTaskManager();
+  //  private readonly taskManager: AbstractLeafTaskManager = new SequencialLeafTaskManager();
+  private readonly leafInterface: LeafInterface = new LeafInterface();
 
   private constructor() {
     super();
     this.leafPath = this.executeInWsShell(`which leaf`);
-    this.leafVersion = this.executeInWsShell(`leaf --version`);
-    this.leafWorkspaceDirectory = this.computeWorkspacePath();
-    this.currentProfilePath = this.computeCurrentProfilePath();
+    this.leafVersion = this.leafInterface.send(LEAF_INTERFACE_COMMANDS.VERSION);
+    this.currentProfilePath = join(this.getLeafWorkspaceDirectory(), 'leaf-data', 'current');
     this.watchCurrentProfile();
   }
 
-  private async executeInWsShell(command: string, cwd = workspace.rootPath): Promise<string> {
-    return await new Promise<string>((resolve, reject) => {
-      var childp = require('child_process');
+  private async executeInWsShell(command: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
       const options = {
         encoding: 'utf8',
         timeout: 0,
-        cwd: cwd
+        cwd: this.getLeafWorkspaceDirectory()
       };
-      childp.exec(`${command}`, options, (error: string, stdout: string, stderr: string) => {
+      exec(`${command}`, options, (error: Error | null, stdout: string | Buffer, stderr: string | Buffer) => {
         if (stderr) {
-          reject(new Error(stderr));
+          reject(new Error(stderr.toString().trim()));
         } else if (error) {
-          reject(new Error(error));
+          reject(error);
         } else {
-          let out = stdout.trim().length === 0 ? undefined : stdout.trim();
+          let stdoutStr = stdout.toString().trim();
+          let out = stdoutStr.length === 0 ? undefined : stdoutStr;
           resolve(out);
         }
       });
     });
   }
 
-  private async computeWorkspacePath(): Promise<string> {
-    let statusOut = await this.executeInWsShell(`leaf status -q`);
-    let m = statusOut.match(/^Workspace (.*)$/);
-    if (m === null || m.length !== 2) {
-      throw new Error("Impossible to parse leaf output: " + statusOut);
-    }
-    return m[1];
-  }
-
-  private async computeCurrentProfilePath(): Promise<string> {
-    return join(await this.leafWorkspaceDirectory, 'leaf-data', 'current');
-  }
-
-  private async watchCurrentProfile() {
+  private watchCurrentProfile() {
     // 'watch' is recomanded and have better performance than 'watchfFile', but it seems that it does not work with symlinks
-    watchFile(await this.currentProfilePath, async (_curr, _prev) => {
-      this.emit(LEAF_EVENT.profileChanged, await this.getCurrentProfileName());
+    watchFile(this.currentProfilePath, async (_curr, _prev) => {
+      this.emit(LEAF_EVENT.profileChanged, this.getCurrentProfileName());
     });
   }
 
@@ -88,24 +74,70 @@ export class LeafManager extends EventEmitter {
     return this.leafVersion;
   }
 
-  public async getLeafWorkspaceDirectory(): Promise<string> {
-    return this.leafWorkspaceDirectory;
+  public getLeafWorkspaceDirectory(): string {
+    if (workspace.rootPath) {
+      return workspace.rootPath;
+    }
+    throw new Error('workspace.rootPath is undefined');
   }
 
-  public async getCurrentProfileName(): Promise<string> {
-    return readlinkSync(await this.currentProfilePath);
+  public getCurrentProfileName(): string {
+    return readlinkSync(this.currentProfilePath);
+  }
+
+  public async requestInstalledPackages(): Promise<any> {
+    return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.INSTALLED_PACKAGES);
+  }
+
+  public async requestAvailablePackages(): Promise<any> {
+    return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.AVAILABLE_PACKAGES);
+  }
+
+  public async requestRemotes(): Promise<any> {
+    return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.REMOTES);
+  }
+
+  public async listProfiles(): Promise<any[]> {
+    let info = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.WORKSPACE_INFO);
+    let out = { ...info.profiles };
+    return out;
+  }
+
+  public async switchProfile(profile: string): Promise<void> {
+    return this.taskManager.executeAsTask(`Switching to profile ${profile}`, `leaf profile switch ${profile}`);
+  }
+
+  public async createProfile(profile?: string, pack?: string): Promise<void> {
+    let cmd = 'leaf setup';
+    if (pack) {
+      cmd += ` -p ${pack}`;
+    }
+    if (profile) {
+      cmd += ` ${profile}`;
+    }
+    return this.taskManager.executeAsTask(`Create new profile`, cmd);
+  }
+
+  public async addPackageToProfile(pack: string, profileId: string, profile?: any): Promise<void> {
+    let cmd: string;
+    if (profile && profile.current) {
+      cmd = `leaf update -p ${pack}`;
+    } else {
+      cmd = `leaf profile config -p ${pack} ${profileId} && leaf profile sync ${profileId}`;
+    }
+    return this.taskManager.executeAsTask(`Add ${pack} to profile ${profileId}`, cmd);
+  }
+
+  public async enableRemote(remoteId: string, enabled: boolean = true): Promise<void> {
+    return this.taskManager.executeAsTask(`${enabled ? "Enable" : "Disable"} remote ${remoteId}`, `leaf remote ${enabled ? "enable" : "disable"} ${remoteId}`);
+  }
+
+  public async fetchRemote(): Promise<void> {
+    return this.taskManager.executeAsTask("Fetch remotes", "leaf remote fetch");
   }
 
   public async dispose() {
-    unwatchFile(await this.currentProfilePath);
-  }
-
-  public switchProfile(profile: string) {
-    this.executeInWsShell(`leaf profile switch ${profile}`);
-  }
-
-  public async listProfiles(): Promise<string[]> {
-    let stdout = await this.executeInWsShell(`leaf profile list -q`);
-    return stdout.split('\n');
+    unwatchFile(this.currentProfilePath);
+    this.taskManager.dispose();
   }
 }

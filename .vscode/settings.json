@@ -8,7 +8,8 @@
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
     "typescript.tsc.autoDetect": "off",
-    "python.pythonPath": "${workspaceFolder}/venv/bin/python",
+    "python.pythonPath": "${workspaceFolder}/../leaf/venv/bin/python",
+    "python.venvPath": "${workspacefolder}/../leaf/venv",
     "python.autoComplete.extraPaths": [
         "../leaf/src/"
     ],
@@ -17,4 +18,5 @@
     "python.linting.flake8Args": [
         "--ignore=E501"
     ],
+    "python.unitTest.nosetestsEnabled": true,
 }

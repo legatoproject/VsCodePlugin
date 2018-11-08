@@ -9,7 +9,15 @@ This extension enables integration for Legato application framework development 
 This extension integrates the `leaf` command-line package/workspace management tool,
  and provides the following features:
 
-- leaf tool and workspace detection
+#### Packages and Remotes
+
+- **PACKAGES** view, listing available and installed packages
+  - **ADD TO PROFILE** action to configure selected package in existing/new profile
+- **REMOTES** view, listing configured leaf remotes
+  - **ENABLE**/**DISABLE** actions to configure remote status
+
+#### Profiles
+
 - open leaf shell terminal (`Leaf: Open shell` command)
 - leaf profile status bar
 - leaf profile change detection

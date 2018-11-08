@@ -14,14 +14,94 @@
         "*"
     ],
     "contributes": {
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "leaf-vc",
+                    "title": "Leaf",
+                    "icon": "resources/activity-bar-icon.svg"
+                }
+            ]
+        },
+        "views": {
+            "leaf-vc": [
+                {
+                    "id": "leaf-v-pkg",
+                    "name": "Packages"
+                },
+                {
+                    "id": "leaf-v-rmt",
+                    "name": "Remotes"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "leaf-cmd-pkg-refresh",
+                    "when": "view == leaf-v-pkg",
+                    "group": "navigation"
+                },
+                {
+                    "command": "leaf-cmd-rmt-refresh",
+                    "when": "view == leaf-v-rmt",
+                    "group": "navigation"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "leaf-cmd-pkg-addtoprofile",
+                    "when": "view == leaf-v-pkg && viewItem =~ /leaf-vi-pkg-.*/",
+                    "group": "inline"
+                },
+                {
+                    "command": "leaf-cmd-rmt-enable",
+                    "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-disabled",
+                    "group": "inline"
+                },
+                {
+                    "command": "leaf-cmd-rmt-disable",
+                    "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-enabled",
+                    "group": "inline"
+                }
+            ]
+        },
         "commands": [
             {
-                "command": "leaf.openShell",
+                "command": "leaf-cmd-trm-openleaf",
                 "title": "Leaf: Open Shell"
             },
             {
-                "command": "leaf.switchProfile",
+                "command": "leaf-cmd-prf-switch",
                 "title": "Leaf: Switch to Another Profile"
+            },
+            {
+                "command": "leaf-cmd-pkg-refresh",
+                "title": "Refresh",
+                "icon": {
+                    "light": "resources/refresh.svg",
+                    "dark": "resources/refresh.svg"
+                }
+            },
+            {
+                "command": "leaf-cmd-pkg-addtoprofile",
+                "title": "add to profile..."
+            },
+            {
+                "command": "leaf-cmd-rmt-refresh",
+                "title": "Refresh",
+                "icon": {
+                    "light": "resources/refresh.svg",
+                    "dark": "resources/refresh.svg"
+                }
+            },
+            {
+                "command": "leaf-cmd-rmt-enable",
+                "title": "enable"
+            },
+            {
+                "command": "leaf-cmd-rmt-disable",
+                "title": "disable"
             },
             {
                 "command": "legato.pickDefFile",
@@ -141,6 +221,18 @@
         "taskDefinitions": [
             {
                 "type": "Legato"
+            },
+            {
+                "type": "Leaf",
+                "required": [
+                    "taskId"
+                ],
+                "properties": {
+                    "cmd": {
+                        "type": "string",
+                        "description": "The id of the command to sent to leaf shell"
+                    }
+                }
             }
         ],
         "problemMatchers": [
