@@ -50,7 +50,7 @@ suite("Legato Tests", function () {
     test(`Buid active sdef`, function (done) {
         let sdefUri = LegatoManager.getInstance().getActiveSdef();
         assert.notEqual(sdefUri, undefined, "To continue, ensure an active SDEF is present in the workspace");
-        this.timeout(100000);
+        this.timeout(300000);
         let fetchedTasks = tasks.fetchTasks();
         fetchedTasks.then((result: Task[]) => {
             result.forEach((t: Task) => {

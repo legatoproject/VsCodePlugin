@@ -1,0 +1,47 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "api",
+	"scopeName": "source.api",
+	"fileTypes": [
+		"api"
+	],
+	"patterns": [
+		{
+			"captures": {
+				"1": {
+					"name": "keyword.other.usetypes"
+				},
+				"2": {
+					"name": "entity.name.class"
+				},
+				"3": {
+					"name": "support.other"
+				}
+			},
+			"match": "^\\s*(USETYPES)\\s+([a-zA-Z_\\.]+)(;)$",
+			"name": "meta.import.api"
+		},
+		{
+			"match": "\\b(FUNCTION|HANDLER|STRUCT|EVENT|ENUM|DEFINE|REFERENCE|BITMASK|IN|OUT)\\b",
+			"name": "keyword.other"
+		},
+		{
+			"match": "\\b(uint8|uint16|uint32|uint64|int8|int16|int32|int64|double|string|file|le_result_t|le_onoff_t)\\b",
+			"name": "keyword.other"
+		},
+		{
+			"begin": "//",
+			"end": "$",
+			"name": "comment.line.double-slash"
+		},
+		{
+			"begin": "/\\*",
+			"end": "\\*/",
+			"name": "comment.block"
+		},
+		{
+			"match": "\\b\\d+\\b",
+			"name": "constant.numeric"
+		}
+	]
+}

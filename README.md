@@ -19,8 +19,15 @@ This extension integrates the `leaf` command-line package/workspace management t
 
 This extension provides the following features to ease Legato development in VS Code:
 
+#### Coding
+
+- editors for **\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef** files
+
+#### Building
+
 - active **SDEF** file status bar + `Legato: Select active SDEF` command (or click on the status bar) to pick one
 - build task to invoke `mksys` on the active **SDEF** on `Ctrl+Shift+B`
+- errors parsing from both `mksys` and C/C++ compilation
 
 ## Settings
 

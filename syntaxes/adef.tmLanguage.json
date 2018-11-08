@@ -1,0 +1,16 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "adef",
+    "scopeName": "source.xdef.adef",
+    "begin": "^START_MARKER",
+    "end": "^END_MARKER",
+    "patterns": [
+        {
+            "include": "source.xdef.cdef"
+        },
+        {
+            "match": "\\b(true|false|ignore|stop|stopApp|restart|restartApp|reboot|idle|low|medium|high|rt\\d+|cgroup\\d)\\b",
+            "name": "keyword.other.adef"
+        }
+    ]
+}

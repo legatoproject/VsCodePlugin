@@ -28,6 +28,94 @@
                 "title": "Legato: Select active SDEF"
             }
         ],
+        "languages": [
+            {
+                "id": "api",
+                "aliases": [
+                    "Legato API",
+                    "api"
+                ],
+                "extensions": [
+                    ".api"
+                ],
+                "configuration": "./legato-language-config.json"
+            },
+            {
+                "id": "cdef",
+                "aliases": [
+                    "Legato Component Definition",
+                    "cdef"
+                ],
+                "extensions": [
+                    ".cdef",
+                    ".cinc"
+                ],
+                "configuration": "./legato-language-config.json"
+            },
+            {
+                "id": "adef",
+                "aliases": [
+                    "Legato App Definition",
+                    "adef"
+                ],
+                "extensions": [
+                    ".adef",
+                    ".ainc"
+                ],
+                "configuration": "./legato-language-config.json"
+            },
+            {
+                "id": "mdef",
+                "aliases": [
+                    "Legato Module Definition",
+                    "mdef"
+                ],
+                "extensions": [
+                    ".mdef",
+                    ".minc"
+                ],
+                "configuration": "./legato-language-config.json"
+            },
+            {
+                "id": "sdef",
+                "aliases": [
+                    "Legato System Definition",
+                    "sdef"
+                ],
+                "extensions": [
+                    ".sdef",
+                    ".sinc"
+                ],
+                "configuration": "./legato-language-config.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "api",
+                "scopeName": "source.api",
+                "path": "./syntaxes/api.tmLanguage.json"
+            },
+            {
+                "language": "cdef",
+                "scopeName": "source.xdef.cdef",
+                "path": "./syntaxes/cdef.tmLanguage.json"
+            },
+            {
+                "language": "adef",
+                "scopeName": "source.xdef.adef",
+                "path": "./syntaxes/adef.tmLanguage.json"
+            },
+            {
+                "language": "sdef",
+                "scopeName": "source.xdef.sdef",
+                "path": "./syntaxes/sdef.tmLanguage.json"
+            },
+            {
+                "language": "mdef",
+                "scopeName": "source.xdef.mdef",
+                "path": "./syntaxes/mdef.tmLanguage.json"
+            }
+        ],
         "taskDefinitions": [
             {
                 "type": "Legato",
