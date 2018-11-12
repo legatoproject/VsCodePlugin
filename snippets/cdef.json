@@ -1,0 +1,12 @@
+{
+    "helloworld": {
+        "prefix": "helloworld",
+        "description": "Generate the helloWorld CEF file",
+        "body": [
+            "sources:",
+            "{",
+            "    helloWorld.c",
+            "}"
+        ]
+    }
+}

@@ -1,0 +1,61 @@
+{
+    "function": {
+        "prefix": "FUNCTION",
+        "description": "Declare a function",
+        "body": [
+            "FUNCTION ${1|uint8,uint16,uint32,uint64,int8,int16,int32,int64,double,string,file,le_result_t,le_onoff_t|} ${2:functionName}",
+            "(",
+            ");"
+        ]
+    },
+    "parameter": {
+        "prefix": "parameter",
+        "description": "Declare a parameter",
+        "body": [
+            "${1|uint8,uint16,uint32,uint64,int8,int16,int32,int64,double,string,file,le_result_t,le_onoff_t|} ${2:parameterName}  ${3|IN,OUT|}"
+        ]
+    },
+    "event": {
+        "prefix": "EVENT",
+        "description": "Declare an event",
+        "body": [
+            "EVENT ${1:eventType}",
+            "(",
+            ");"
+        ]
+    },
+    "define": {
+        "prefix": "DEFINE",
+        "description": "Define a variable",
+        "body": [
+            "DEFINE ${1:name} = ${2:value};"
+        ]
+    },
+    "enum": {
+        "prefix": "ENUM",
+        "description": "Declare an enum",
+        "body": [
+            "ENUM ${1:name}",
+            "{",
+            "};"
+        ]
+    },
+    "struct": {
+        "prefix": "STRUCT",
+        "description": "Declare a struct",
+        "body": [
+            "STRUCT ${1:name}",
+            "{",
+            "};"
+        ]
+    },
+    "handler": {
+        "prefix": "HANDLER",
+        "description": "Declare a handler",
+        "body": [
+            "HANDLER ${1:handlerType}",
+            "(",
+            ");"
+        ]
+    }
+}

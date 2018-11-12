@@ -1,0 +1,30 @@
+{
+    "helloworld": {
+        "prefix": "helloworld",
+        "description": "Generate the helloWorld ADEF file",
+        "body": [
+            "executables:",
+            "{",
+            "    helloWorld = ( helloComponent )",
+            "}",
+            "processes:",
+            "{",
+            "    envVars:",
+            "    {",
+            "        LE_LOG_LEVEL = DEBUG",
+            "    }",
+            "    run:",
+            "    {",
+            "        ( helloWorld )",
+            "    }",
+            "}"
+        ]
+    },
+    "binding": {
+        "prefix": "bind",
+        "description": "Bind a component in this app to an API",
+        "body": [
+            "$TM_FILENAME_BASE.${1:myComp}.${2:le_api} -> ${3:someService}.${2:le_api}"
+        ]
+    }
+}

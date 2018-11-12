@@ -1,0 +1,14 @@
+{
+    "default": {
+        "prefix": "Default .sdef",
+        "description": "Generate default sdef for your adef file.",
+        "body": [
+            "#include \\$LEGATO_ROOT/default.sdef",
+            "",
+            "apps:",
+            "{",
+              "    ${1:myAdef}",
+            "}"
+        ]
+    }
+}

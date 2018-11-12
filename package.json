@@ -116,6 +116,28 @@
                 "path": "./syntaxes/mdef.tmLanguage.json"
             }
         ],
+        "snippets": [
+            {
+                "language": "api",
+                "path": "./snippets/api.json"
+            },
+            {
+                "language": "cdef",
+                "path": "./snippets/cdef.json"
+            },
+            {
+                "language": "adef",
+                "path": "./snippets/adef.json"
+            },
+            {
+                "language": "sdef",
+                "path": "./snippets/sdef.json"
+            },
+            {
+                "language": "c",
+                "path": "./snippets/c.json"
+            }
+        ],
         "taskDefinitions": [
             {
                 "type": "Legato",

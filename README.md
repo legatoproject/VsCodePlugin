@@ -21,7 +21,8 @@ This extension provides the following features to ease Legato development in VS 
 
 #### Coding
 
-- editors for **\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef** files
+- editors for Legato files (**\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef**)
+- snippets for Legato files
 
 #### Building
 
