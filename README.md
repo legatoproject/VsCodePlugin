@@ -26,9 +26,9 @@ This extension provides the following features to ease Legato development in VS 
 
 #### Building
 
-- active **SDEF** file status bar + `Legato: Select active SDEF` command (or click on the status bar) to pick one
-- build task to invoke `mksys` on the active **SDEF** on `Ctrl+Shift+B`
-- errors parsing from both `mksys` and C/C++ compilation
+- active definition file status bar + `Legato: Select active definition file` command (or click on the status bar) to pick one
+- build task to invoke `mksys`|`mkapp` on the active definition file on `Ctrl+Shift+B`
+- errors parsing from both `mksys`|`mkapp` and C/C++ compilation
 
 ## Settings
 

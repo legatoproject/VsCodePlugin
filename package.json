@@ -24,8 +24,8 @@
                 "title": "Leaf: Switch to Another Profile"
             },
             {
-                "command": "legato.pickSdef",
-                "title": "Legato: Select active SDEF"
+                "command": "legato.pickDefFile",
+                "title": "Legato: Select active definition file"
             }
         ],
         "languages": [
@@ -140,16 +140,7 @@
         ],
         "taskDefinitions": [
             {
-                "type": "Legato",
-                "required": [
-                    "mktool"
-                ],
-                "properties": {
-                    "mktool": {
-                        "type": "string",
-                        "description": "The Legato (mktools) task to customize"
-                    }
-                }
+                "type": "Legato"
             }
         ],
         "problemMatchers": [

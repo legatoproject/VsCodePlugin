@@ -3,5 +3,5 @@
 
 // No apps at the moment
 apps: {
-
+    helloWorld
 }

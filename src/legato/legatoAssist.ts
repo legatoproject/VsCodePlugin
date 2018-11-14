@@ -2,19 +2,23 @@
 
 import * as vscode from 'vscode';
 import { LeafManager } from '../leaf/leafCore';
-import { LegatoManager } from './legatoCore';
+import { LegatoManager, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './legatoCore';
+const EXTENSION_COMMANDS = {
+  pickDefFile: "legato.pickDefFile"
+};
+
 export class LegatoUiManager {
 
-  private sdefStatusbar: vscode.StatusBarItem;
+  private defStatusbar: vscode.StatusBarItem;
 
 
   public constructor() {
-    this.sdefStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+    this.defStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   }
   public start(context: vscode.ExtensionContext) {
-    this.sdefStatusbar.command = "legato.pickSdef";
-    this.sdefStatusbar.text = "<No sdef selected>";
-    this.sdefStatusbar.show();
+    this.defStatusbar.command = EXTENSION_COMMANDS.pickDefFile;
+    this.defStatusbar.text = "<No def file selected>";
+    this.defStatusbar.show();
 
     // Tasks definition
     let legatoTaskProvider = vscode.tasks.registerTaskProvider('Legato', {
@@ -27,30 +31,30 @@ export class LegatoUiManager {
     });
     context.subscriptions.push(legatoTaskProvider);  // Dispose on extension/deactivate
 
-    vscode.commands.registerCommand("legato.pickSdef", () => {
-      this.chooseActiveSdef().then((selectedSdef: vscode.Uri | undefined) => {
+    vscode.commands.registerCommand(EXTENSION_COMMANDS.pickDefFile, () => {
+      this.chooseActiveDef().then((selectedDef: vscode.Uri | undefined) => {
         let path = require('path');
-        if (selectedSdef) {
-          LegatoManager.getInstance().setActiveSdef(selectedSdef);
-          this.sdefStatusbar.text = path.basename(selectedSdef.path);
+        if (selectedDef) {
+          LegatoManager.getInstance().setActiveDefFile(selectedDef);
+          this.defStatusbar.text = path.basename(selectedDef.path);
         }
       });
     });
   }
 
-  private chooseActiveSdef(): Thenable<vscode.Uri | undefined> {
-    return LegatoManager.getInstance().listSdefs()
-      .then((sdefs: vscode.Uri[]) => {
-        if (sdefs.length === 0) {
-          vscode.window.showErrorMessage("No *.sdef files found in workspace.");
+  private chooseActiveDef(): Thenable<vscode.Uri | undefined> {
+    return LegatoManager.getInstance().listDefinitionFiles()
+      .then((xdefs: vscode.Uri[]) => {
+        if (xdefs.length === 0) {
+          vscode.window.showErrorMessage("No *.sdef nor *.adef files found in workspace.");
           return undefined;
-        } else if (sdefs.length === 1) {
-          vscode.window.showInformationMessage(`Active SDEF set to the only one - ${sdefs[0].path}`);
-          return sdefs[0];
+        } else if (xdefs.length === 1) {
+          vscode.window.showInformationMessage(`Active definition file set to the only one - ${xdefs[0].path}`);
+          return xdefs[0];
         } else {
           return vscode.window
-            .showQuickPick(sdefs.map(s => s.path), { placeHolder: "Please select active SDEF file among ones available in the workspace..."})
-              .then((sdefPath: string | undefined) => sdefPath !== undefined ? vscode.Uri.file(sdefPath) : undefined);
+            .showQuickPick(xdefs.map(s => s.path), { placeHolder: "Please select active definition file among ones available in the workspace..." })
+            .then((xdefPath: string | undefined) => xdefPath !== undefined ? vscode.Uri.file(xdefPath) : undefined);
         }
       });
   }
@@ -61,56 +65,61 @@ export class LegatoUiManager {
     if (!workspaceRoot) {
       return [];
     }
-    let sdefBuildTask = await this.sdefBuildTask();
-    if (sdefBuildTask) {
-      legatoBuildTasks.push(sdefBuildTask);
+    let xdefBuildTask = await this.xdefBuildTask();
+    if (xdefBuildTask) {
+      legatoBuildTasks.push(xdefBuildTask);
     }
     return legatoBuildTasks;
   }
 
   private raiseNoBuildTask() {
-    vscode.window.showErrorMessage("Please select the active .sdef file first");
-    throw new Error('Missing active SDEF file to build');
+    vscode.window.showErrorMessage("Please select the active definition file first");
+    throw new Error('Missing active definition file to build');
   }
 
 
-  private async sdefBuildTask(): Promise<undefined | vscode.Task> {
-    let activeSdefFile: vscode.Uri | undefined = LegatoManager.getInstance().getActiveSdef();
+  private async xdefBuildTask(): Promise<undefined | vscode.Task> {
+    let activeDefFile: vscode.Uri | undefined = LegatoManager.getInstance().getActiveDefFile();
     let mktool: undefined | string;
-    if (activeSdefFile) {
-      mktool = "mksys";
-      let command = `${mktool} -t \${LEGATO_TARGET} ${vscode.workspace.asRelativePath(activeSdefFile)}`;
-      let kind: LakeTaskDefinition = {
-        type: 'Legato',
-        mktool: mktool
-      };
-      let shellOptions: vscode.ShellExecutionOptions = {
-        executable: await LeafManager.getInstance().getLeafPath(),
-        shellArgs: ['shell', '-c']
-      };
+    if (activeDefFile) {
+      let path = require('path');
+      let ext = path.extname(activeDefFile.fsPath);
+      switch (ext) {
+        case LEGATO_FILE_EXTENSIONS.sdef:
+          mktool = LEGATO_MKTOOLS.mksys;
+          break;
+        case LEGATO_FILE_EXTENSIONS.adef:
+          mktool = LEGATO_MKTOOLS.mkapp;
+          break;
+        default:
+          break;
+      }
 
-      let legatoTaskTarget: vscode.WorkspaceFolder = {
-        uri: vscode.Uri.file(await LeafManager.getInstance().getLeafWorkspaceDirectory()),
-        name: 'leaf-workspace',
-        index: 0
-      };
-      let task = new vscode.Task(kind, legatoTaskTarget, mktool, 'Legato', new vscode.ShellExecution(command, shellOptions));
-      task.group = vscode.TaskGroup.Build;
-      task.problemMatchers = ['$legato'];
-      task.presentationOptions = {
-        "reveal": vscode.TaskRevealKind.Always,
-        "panel": vscode.TaskPanelKind.Shared
-      };
-      return task;
-    } else {
-      this.raiseNoBuildTask();
+      if (mktool) {
+        let command = `${mktool} -t \${LEGATO_TARGET} ${vscode.workspace.asRelativePath(activeDefFile)}`;
+        let kind: vscode.TaskDefinition = {
+          type: 'Legato'
+        };
+        let shellOptions: vscode.ShellExecutionOptions = {
+          executable: await LeafManager.getInstance().getLeafPath(),
+          shellArgs: ['shell', '-c']
+        };
+
+        let legatoTaskTarget: vscode.WorkspaceFolder = {
+          uri: vscode.Uri.file(await LeafManager.getInstance().getLeafWorkspaceDirectory()),
+          name: 'leaf-workspace',
+          index: 0
+        };
+        let task = new vscode.Task(kind, legatoTaskTarget, mktool, 'Legato', new vscode.ShellExecution(command, shellOptions));
+        task.group = vscode.TaskGroup.Build;
+        task.problemMatchers = ['$legato'];
+        task.presentationOptions = {
+          "reveal": vscode.TaskRevealKind.Always,
+          "panel": vscode.TaskPanelKind.Shared
+        };
+        return task;
+      }
     }
+    this.raiseNoBuildTask();
   }
-}
-
-interface LakeTaskDefinition extends vscode.TaskDefinition {
-  /**
-   * The task name
-   */
-  mktool: string;
 }

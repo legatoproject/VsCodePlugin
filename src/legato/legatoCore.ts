@@ -4,9 +4,20 @@ import {
     Uri,
 } from "vscode";
 
+export const LEGATO_FILE_EXTENSIONS = {
+    cdef: ".cdef",
+    adef: ".adef",
+    sdef: ".sdef"
+  };
+
+export const LEGATO_MKTOOLS = {
+    mkapp: "mkapp",
+    mksys: "mksys"
+};
+
 export class LegatoManager {
     private static instance: LegatoManager;
-    private activeSdef: Uri | undefined;
+    private activeDefFile: Uri | undefined;
     static getInstance(): LegatoManager {
         LegatoManager.instance = LegatoManager.instance || new LegatoManager();
         return LegatoManager.instance;
@@ -15,18 +26,18 @@ export class LegatoManager {
     private constructor() {
     }
 
-    // Lists sdefs in project, and if there's only one, set it as the active one.
-    public listSdefs(): Thenable<Uri[]> {
-        return workspace.findFiles("**/*.sdef", "**/leaf-data/*");
+    // Lists def files in project, and if there's only one, set it as the active one.
+    public listDefinitionFiles(): Thenable<Uri[]> {
+        return workspace.findFiles("**/*.[as]def", "**/leaf-data/*");
     }
 
 
-    public setActiveSdef(uri: Uri) {
-        this.activeSdef = uri;
+    public setActiveDefFile(uri: Uri) {
+        this.activeDefFile = uri;
     }
 
-    public getActiveSdef(): Uri | undefined {
-        return this.activeSdef;
+    public getActiveDefFile(): Uri | undefined {
+        return this.activeDefFile;
     }
 
 }

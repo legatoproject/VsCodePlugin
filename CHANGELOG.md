@@ -1,7 +1,7 @@
 # Change Log
 
 ## 0.2.0
-- Active SDEF file selection
+- Active definition file selection
 - Basic editing support (colors) for Legato files (\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef)
 - Basic snippets Legato files
 

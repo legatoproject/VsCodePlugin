@@ -7,7 +7,8 @@
 import * as assert from 'assert';
 import { Task, TaskExecution, TaskProcessEndEvent, tasks, Uri, workspace } from 'vscode';
 import { LeafManager } from '../leaf/leafCore';
-import { LegatoManager } from '../legato/legatoCore';
+import { LegatoManager, LEGATO_MKTOOLS } from '../legato/legatoCore';
+import { ITestCallbackContext } from 'mocha';
 
 const leafManager: LeafManager = LeafManager.getInstance();
 const LEAF_TIMEOUT: number = 10000;
@@ -37,37 +38,65 @@ suite("Leaf Tests", function () {
 });
 
 suite("Legato Tests", function () {
-    test(`List sdef files`, function (done) {
-        LegatoManager.getInstance().listSdefs().then((files) => {
-            files.forEach((uri: Uri) => { console.log(`SDEF=${uri.path}`); });
-            console.log(`Workspace scanned:${workspace.rootPath} - SDEF found:${files.length}`);
-            assert.notEqual(files.length, 0, "To continue, ensure at least one SDEF is provided in the workspace");
-            LegatoManager.getInstance().setActiveSdef(files[0]);
+    test(`List def files`, function (done) {
+        LegatoManager.getInstance().listDefinitionFiles().then((files) => {
+            files.forEach((uri: Uri) => { console.log(`DEF_FILE=${uri.path}`); });
+            console.log(`Workspace scanned:${workspace.rootPath} - DEF found:${files.length}`);
+            assert.notEqual(files.length, 0, "To continue, ensure at least one definition file is provided in the workspace");
+            LegatoManager.getInstance().setActiveDefFile(files[0]);
             done();
         });
     });
 
-    test(`Buid active sdef`, function (done) {
-        let sdefUri = LegatoManager.getInstance().getActiveSdef();
-        assert.notEqual(sdefUri, undefined, "To continue, ensure an active SDEF is present in the workspace");
-        this.timeout(300000);
-        let fetchedTasks = tasks.fetchTasks();
-        fetchedTasks.then((result: Task[]) => {
-            result.forEach((t: Task) => {
-                if (t.name === "mksys") {
-                    console.log("Execute mksys task...");
-                    tasks.executeTask(t).then((taskExec: TaskExecution) => {
-                        //on success build, assert OK
-                        tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
-                            if (event.execution.task === t) {
-                                console.log(`Build terminated with exitCode:${event.exitCode}`);
-                                assert.equal(0, event.exitCode, `Build successfully ended`);
-                                done();
-                            }
-                        });
-                    });
-                }
-            });
-        });
+    test(`Buid active SDEF file`, function (done) {
+        buildActiveDefFile(this, (uri: Uri) => {
+            return (uri !== undefined) ?
+                require('path').basename(uri.fsPath) === "test.sdef" : undefined;
+        }, LEGATO_MKTOOLS.mksys, done);
+
     });
+
+    test(`Buid active ADEF file`, function (done) {
+        buildActiveDefFile(this, (uri: Uri) => {
+            if (uri) {
+                return require('path').basename(uri.fsPath) === "helloWorld.adef";
+            }
+        }, LEGATO_MKTOOLS.mkapp, done);
+    });
+
+    function buildActiveDefFile(testCallback: ITestCallbackContext, defFileFilter: any, expectedMktool: string, done: MochaDone) {
+        LegatoManager.getInstance().listDefinitionFiles().then((files) => {
+            let foundSdef: Uri | undefined = files.find(defFileFilter);
+            if (foundSdef !== undefined) {
+                LegatoManager.getInstance().setActiveDefFile(foundSdef);
+                testCallback.timeout(300000);
+                let fetchedTasks = tasks.fetchTasks();
+                console.log(`Building active definition file \'${require('path').basename(foundSdef.fsPath)}\'`);
+                fetchedTasks.then((result: Task[]) => {
+                    result.forEach((t: Task) => {
+                        if (t.name === expectedMktool) {
+                            console.log(`Legato build task ${t.name}... `);
+                            tasks.executeTask(t).then((taskExec: TaskExecution) => {
+                                //on success build, assert OK
+                                tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
+                                    if (event.execution.task === t) {
+                                        console.log(`Build terminated with exitCode:${event.exitCode}`);
+                                        if (event.exitCode !== 0) {
+                                            done(new Error(`Build failed: ${event.exitCode}`));
+                                            assert.equal(0, event.exitCode, `Build successfully ended`);
+                                        }
+                                        done();
+                                    }
+                                });
+                            });
+                        } else {
+                            done(new Error("No build task found!"));
+                        }
+                    });
+                });
+            } else {
+                assert.fail("To continue, ensure at least one definition file is provided in the workspace");
+            }
+        });
+    }
 });
