@@ -27,16 +27,20 @@ This extension integrates the `leaf` command-line package/workspace management t
 
 This extension provides the following features to ease Legato development in VS Code:
 
-#### Coding
+#### Code
 
 - editors for Legato files (**\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef**)
 - snippets for Legato files
 
-#### Building
+#### Build
 
 - active definition file status bar + `Legato: Select active definition file` command (or click on the status bar) to pick one
 - build task to invoke `mksys`|`mkapp` on the active definition file on `Ctrl+Shift+B`
 - errors parsing from both `mksys`|`mkapp` and C/C++ compilation
+
+#### Target Management
+
+- `Legato: Open remote shell` command to open an SSH terminal on the remote Legato device
 
 ## Settings
 

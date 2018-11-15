@@ -106,6 +106,10 @@
             {
                 "command": "legato.pickDefFile",
                 "title": "Legato: Select active definition file"
+            },
+            {
+                "command": "tm.openShell",
+                "title": "Legato: Open remote shell"
             }
         ],
         "languages": [

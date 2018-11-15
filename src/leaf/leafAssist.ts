@@ -70,12 +70,17 @@ export class LeafUiManager {
     }
   }
 
+  public static async newLeafShellTerminal(labelTerminal:string, args?: string[]) {
+      console.log(`Create Leaf shell named \'${labelTerminal}\'`)
+      let leafBinPath = await LeafManager.INSTANCE.getLeafPath();
+      let leafTerminal = window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, [LEAF_COMMANDS.shell].concat(args?args:[]));
+      return leafTerminal;
+  }
+
   private async showTerminal() {
     this.terminalCreated = true;
     if (!this.leafTerminal) {
-      console.log(`Create Leaf shell`);
-      let leafBinPath = await this.leafManager.getLeafPath();
-      this.leafTerminal = window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, [LEAF_COMMANDS.shell]);
+      this.leafTerminal = await LeafUiManager.newLeafShellTerminal(LEAF_SHELL_LABEL);
       window.onDidCloseTerminal((closedTerminal: Terminal) => {
         if (closedTerminal.name === LEAF_SHELL_LABEL) {
           closedTerminal.dispose();
