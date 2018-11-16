@@ -18,6 +18,7 @@ export class LegatoUiManager {
   public start(context: vscode.ExtensionContext) {
     this.defStatusbar.command = EXTENSION_COMMANDS.pickDefFile;
     this.defStatusbar.text = "<No def file selected>";
+    this.defStatusbar.tooltip = "Active definition file";
     this.defStatusbar.show();
 
     // Tasks definition
@@ -95,8 +96,7 @@ export class LegatoUiManager {
           type: 'Legato'
         };
         let shellOptions: vscode.ShellExecutionOptions = {
-          executable: await LeafManager.INSTANCE.getLeafPath(),
-          shellArgs: ['shell', '-c']
+          env: await LeafManager.INSTANCE.getEnvVars()
         };
 
         let legatoTaskTarget: vscode.WorkspaceFolder = {

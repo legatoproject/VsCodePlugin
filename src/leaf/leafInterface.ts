@@ -10,6 +10,7 @@ export const LEAF_INTERFACE_COMMANDS = {
     INSTALLED_PACKAGES: "installedPackages",
     AVAILABLE_PACKAGES: "availablePackages",
     WORKSPACE_INFO: "workspaceInfo",
+    RESOLVE_VAR: "resolveVariables",
     EXIT: "exit"
 };
 

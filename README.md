@@ -40,6 +40,7 @@ This extension provides the following features to ease Legato development in VS 
 
 #### Target Management
 
+- Legato device IP address status bar + `Legato: Set device IP address` command (or click on the status bar) for configuration
 - `Legato: Open remote shell` command to open an SSH terminal on the remote Legato device
 
 ## Settings

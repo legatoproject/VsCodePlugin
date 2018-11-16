@@ -7,6 +7,7 @@
 - Leaf views for packages and remotes
 - Action to configure packages in profile (from leaf package view)
 - Actions to enable/disable remotes (from leaf remote view)
+- Legato device IP address configuration
 - Action to open a remote Legato device shell
 
 ## 0.1.0

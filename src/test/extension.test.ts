@@ -6,7 +6,7 @@
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
 import { Task, TaskExecution, TaskProcessEndEvent, tasks, Uri, workspace } from 'vscode';
-import { LeafManager } from '../leaf/leafCore';
+import { LeafManager, LEAF_TASKS } from '../leaf/leafCore';
 import { LegatoManager, LEGATO_MKTOOLS } from '../legato/legatoCore';
 import { ITestCallbackContext } from 'mocha';
 
@@ -34,6 +34,34 @@ suite("Leaf Tests", function () {
             done();
         }).catch((reason) => {
             assert.fail(`Failed to get profiles - reason: ${reason}`);
+        });
+    });
+
+    const EXPECTED_IP_ADRESS = "10.0.0.1";
+    test(`Set DEST_IP`, function (done) {
+        this.timeout(LEAF_TIMEOUT);
+        tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
+            console.log(`EVENT -TASK=${event.execution.task.name}`);
+            if (event.execution.task.name === LEAF_TASKS.setEnv) {
+                if (event.exitCode === 0) {
+                    done();
+                } else {
+                    done(new Error(`Failed to set IP to ${EXPECTED_IP_ADRESS}`));
+                }
+            }
+        });
+        leafManager.setEnvValue("DEST_IP", EXPECTED_IP_ADRESS);
+    });
+
+
+    test(`Get DEST_IP value`, function (done) {
+        this.timeout(30000);
+        leafManager.getEnvValue("DEST_IP").then((ip: string) => {
+            console.log("DEST_IP=" + ip);
+            assert.equal(ip, EXPECTED_IP_ADRESS);
+            done();
+        }).catch((reason: any) => {
+            console.log(`Failed to get IP - reason: ${reason}`);
         });
     });
 });

@@ -17,6 +17,9 @@ export const LEAF_EVENT = {
   profileChanged: "profileChanged"
 };
 
+export const LEAF_TASKS = {
+  setEnv: "set Leaf env"
+};
 
 /**
  * LeafManager is responsible for the leaf lifecycle.
@@ -139,5 +142,23 @@ export class LeafManager extends EventEmitter {
   public async dispose() {
     unwatchFile(this.currentProfilePath);
     this.taskManager.dispose();
+  }
+
+  public async getEnvVars(): Promise<any> {
+    try {
+      return await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR);
+    } catch (e) {
+      throw new Error(`Failed to get leaf env`);
+    }
+  }
+
+  public async getEnvValue(envvar: string): Promise<string> {
+      let envVariables = await this.getEnvVars();
+      return envVariables[envvar];
+  }
+
+  public setEnvValue(envar: string, value: string) {
+    let command = `leaf env profile --set ${envar}=\"${value}\"`;
+    this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
   }
 }

@@ -24,6 +24,7 @@ export class LeafUiManager {
       this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
       context.subscriptions.push(this.leafStatusbar); // Dispose status bar on deactivate
       this.leafStatusbar.text = "Loading current profile...";
+      this.leafStatusbar.tooltip = "Current Leaf profile";
       this.leafStatusbar.show();
 
       // Also, let's add leaf commands
@@ -70,8 +71,8 @@ export class LeafUiManager {
     }
   }
 
-  public static async newLeafShellTerminal(labelTerminal:string, args?: string[]) {
-      console.log(`Create Leaf shell named \'${labelTerminal}\'`)
+  private static async newLeafShellTerminal(labelTerminal:string, args?: string[]) {
+      console.log(`Create Leaf shell named \'${labelTerminal}\'`);
       let leafBinPath = await LeafManager.INSTANCE.getLeafPath();
       let leafTerminal = window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, [LEAF_COMMANDS.shell].concat(args?args:[]));
       return leafTerminal;

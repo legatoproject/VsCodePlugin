@@ -4,6 +4,11 @@ import {
     Uri,
 } from "vscode";
 
+export const LEGATO_ENV = {
+    LEGATO_ROOT: "LEGATO_ROOT",
+    DEST_IP: "DEST_IP"
+  };
+
 export const LEGATO_FILE_EXTENSIONS = {
     cdef: ".cdef",
     adef: ".adef",

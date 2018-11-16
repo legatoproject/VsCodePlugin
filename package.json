@@ -108,8 +108,12 @@
                 "title": "Legato: Select active definition file"
             },
             {
-                "command": "tm.openShell",
+                "command": "legato.tm.openShell",
                 "title": "Legato: Open remote shell"
+            },
+            {
+                "command": "legato.tm.newIP",
+                "title": "Legato: Set device IP address"
             }
         ],
         "languages": [
