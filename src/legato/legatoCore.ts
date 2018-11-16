@@ -3,6 +3,7 @@ import {
     workspace,
     Uri,
 } from "vscode";
+import { LeafManager } from "../leaf/leafCore";
 
 export const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
@@ -43,6 +44,10 @@ export class LegatoManager {
 
     public getActiveDefFile(): Uri | undefined {
         return this.activeDefFile;
+    }
+
+    public async getLegatoRoot(): Promise<string> {
+        return LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.LEGATO_ROOT);
     }
 
 }

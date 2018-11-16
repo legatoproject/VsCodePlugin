@@ -9,6 +9,7 @@
 - Actions to enable/disable remotes (from leaf remote view)
 - Legato device IP address configuration
 - Action to open a remote Legato device shell
+- Start Language Server if bundled in used Legato version
 
 ## 0.1.0
 - Initial release
