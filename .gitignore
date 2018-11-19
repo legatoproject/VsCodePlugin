@@ -1,6 +1,11 @@
 out
 node_modules
 package
-leafWks
+leafWorkspace
 .vscode-test/
 *.vsix
+
+# Python support
+/venv
+*.pyc
+__pycache__
