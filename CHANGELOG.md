@@ -2,6 +2,7 @@
 
 ## 0.3.0
 - Actions to add and remove remotes
+- Capability to queue leaf tasks when triggering new ones while leaf is already busy
 
 ## 0.2.0
 - Active definition file selection

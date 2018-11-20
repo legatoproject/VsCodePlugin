@@ -2,7 +2,7 @@
 
 import * as vscode from 'vscode';
 import { IDS } from '../identifiers';
-import { TreeItem2, TreeDataProvider2 } from './leafTreeView';
+import { TreeItem2, TreeDataProvider2 } from './leafUiUtils';
 
 export class LeafPackagesDataProvider extends TreeDataProvider2 {
 

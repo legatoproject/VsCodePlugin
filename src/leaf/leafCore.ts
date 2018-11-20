@@ -5,7 +5,7 @@ import { join } from "path";
 import { workspace } from "vscode";
 import { unwatchFile, watchFile, readlinkSync } from "fs";
 import { exec } from 'child_process';
-import { AbstractLeafTaskManager, ParallelLeafTaskManager } from './leafTaskManager';
+import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './leafTaskManager';
 import { LEAF_INTERFACE_COMMANDS, LeafInterface } from './leafInterface';
 
 export const LEAF_ENV = {
@@ -29,8 +29,7 @@ export class LeafManager extends EventEmitter {
   private readonly leafPath: Promise<string>;
   private readonly leafVersion: Promise<string>;
   private readonly currentProfilePath: string;
-  private readonly taskManager: AbstractLeafTaskManager = new ParallelLeafTaskManager();
-  //  private readonly taskManager: AbstractLeafTaskManager = new SequencialLeafTaskManager();
+  private readonly taskManager: AbstractLeafTaskManager = new SequencialLeafTaskManager();
   private readonly leafInterface: LeafInterface = new LeafInterface();
 
   private constructor() {

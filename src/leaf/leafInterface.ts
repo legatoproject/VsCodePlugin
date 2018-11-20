@@ -3,6 +3,7 @@
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import {PromiseCallbacks} from '../utils'
 
 export const LEAF_INTERFACE_COMMANDS = {
     VERSION: "version",
@@ -23,12 +24,7 @@ export class LeafInterface {
     private readonly process: ChildProcess;
     private readonly idGenerator: IterableIterator<number> = LeafInterface.newIdGenerator();
     private stdoutBuffer: string = "";
-    private pendingRequests: {
-        [key: string]: {
-            resolve: (value?: string | PromiseLike<string>) => void,
-            reject: (reason?: any) => void
-        }
-    } = {};
+    private pendingRequests: PromiseCallbacks = {};
 
     public constructor() {
         // Launch interface

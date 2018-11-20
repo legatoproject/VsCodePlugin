@@ -36,6 +36,10 @@ export const IDS = { // leaf
             ENABLED: "leaf-vi-rmt-enabled",
             DISABLE: "leaf-vi-rmt-disabled"
         }
+    },
+    TASK_DEFINITION: {
+        LEAF: "Leaf",
+        LEGATO: "Legato"
     }
 };
 

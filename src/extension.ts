@@ -24,13 +24,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Start Target Management UI
     new TargetUiManager().start(context);
- 
+
     // Exclude leaf-data from file watcher
     let config = vscode.workspace.getConfiguration(undefined, null);
     config.update("files.watcherExclude", { "**/leaf-data/**": true }, vscode.ConfigurationTarget.Global);
 
-	vscode.window.registerTreeDataProvider(IDS.VIEWS.PACKAGES, new LeafPackagesDataProvider(context));
-	vscode.window.registerTreeDataProvider(IDS.VIEWS.REMOTES, new LeafRemotesDataProvider(context));
+    vscode.window.registerTreeDataProvider(IDS.VIEWS.PACKAGES, new LeafPackagesDataProvider(context));
+    vscode.window.registerTreeDataProvider(IDS.VIEWS.REMOTES, new LeafRemotesDataProvider(context));
 }
 
 // this method is called when your extension is deactivated

@@ -2,7 +2,7 @@
 
 import * as vscode from 'vscode';
 import { IDS } from '../identifiers';
-import { TreeItem2, TreeDataProvider2 } from './leafTreeView';
+import { TreeItem2, TreeDataProvider2, ACTION_LABELS } from './leafUiUtils';
 
 export class LeafRemotesDataProvider extends TreeDataProvider2 {
 	private static readonly validProtocols: ReadonlyArray<string> = ['http', 'https', 'file'];
@@ -115,7 +115,7 @@ export class LeafRemotesDataProvider extends TreeDataProvider2 {
 		if (!node) {
 			throw Error("No remote selected");
 		}
-		if ("Remove" === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", "Cancel", "Remove")) {
+		if (ACTION_LABELS.REMOVE === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", ACTION_LABELS.CANCEL, ACTION_LABELS.REMOVE)) {
 			await this.leafManager.removeRemote(node.remoteId);
 			this.refresh();
 		}

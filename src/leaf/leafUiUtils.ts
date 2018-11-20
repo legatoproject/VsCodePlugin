@@ -4,6 +4,13 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { LeafManager } from './leafCore';
 
+export const ACTION_LABELS = {
+	CANCEL: "Cancel",
+	REMOVE: "Remove",
+	ADD_TO_QUEUE: "Queue",
+	FORGET: "Forget"
+};
+
 export class TreeItem2 extends vscode.TreeItem {
 	constructor(
 		public readonly label: string,
