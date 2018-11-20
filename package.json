@@ -46,6 +46,11 @@
                     "command": "leaf-cmd-rmt-refresh",
                     "when": "view == leaf-v-rmt",
                     "group": "navigation"
+                },
+                {
+                    "command": "leaf-cmd-rmt-add",
+                    "when": "view == leaf-v-rmt",
+                    "group": "navigation"
                 }
             ],
             "view/item/context": [
@@ -62,6 +67,11 @@
                 {
                     "command": "leaf-cmd-rmt-disable",
                     "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-enabled",
+                    "group": "inline"
+                },
+                {
+                    "command": "leaf-cmd-rmt-remove",
+                    "when": "view == leaf-v-rmt && viewItem =~ /leaf-vi-rmt-.*/",
                     "group": "inline"
                 }
             ]
@@ -102,6 +112,14 @@
             {
                 "command": "leaf-cmd-rmt-disable",
                 "title": "disable"
+            },
+            {
+                "command": "leaf-cmd-rmt-add",
+                "title": "add"
+            },
+            {
+                "command": "leaf-cmd-rmt-remove",
+                "title": "remove"
             },
             {
                 "command": "legato.pickDefFile",

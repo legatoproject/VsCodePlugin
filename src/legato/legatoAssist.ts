@@ -135,7 +135,7 @@ export class LegatoUiManager {
     LegatoManager.getInstance().getLegatoRoot().then((legatoPath: string) => {
       let serverModule = path.join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
       if (!fs.existsSync(serverModule)) {
-        throw serverModule + " LSP doesn't exist";
+        throw new Error(`${serverModule} LSP doesn't exist`);
       }
 
       // The debug options for the server

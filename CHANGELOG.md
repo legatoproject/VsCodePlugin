@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.3.0
+- Actions to add and remove remotes
+
 ## 0.2.0
 - Active definition file selection
 - Basic editing support (colors) for Legato files (\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef)

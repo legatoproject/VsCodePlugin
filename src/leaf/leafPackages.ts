@@ -64,7 +64,7 @@ export class LeafPackagesDataProvider extends TreeDataProvider2 {
 							return 'This profile name is already used';
 						}
 						if (value.includes(' ')) {
-							return 'the profileName cannot containts a space';
+							return 'the profile name cannot containts a space';
 						}
 						return undefined;
 					}

@@ -14,6 +14,7 @@ This extension integrates the `leaf` command-line package/workspace management t
 - **PACKAGES** view, listing available and installed packages
   - **ADD TO PROFILE** action to configure selected package in existing/new profile
 - **REMOTES** view, listing configured leaf remotes
+  - **ADD**/**REMOVE** actions to manage list of known remotes
   - **ENABLE**/**DISABLE** actions to configure remote status
 
 #### Profiles

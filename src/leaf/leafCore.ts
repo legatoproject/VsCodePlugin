@@ -7,6 +7,7 @@ import { unwatchFile, watchFile, readlinkSync } from "fs";
 import { exec } from 'child_process';
 import { AbstractLeafTaskManager, ParallelLeafTaskManager } from './leafTaskManager';
 import { LEAF_INTERFACE_COMMANDS, LeafInterface } from './leafInterface';
+
 export const LEAF_ENV = {
   LEAF_PROFILE: 'LEAF_PROFILE'
 };
@@ -16,7 +17,6 @@ export const LEAF_COMMANDS = {
 export const LEAF_EVENT = {
   profileChanged: "profileChanged"
 };
-
 export const LEAF_TASKS = {
   setEnv: "set Leaf env"
 };
@@ -139,11 +139,6 @@ export class LeafManager extends EventEmitter {
     return this.taskManager.executeAsTask("Fetch remotes", "leaf remote fetch");
   }
 
-  public async dispose() {
-    unwatchFile(this.currentProfilePath);
-    this.taskManager.dispose();
-  }
-
   public async getEnvVars(): Promise<any> {
     try {
       return await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR);
@@ -153,12 +148,25 @@ export class LeafManager extends EventEmitter {
   }
 
   public async getEnvValue(envvar: string): Promise<string> {
-      let envVariables = await this.getEnvVars();
-      return envVariables[envvar];
+    let envVariables = await this.getEnvVars();
+    return envVariables[envvar];
   }
 
   public setEnvValue(envar: string, value: string) {
     let command = `leaf env profile --set ${envar}=\"${value}\"`;
-    this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
+    return this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
+  }
+
+  public async addRemote(alias: string, url: string) {
+    return this.taskManager.executeAsTask(`Add remote ${alias} (${url})`, `leaf remote add --insecure ${alias} ${url}`);
+  }
+
+  public async removeRemote(...alias: string[]) {
+    return this.taskManager.executeAsTask(`Remove remote ${alias}`, `leaf remote remove ${alias.join(' ')}`);
+  }
+
+  public async dispose() {
+    unwatchFile(this.currentProfilePath);
+    this.taskManager.dispose();
   }
 }
