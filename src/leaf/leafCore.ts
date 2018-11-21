@@ -97,13 +97,34 @@ export class LeafManager extends EventEmitter {
     return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.AVAILABLE_PACKAGES);
   }
 
+  public async requestMasterPackages(): Promise<any> {
+    let out: { [key: string]: any } = {};
+    let ap = await this.requestAvailablePackages();
+    for (let packId in ap) {
+      let pack = ap[packId];
+      if (pack.info.master) {
+        out[packId] = pack;
+        out[packId].installed = false;
+      }
+    }
+    let ip = await this.requestInstalledPackages();
+    for (let packId in ip) {
+      let pack = ip[packId];
+      if (pack.info.master) {
+        out[packId] = pack;
+        out[packId].installed = true;
+      }
+    }
+    return out;
+  }
+
   public async requestRemotes(): Promise<any> {
     return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.REMOTES);
   }
 
-  public async listProfiles(): Promise<any[]> {
+  public async requestProfiles(): Promise<any[]> {
     let info = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.WORKSPACE_INFO);
-    let out = { ...info.profiles };
+    let out: any[] = { ...info.profiles };
     return out;
   }
 
@@ -141,11 +162,7 @@ export class LeafManager extends EventEmitter {
   }
 
   public async getEnvVars(): Promise<any> {
-    try {
-      return await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR);
-    } catch (e) {
-      throw new Error(`Failed to get leaf env`);
-    }
+    return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR);
   }
 
   public async getEnvValue(envvar: string): Promise<string | undefined> {
@@ -158,11 +175,11 @@ export class LeafManager extends EventEmitter {
     return this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
   }
 
-  public async addRemote(alias: string, url: string) {
+  public async addRemote(alias: string, url: string): Promise<void> {
     return this.taskManager.executeAsTask(`Add remote ${alias} (${url})`, `leaf remote add --insecure ${alias} ${url}`);
   }
 
-  public async removeRemote(...alias: string[]) {
+  public async removeRemote(...alias: string[]): Promise<void> {
     return this.taskManager.executeAsTask(`Remove remote ${alias}`, `leaf remote remove ${alias.join(' ')}`);
   }
 

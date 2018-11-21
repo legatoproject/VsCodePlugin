@@ -1,153 +1,107 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { IDS } from '../identifiers';
-import { TreeItem2, TreeDataProvider2, ACTION_LABELS } from './leafUiUtils';
+import { LEAF_IDS } from '../identifiers';
+import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../uiUtils';
+import { RemoteQuickPickItem, RemoteTreeItem } from './leafUiComponents';
+import { LeafManager } from './leafCore';
 
-export class LeafRemotesDataProvider extends TreeDataProvider2 {
+/**
+ * Remotes view and commands
+ */
+export class LeafRemotesView extends TreeDataProvider2 {
 	private static readonly validProtocols: ReadonlyArray<string> = ['http', 'https', 'file'];
 
-	constructor(context: vscode.ExtensionContext) {
+	constructor() {
 		super();
-		this.createCommand(IDS.COMMANDS.REMOTES.REFRESH, context, this.refresh);
-		this.createCommand(IDS.COMMANDS.REMOTES.ADD, context, this.addRemote);
-		this.createCommand(IDS.COMMANDS.REMOTES.REMOVE, context, this.removeRemote);
-		this.createCommand(IDS.COMMANDS.REMOTES.ENABLE, context, node => this.enableRemote(node));
-		this.createCommand(IDS.COMMANDS.REMOTES.DISABLE, context, node => this.enableRemote(node, false));
+		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REFRESH, this.refresh);
+		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.ADD, this.addRemote);
+		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REMOVE, this.removeRemote);
+		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.ENABLE, node => this.enableRemote(node));
+		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.DISABLE, node => this.enableRemote(node, false));
+		this.disposables.push(vscode.window.registerTreeDataProvider(LEAF_IDS.VIEWS.REMOTES, this));
 	}
 
-	private createCommand(id: string, context: vscode.ExtensionContext, cb: (...args: any[]) => any) {
-		let disposable = vscode.commands.registerCommand(id, cb, this);
-		context.subscriptions.push(disposable);
-	}
-
-	private async enableRemote(node: LeafRemote | undefined, enabled: boolean = true) {
+	private async enableRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined, enabled: boolean = true) {
 		if (!node) {
-			throw Error("No remote selected");
+			node = await this.askRemoteToUser(`${enabled ? "Enable" : "Disable"} Leaf remote`);
 		}
-		await this.leafManager.enableRemote(node.remoteId, enabled);
-		this.refresh();
+		if (node) {
+			await LeafManager.INSTANCE.enableRemote(node.id, enabled);
+			this.refresh();
+		}
 	}
 
 	private async addRemote() {
-		let remotes = await this.leafManager.requestRemotes();
+		let remotes = await LeafManager.INSTANCE.requestRemotes();
 		let title = "Add new remote";
 		let step = 1;
 		let totalSteps = 2;
 
 		// Alias
-		let alias = await this.showInputBox(title, step++, totalSteps,
+		let alias = await showMultiStepInputBox(title, step++, totalSteps,
 			"Remote Alias",
 			"Please enter an alias for the new remote",
-			value => {
-				if (value in remotes) {
-					return 'This remote alias is already used';
-				}
-				if (value.includes(' ')) {
-					return 'The remote alias cannot contains a space';
-				}
-				return undefined;
-			}
-		);
+			value => this.validateAlias(remotes, value));
 		if (!alias) {
 			// Operation canceled by user
 			return;
 		}
 
 		// URL
-		let url = await this.showInputBox(title, step++, totalSteps,
+		let url = await showMultiStepInputBox(title, step++, totalSteps,
 			"Remote URL",
 			"Please enter the url of the new remote",
-			value => {
-				let uri = vscode.Uri.parse(value);
-				if (LeafRemotesDataProvider.validProtocols.indexOf(uri.scheme) === -1) {
-					return `The possible protocols are: ${LeafRemotesDataProvider.validProtocols.join(', ')}`;
-				}
-				if (!uri.authority && !uri.path) {
-					return 'This url is malformed';
-				}
-				return undefined;
-			}
-		);
+			this.validateUrl);
 		if (!url) {
 			// Operation canceled by user
 			return;
 		}
 
 		// Launch task and refresh
-		await this.leafManager.addRemote(alias, url);
+		await LeafManager.INSTANCE.addRemote(alias, url);
 		this.refresh();
 	}
 
-	private async showInputBox(
-		title: string | undefined,
-		step: number | undefined,
-		totalSteps: number | undefined,
-		placeholder: string | undefined,
-		prompt: string | undefined,
-		validator: (value: string) => string | undefined
-	): Promise<string | undefined> {
-
-		let box: vscode.InputBox = vscode.window.createInputBox();
-		box.title = title;
-		box.step = step;
-		box.totalSteps = totalSteps;
-		box.placeholder = placeholder;
-		box.prompt = prompt;
-		let result: string | undefined = undefined;
-
-		box.onDidChangeValue(value => box.validationMessage = validator(value));
-
-		box.onDidAccept(() => {
-			if (box.value.length > 0 && !box.validationMessage) {
-				result = box.value;
-				box.hide();
-			}
-		});
-
-		return new Promise<string | undefined>((resolve, reject) => {
-			box.onDidHide(() => resolve(result));
-			box.show();
-		});
+	private validateAlias(remotes: any, value: string) {
+		if (value in remotes) {
+			return 'This remote alias is already used';
+		}
+		if (value.includes(' ')) {
+			return 'The remote alias cannot contains a space';
+		}
+		return undefined;
 	}
 
-	private async removeRemote(node: LeafRemote | undefined) {
-		if (!node) {
-			throw Error("No remote selected");
+	private validateUrl(value: string) {
+		let uri = vscode.Uri.parse(value);
+		if (LeafRemotesView.validProtocols.indexOf(uri.scheme) === -1) {
+			return `The possible protocols are: ${LeafRemotesView.validProtocols.join(', ')}`;
 		}
-		if (ACTION_LABELS.REMOVE === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", ACTION_LABELS.CANCEL, ACTION_LABELS.REMOVE)) {
-			await this.leafManager.removeRemote(node.remoteId);
+		if (!uri.authority && !uri.path) {
+			return 'This url is malformed';
+		}
+		return undefined;
+	}
+
+	private async removeRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined) {
+		if (!node) {
+			node = await this.askRemoteToUser("Remove Leaf remote");
+		}
+		if (node && ACTION_LABELS.REMOVE === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", ACTION_LABELS.CANCEL, ACTION_LABELS.REMOVE)) {
+			await LeafManager.INSTANCE.removeRemote(node.id);
 			this.refresh();
 		}
 	}
 
-	async getRootElements(): Promise<TreeItem2[]> {
-		let out = [];
-		let remotes = await this.leafManager.requestRemotes();
-		for (let remoteId in remotes) {
-			let remote = remotes[remoteId];
-			out.push(new LeafRemote(remoteId, remote));
-		}
-		out.sort((remA, remB) => {
-			if (remA.label < remB.label) { return -1; }
-			if (remA.label > remB.label) { return 1; }
-			return 0;
-		});
-		return out;
+	private async askRemoteToUser(title: string): Promise<RemoteQuickPickItem | undefined> {
+		let remotes = await LeafManager.INSTANCE.requestRemotes();
+		let items = toItems(remotes, RemoteQuickPickItem);
+		return showMultiStepQuickPick(title, undefined, undefined, "Please select the remote", items);
 	}
-}
 
-class LeafRemote extends TreeItem2 {
-	constructor(
-		public readonly remoteId: any,
-		public readonly remote: any
-	) {
-		super(
-			remoteId,
-			remote.url,
-			remote.url,
-			vscode.TreeItemCollapsibleState.None,
-			remote.enabled ? IDS.VIEW_ITEMS.REMOTES.ENABLED : IDS.VIEW_ITEMS.REMOTES.DISABLE,
-			remote.enabled ? "RemoteEnabled.svg" : "RemoteDisabled.svg");
+	async getRootElements(): Promise<TreeItem2[]> {
+		let remotes = await LeafManager.INSTANCE.requestRemotes();
+		return toItems(remotes, RemoteTreeItem);
 	}
 }

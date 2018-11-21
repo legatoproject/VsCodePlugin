@@ -27,7 +27,7 @@ suite("Leaf Tests", function () {
 
     test(`List profiles`, function (done) {
         this.timeout(LEAF_TIMEOUT);
-        leafManager.listProfiles().then(profiles => {
+        leafManager.requestProfiles().then(profiles => {
             profiles = Object.keys(profiles);
             console.log(`Found profiles: ${profiles}`);
             assert.notEqual(profiles, undefined, `No profile found`);
@@ -40,7 +40,7 @@ suite("Leaf Tests", function () {
     const EXPECTED_IP_ADRESS = "10.0.0.1";
     test(`Set DEST_IP`, function (done) {
         this.timeout(LEAF_TIMEOUT);
-        let alreadyProcessed:boolean = false;
+        let alreadyProcessed: boolean = false;
         tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
             console.log(`EVENT#TASK=${event.execution.task.name}`);
             if (event.execution.task.name === LEAF_TASKS.setEnv && !alreadyProcessed) {
@@ -60,8 +60,8 @@ suite("Leaf Tests", function () {
     test(`Get DEST_IP value`, function (done) {
         this.timeout(30000);
         this.slow(2000);
-        leafManager.getEnvValue("DEST_IP").then((ip: string|undefined) => {
-            if(ip) {
+        leafManager.getEnvValue("DEST_IP").then((ip: string | undefined) => {
+            if (ip) {
                 console.log("DEST_IP=" + ip);
                 assert.equal(ip, EXPECTED_IP_ADRESS);
                 done();
@@ -103,12 +103,12 @@ suite("Legato Tests", function () {
         LegatoManager.getInstance().listDefinitionFiles().then((files) => {
             let foundSdef: Uri | undefined = files.find(defFileFilter);
             if (foundSdef) {
-                let alreadyProcessed:boolean = false;
+                let alreadyProcessed: boolean = false;
                 tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
                     if (event.execution.task.name === LEAF_TASKS.setEnv && !alreadyProcessed) {
                         alreadyProcessed = true;
                         if (event.exitCode === 0) {
-                            console.log(`Building active definition file \'${foundSdef?require('path').basename(foundSdef.fsPath):"N/A"}\'`);
+                            console.log(`Building active definition file \'${foundSdef ? require('path').basename(foundSdef.fsPath) : "N/A"}\'`);
                             let fetchedTasks = tasks.fetchTasks();
                             fetchedTasks.then((result: Task[]) => {
                                 result.forEach((t: Task) => {
@@ -127,7 +127,7 @@ suite("Legato Tests", function () {
                                                 }
                                             });
                                         });
-                                    } 
+                                    }
                                 });
                             });
                         } else {

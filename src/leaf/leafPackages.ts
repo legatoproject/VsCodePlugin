@@ -1,146 +1,111 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { IDS } from '../identifiers';
-import { TreeItem2, TreeDataProvider2 } from './leafUiUtils';
+import { LEAF_IDS } from '../identifiers';
+import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../uiUtils';
+import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem } from './leafUiComponents';
+import { LeafManager } from './leafCore';
 
-export class LeafPackagesDataProvider extends TreeDataProvider2 {
+/**
+ * Packages view and commands
+ */
+export class LeafPackagesView extends TreeDataProvider2 {
 
-	constructor(context: vscode.ExtensionContext) {
+	public constructor() {
 		super();
-		this.createCommand(IDS.COMMANDS.PACKAGES.REFRESH, context, this.fetch);
-		this.createCommand(IDS.COMMANDS.PACKAGES.ADD_TO_PROFILE, context, this.addToProfile);
-	}
-
-	private createCommand(id: string, context: vscode.ExtensionContext, cb: (...args: any[]) => any) {
-		let disposable = vscode.commands.registerCommand(id, cb, this);
-		context.subscriptions.push(disposable);
+		this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.REFRESH, this.fetch);
+		this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.ADD_TO_PROFILE, this.addToProfile);
+		this.disposables.push(vscode.window.registerTreeDataProvider(LEAF_IDS.VIEWS.PACKAGES, this));
 	}
 
 	private async fetch() {
-		await this.leafManager.fetchRemote();
+		await LeafManager.INSTANCE.fetchRemote();
 		this.refresh();
 	}
 
-	private async addToProfile(node: LeafPackage | undefined) {
-		if (!node) {
-			throw Error("No package selected");
-		}
-		let profiles = await this.leafManager.listProfiles();
-		let profileItems: ProfileQuickPickItem[] = [];
-		for (let profileId in profiles) {
-			profileItems.push(new ProfileQuickPickItem(profileId, profiles[profileId]));
-		}
-		profileItems.sort((itemA, itemB) => {
-			if (itemA.properties.current) {
-				return -1;
+	private async addToProfile(selectedPackage: PackageTreeItem | PackageQuickPickItem | undefined) {
+		let title = "Add package to profile";
+
+		// Package (from selection or combo)
+		if (!selectedPackage) {
+			selectedPackage = await this.askForPackage(title);
+			if (!selectedPackage) {
+				return; // User cancellation
 			}
-			if (itemB.properties.current) {
-				return 1;
+		}
+
+		// Profile
+		let profiles = await LeafManager.INSTANCE.requestProfiles();
+		let result = await this.askForProfile(title, selectedPackage, profiles);
+		if (!result) {
+			return; // User cancellation
+		}
+
+		if (!result.id) {
+			// New profile
+			let newProfileName = await this.askForProfileName(title, profiles);
+			if (newProfileName === undefined) {
+				return; // User cancellation
 			}
-			if (itemA.id < itemB.id) { return -1; }
-			if (itemA.id > itemB.id) { return 1; }
-			return 0;
-		});
-		let newProfileItem = {
+
+			if (newProfileName.length === 0) {
+				newProfileName = undefined; // "" is a valid return for default profile name
+			}
+			await LeafManager.INSTANCE.createProfile(newProfileName, selectedPackage.id);
+			this.refresh();
+		} else if (result.id in profiles) {
+			// Existing profile
+			await LeafManager.INSTANCE.addPackageToProfile(selectedPackage.id, result.id, result.properties);
+			this.refresh();
+		}
+	}
+
+	private async askForPackage(title: string): Promise<PackageQuickPickItem | undefined> {
+		// Do not await. We want showMultiStepQuickPick to handle this long running operation while showing a busy box.
+		let itemsPromise = LeafManager.INSTANCE
+			.requestMasterPackages()
+			.then(packs => toItems(packs, PackageQuickPickItem));
+		return showMultiStepQuickPick(title, 1, 2, "Please select the package to add", itemsPromise);
+	}
+
+	private async askForProfile(
+		title: string, node: PackageTreeItem | PackageQuickPickItem,
+		profiles: any
+	): Promise<ProfileQuickPickItem | undefined> {
+
+		let profileItems = toItems(profiles, ProfileQuickPickItem);
+
+		// Add "create profile" item
+		profileItems.push({
 			label: "Create new profile...",
 			description: "You will be asked for a profile name",
-			detail: undefined,
+			details: undefined,
 			id: "",
-			properties: {}
-		};
-		profileItems.push(newProfileItem);
-		let result = await vscode.window.showQuickPick(profileItems, {
-			placeHolder: `Please select the target profile for package ${node.packId}`,
-			canPickMany: false
+			properties: {},
+			compareTo: value => 0
 		});
-		if (result) {
-			if (result === newProfileItem) {
-				let newProfileName = await vscode.window.showInputBox({
-					prompt: "Please enter the name of the profile to create",
-					placeHolder: "Press enter to use default unique profile name",
-					validateInput: (value: string) => {
-						if (value in profiles) {
-							return 'This profile name is already used';
-						}
-						if (value.includes(' ')) {
-							return 'the profile name cannot containts a space';
-						}
-						return undefined;
-					}
-				});
-				if (newProfileName !== undefined) {
-					if (newProfileName.length === 0) {
-						newProfileName = undefined;
-					}
-					await this.leafManager.createProfile(newProfileName, node.packId);
-					this.refresh();
+
+		return showMultiStepQuickPick(title, node instanceof PackageQuickPickItem ? 2 : 1, 2,
+			`Please select the target profile for package ${node.id}`, profileItems);
+	}
+
+	private async askForProfileName(title: string, profiles: any): Promise<string | undefined> {
+		return showMultiStepInputBox(title, 3, 3,
+			"Press enter to use default unique profile name",
+			"Please enter the name of the profile to create",
+			(value: string) => {
+				if (value in profiles) {
+					return 'This profile name is already used';
 				}
-			} else if (result.id in profiles) {
-				await this.leafManager.addPackageToProfile(node.packId, result.id, result.properties);
-				this.refresh();
-			}
-		}
+				if (value.includes(' ')) {
+					return 'the profile name cannot containts a space';
+				}
+				return undefined;
+			});
 	}
 
 	async getRootElements(): Promise<TreeItem2[]> {
-		let out = [];
-		let installedPacks = await this.leafManager.requestInstalledPackages() as any;
-		for (let packId in installedPacks) {
-			let pack = installedPacks[packId];
-			if (pack.info.master) {
-				out.push(new LeafPackage(packId, pack, true));
-			}
-		}
-		let availPacks = await this.leafManager.requestAvailablePackages() as any;
-		for (let packId in availPacks) {
-			let pack = availPacks[packId];
-			if (pack.info.master && !(packId in installedPacks)) {
-				out.push(new LeafPackage(packId, pack, false));
-			}
-		}
-		out.sort((packA, packB) => {
-			if (packA.packId < packB.packId) { return -1; }
-			if (packA.packId > packB.packId) { return 1; }
-			return 0;
-		});
-		return out;
-	}
-}
-
-class LeafPackage extends TreeItem2 {
-	constructor(
-		public readonly packId: any,
-		public readonly pack: any,
-		public readonly installed = false
-	) {
-		super(
-			packId,
-			packId,
-			pack.info.description,
-			vscode.TreeItemCollapsibleState.None,
-			installed ? IDS.VIEW_ITEMS.PACKAGES.INSTALLED : IDS.VIEW_ITEMS.PACKAGES.AVAILABLE,
-			installed ? "PackageInstalled.svg" : "PackageAvailable.svg");
-	}
-
-	public async getChildren(): Promise<TreeItem2[]> {
-		return [];
-	}
-}
-
-class ProfileQuickPickItem implements vscode.QuickPickItem {
-	public label: string;
-	public description?: string;
-	public detail?: string;
-	public id: string;
-	public properties: any;
-	constructor(id: string, properties: any) {
-		this.label = id;
-		this.description = properties.current ? "[Current]" : undefined;
-		let nbPackages = properties.packages ? properties.packages.length : 0;
-		let nbEnv = properties.env ? Object.keys(properties.env).length : 0;
-		this.detail = `${nbPackages} packages - ${Object.keys(nbEnv).length} env vars`;
-		this.id = id;
-		this.properties = properties;
+		let packs = await LeafManager.INSTANCE.requestMasterPackages();
+		return toItems(packs, PackageTreeItem);
 	}
 }

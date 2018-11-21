@@ -38,39 +38,39 @@
         "menus": {
             "view/title": [
                 {
-                    "command": "leaf-cmd-pkg-refresh",
+                    "command": "leaf.cmd.pkg.refresh",
                     "when": "view == leaf-v-pkg",
                     "group": "navigation"
                 },
                 {
-                    "command": "leaf-cmd-rmt-refresh",
+                    "command": "leaf.cmd.rmt.refresh",
                     "when": "view == leaf-v-rmt",
                     "group": "navigation"
                 },
                 {
-                    "command": "leaf-cmd-rmt-add",
+                    "command": "leaf.cmd.rmt.add",
                     "when": "view == leaf-v-rmt",
                     "group": "navigation"
                 }
             ],
             "view/item/context": [
                 {
-                    "command": "leaf-cmd-pkg-addtoprofile",
+                    "command": "leaf.cmd.pkg.addtoprofile",
                     "when": "view == leaf-v-pkg && viewItem =~ /leaf-vi-pkg-.*/",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf-cmd-rmt-enable",
+                    "command": "leaf.cmd.rmt.enable",
                     "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-disabled",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf-cmd-rmt-disable",
+                    "command": "leaf.cmd.rmt.disable",
                     "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-enabled",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf-cmd-rmt-remove",
+                    "command": "leaf.cmd.rmt.remove",
                     "when": "view == leaf-v-rmt && viewItem =~ /leaf-vi-rmt-.*/",
                     "group": "inline"
                 }
@@ -78,60 +78,72 @@
         },
         "commands": [
             {
-                "command": "leaf-cmd-trm-openleaf",
-                "title": "Leaf: Open Shell"
+                "command": "leaf.cmd.trm.openleaf",
+                "title": "Open Shell",
+                "category": "Leaf"
             },
             {
-                "command": "leaf-cmd-prf-switch",
-                "title": "Leaf: Switch to Another Profile"
+                "command": "leaf.cmd.prf.switch",
+                "title": "Switch to Another Profile",
+                "category": "Leaf"
             },
             {
-                "command": "leaf-cmd-pkg-refresh",
-                "title": "Refresh",
+                "command": "leaf.cmd.pkg.refresh",
+                "title": "Refresh view",
                 "icon": {
                     "light": "resources/refresh.svg",
                     "dark": "resources/refresh.svg"
-                }
+                },
+                "category": "Leaf/Packages"
             },
             {
-                "command": "leaf-cmd-pkg-addtoprofile",
-                "title": "add to profile..."
+                "command": "leaf.cmd.pkg.addtoprofile",
+                "title": "Add to profile...",
+                "category": "Leaf/Packages"
             },
             {
-                "command": "leaf-cmd-rmt-refresh",
-                "title": "Refresh",
+                "command": "leaf.cmd.rmt.refresh",
+                "title": "Refresh view",
                 "icon": {
                     "light": "resources/refresh.svg",
                     "dark": "resources/refresh.svg"
-                }
+                },
+                "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf-cmd-rmt-enable",
-                "title": "enable"
+                "command": "leaf.cmd.rmt.enable",
+                "title": "Enable",
+                "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf-cmd-rmt-disable",
-                "title": "disable"
+                "command": "leaf.cmd.rmt.disable",
+                "title": "Disable",
+                "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf-cmd-rmt-add",
-                "title": "add"
+                "command": "leaf.cmd.rmt.add",
+                "title": "Add",
+                "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf-cmd-rmt-remove",
-                "title": "remove"
+                "command": "leaf.cmd.rmt.remove",
+                "title": "Remove",
+                "category": "Leaf/Remotes"
             },
             {
-                "command": "legato.pickDefFile",
-                "title": "Legato: Select active definition file"
+                "command": "legato.cmd.build.pickDefFile",
+                "title": "Select active definition file",
+                "category": "Legato"
             },
             {
-                "command": "legato.tm.openShell",
-                "title": "Legato: Open remote shell"
+                "command": "legato.cmd.tm.openShell",
+                "title": "Open remote shell",
+                "category": "Legato"
             },
             {
-                "command": "legato.tm.newIP",
-                "title": "Legato: Set device IP address"
+                "command": "legato.cmd.tm.newIP",
+                "title": "Set device IP address",
+                "category": "Legato"
             }
         ],
         "languages": [

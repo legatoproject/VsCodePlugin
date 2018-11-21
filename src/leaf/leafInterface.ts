@@ -3,8 +3,11 @@
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
-import {PromiseCallbacks} from '../utils'
+import { PromiseCallbacks } from '../utils'
 
+/**
+ * Available leaf interface commands
+ */
 export const LEAF_INTERFACE_COMMANDS = {
     VERSION: "version",
     REMOTES: "remotes",
@@ -21,21 +24,27 @@ export const LEAF_INTERFACE_COMMANDS = {
  */
 export class LeafInterface {
 
-    private readonly process: ChildProcess;
-    private readonly idGenerator: IterableIterator<number> = LeafInterface.newIdGenerator();
-    private stdoutBuffer: string = "";
-    private pendingRequests: PromiseCallbacks = {};
+    private readonly process: ChildProcess; // Python leaf extension process
+    private readonly idGenerator: IterableIterator<number> = LeafInterface.newIdGenerator(); // request id generator
+    private stdoutBuffer: string = ""; // Buffer for too loog response
+    private pendingRequests: PromiseCallbacks = {}; // pending promises callbacks
 
     public constructor() {
         // Launch interface
         let pathToExec = path.join(__filename, '..', '..', '..', 'python-src', 'leaf-codeInterface.py');
+
+        // Copy system env vars
+        let env: NodeJS.ProcessEnv = {};
+        Object.keys(process.env).forEach(key => env[key] = process.env[key]);
+
+        // Add Leaf en var
+        env.LEAF_NON_INTERACTIVE = "1";
+        env.LEAF_DEBUG = "1";
+
+        // Spawn the process
         this.process = spawn(pathToExec, [], {
             cwd: workspace.rootPath,
-            env: {
-                LEAF_NON_INTERACTIVE: 1,
-                LEAF_DEBUG: 1,
-                PWD: workspace.rootPath
-            }
+            env: env
         });
 
         // Listen from stdout
@@ -48,6 +57,9 @@ export class LeafInterface {
         this.process.stdin.setDefaultEncoding('utf-8');
     }
 
+    /**
+     * Send request to leaf extension interface
+     */
     public async send(cmd: string): Promise<any> {
         return new Promise<any>((resolve, reject) => {
             let id = this.idGenerator.next().value;
@@ -64,6 +76,10 @@ export class LeafInterface {
         });
     }
 
+    /**
+     * Called on interface response.
+     * Concatenate and parse the resolve or reject the corresponding promise
+     */
     private onInterfaceResponse(chunk: Buffer | string) {
         this.stdoutBuffer += chunk.toString();
         if (this.stdoutBuffer.endsWith("\n")) {
@@ -92,6 +108,9 @@ export class LeafInterface {
         }
     }
 
+    /**
+     * Request Id generator
+     */
     private static * newIdGenerator(): IterableIterator<number> {
         var id = 0;
         while (true) {

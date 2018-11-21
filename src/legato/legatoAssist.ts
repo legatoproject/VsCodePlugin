@@ -1,7 +1,9 @@
 'use strict';
 
+import { LEGATO_IDS } from '../identifiers';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import { CommandRegister } from '../uiUtils';
 import { LegatoManager, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS, LEGATO_ENV } from './legatoCore';
 import {
   LanguageClient,
@@ -11,31 +13,36 @@ import {
 } from 'vscode-languageclient';
 import { LeafManager } from '../leaf/leafCore';
 
-const EXTENSION_COMMANDS = {
-  pickDefFile: "legato.pickDefFile"
-};
-
-export class LegatoUiManager {
+export class LegatoUiManager extends CommandRegister {
 
   private lspClient: LanguageClient | undefined;
   private defStatusbar: vscode.StatusBarItem;
 
   public constructor() {
-    this.defStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
-  }
-  public async start(context: vscode.ExtensionContext) {
-    this.startLegatoServer();
+    super();
 
-    this.defStatusbar.command = EXTENSION_COMMANDS.pickDefFile;
+    // Status bar
+    this.defStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+    this.disposables.push(this.defStatusbar);  // Dispose on extension/deactivate
+    this.defStatusbar.command = LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE;
     this.defStatusbar.text = "<No def file selected>";
     this.defStatusbar.tooltip = "Active definition file";
     this.defStatusbar.show();
+
+    this.start();
+  }
+
+  private async start() {
+    await this.startLegatoServer();
+
+    // Set starting status bar value
     let savedDefFile = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE);
     if (savedDefFile) {
       this.updateDefFileStatusBar(vscode.Uri.file(savedDefFile));
     }
+
     // Tasks definition
-    let legatoTaskProvider = vscode.tasks.registerTaskProvider('Legato', {
+    let legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO, {
       provideTasks: () => {
         return this.getLegatoTasks();
       },
@@ -43,15 +50,17 @@ export class LegatoUiManager {
         return undefined;
       }
     });
-    context.subscriptions.push(legatoTaskProvider);  // Dispose on extension/deactivate
+    this.disposables.push(legatoTaskProvider);  // Dispose on extension/deactivate
 
-    vscode.commands.registerCommand(EXTENSION_COMMANDS.pickDefFile, () => {
-      this.chooseActiveDef().then((selectedDef: vscode.Uri | undefined) => {
-        if (selectedDef) {
-          this.updateDefFileStatusBar(selectedDef, true);
-        }
-      });
-    });
+    // Create command
+    this.createCommand(LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE, () => this.onPickDefFileCommand());
+  }
+
+  private async onPickDefFileCommand() {
+    let selectedDef = await this.chooseActiveDef();
+    if (selectedDef) {
+      this.updateDefFileStatusBar(selectedDef, true);
+    }
   }
 
   private updateDefFileStatusBar(selectedDef: vscode.Uri | undefined, persist: boolean = false) {
@@ -64,21 +73,20 @@ export class LegatoUiManager {
     }
   }
 
-  private chooseActiveDef(): Thenable<vscode.Uri | undefined> {
-    return LegatoManager.getInstance().listDefinitionFiles()
-      .then((xdefs: vscode.Uri[]) => {
-        if (xdefs.length === 0) {
-          vscode.window.showErrorMessage("No *.sdef nor *.adef files found in workspace.");
-          return undefined;
-        } else if (xdefs.length === 1) {
-          vscode.window.showInformationMessage(`Active definition file set to the only one - ${xdefs[0].path}`);
-          return xdefs[0];
-        } else {
-          return vscode.window
-            .showQuickPick(xdefs.map(s => s.path), { placeHolder: "Please select active definition file among ones available in the workspace..." })
-            .then((xdefPath: string | undefined) => xdefPath !== undefined ? vscode.Uri.file(xdefPath) : undefined);
-        }
-      });
+  private async chooseActiveDef(): Promise<vscode.Uri | undefined> {
+    let xdefs: vscode.Uri[] = await LegatoManager.getInstance().listDefinitionFiles();
+    if (xdefs.length === 0) {
+      vscode.window.showErrorMessage("No *.sdef nor *.adef files found in workspace.");
+      return undefined;
+    } else if (xdefs.length === 1) {
+      vscode.window.showInformationMessage(`Active definition file set to the only one - ${xdefs[0].path}`);
+      return xdefs[0];
+    } else {
+      let xdefPath: string | undefined = await vscode.window.showQuickPick(
+        xdefs.map(s => s.path),
+        { placeHolder: "Please select active definition file among ones available in the workspace..." });
+      return xdefPath !== undefined ? vscode.Uri.file(xdefPath) : undefined;
+    }
   }
 
   private async getLegatoTasks(): Promise<vscode.Task[]> {
@@ -114,7 +122,7 @@ export class LegatoUiManager {
       if (mktool) {
         let command = `${mktool} -t \${LEGATO_TARGET} \${LEGATO_DEF_FILE}`;
         let kind: vscode.TaskDefinition = {
-          type: 'Legato'
+          type: LEGATO_IDS.TASK_DEFINITION.LEGATO
         };
         let shellOptions: vscode.ShellExecutionOptions = {
           env: await LeafManager.INSTANCE.getEnvVars()
@@ -129,8 +137,8 @@ export class LegatoUiManager {
         task.group = vscode.TaskGroup.Build;
         task.problemMatchers = ['$legato'];
         task.presentationOptions = {
-          "reveal": vscode.TaskRevealKind.Always,
-          "panel": vscode.TaskPanelKind.Shared
+          reveal: vscode.TaskRevealKind.Always,
+          panel: vscode.TaskPanelKind.Shared
         };
         return task;
       }
@@ -140,9 +148,10 @@ export class LegatoUiManager {
   /**
    * Start the Legato LSP
    */
-  public startLegatoServer() {
+  public async startLegatoServer() {
     let path = require('path');
-    LegatoManager.getInstance().getLegatoRoot().then((legatoPath: string | undefined) => {
+    try {
+      let legatoPath = await LegatoManager.getInstance().getLegatoRoot();
       let serverModule = path.join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
       if (!fs.existsSync(serverModule)) {
         throw new Error(serverModule + " LSP doesn't exist");
@@ -187,8 +196,8 @@ export class LegatoUiManager {
 
       // Start the client. This will also launch the server
       this.lspClient.start();
-    }).catch((reason: any) => {
-      vscode.window.showWarningMessage(`Failed to start the Legato Language server - reason: ${reason}`);
-    });
+    } catch (e) {
+      vscode.window.showWarningMessage(`Failed to start the Legato Language server - reason: ${e}`);
+    }
   }
 }
