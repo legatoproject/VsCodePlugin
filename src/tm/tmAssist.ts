@@ -32,7 +32,7 @@ export class TargetUiManager {
       placeHolder: "Default: 192.168.2.2"
     };
     commands.registerCommand(EXTENSION_COMMANDS.enterNewIP, () => {
-      LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then((ip: string) => {
+      LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then((ip: string|undefined) => {
         //set placeholder with current DEST_IP
         options.placeHolder = ip;
         window.showInputBox(options).then((newIP: string | undefined) => {
@@ -69,6 +69,6 @@ export class TargetUiManager {
   }
 
   private async updateIPStatusBar(this: any, profileName: string) {
-    LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then((ip: string) => this.targetStatusbar.text = ip);
+    LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then((ip: string|undefined) => this.targetStatusbar.text = ip);
   }
 }

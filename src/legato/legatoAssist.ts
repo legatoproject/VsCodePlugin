@@ -2,14 +2,14 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { LeafManager } from '../leaf/leafCore';
-import { LegatoManager, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './legatoCore';
+import { LegatoManager, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS, LEGATO_ENV } from './legatoCore';
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
   TransportKind
 } from 'vscode-languageclient';
+import { LeafManager } from '../leaf/leafCore';
 
 const EXTENSION_COMMANDS = {
   pickDefFile: "legato.pickDefFile"
@@ -20,18 +20,20 @@ export class LegatoUiManager {
   private lspClient: LanguageClient | undefined;
   private defStatusbar: vscode.StatusBarItem;
 
-
   public constructor() {
     this.defStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
   }
-  public start(context: vscode.ExtensionContext) {
+  public async start(context: vscode.ExtensionContext) {
     this.startLegatoServer();
 
     this.defStatusbar.command = EXTENSION_COMMANDS.pickDefFile;
     this.defStatusbar.text = "<No def file selected>";
     this.defStatusbar.tooltip = "Active definition file";
     this.defStatusbar.show();
-
+    let savedDefFile = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE);
+    if (savedDefFile) {
+      this.updateDefFileStatusBar(vscode.Uri.file(savedDefFile));
+    }
     // Tasks definition
     let legatoTaskProvider = vscode.tasks.registerTaskProvider('Legato', {
       provideTasks: () => {
@@ -45,13 +47,21 @@ export class LegatoUiManager {
 
     vscode.commands.registerCommand(EXTENSION_COMMANDS.pickDefFile, () => {
       this.chooseActiveDef().then((selectedDef: vscode.Uri | undefined) => {
-        let path = require('path');
         if (selectedDef) {
-          LegatoManager.getInstance().setActiveDefFile(selectedDef);
-          this.defStatusbar.text = path.basename(selectedDef.path);
+          this.updateDefFileStatusBar(selectedDef, true);
         }
       });
     });
+  }
+
+  private updateDefFileStatusBar(selectedDef: vscode.Uri | undefined, persist: boolean = false) {
+    if (selectedDef) {
+      let path = require('path');
+      this.defStatusbar.text = path.basename(selectedDef.path);
+      if (persist) {
+        LegatoManager.getInstance().saveActiveDefFile(selectedDef);
+      }
+    }
   }
 
   private chooseActiveDef(): Thenable<vscode.Uri | undefined> {
@@ -85,7 +95,7 @@ export class LegatoUiManager {
   }
 
   private async xdefBuildTask(): Promise<undefined | vscode.Task> {
-    let activeDefFile: vscode.Uri | undefined = LegatoManager.getInstance().getActiveDefFile();
+    let activeDefFile: vscode.Uri | undefined = await LegatoManager.getInstance().getActiveDefFile();
     let mktool: undefined | string;
     if (activeDefFile) {
       let path = require('path');
@@ -102,7 +112,7 @@ export class LegatoUiManager {
       }
 
       if (mktool) {
-        let command = `${mktool} -t \${LEGATO_TARGET} ${vscode.workspace.asRelativePath(activeDefFile)}`;
+        let command = `${mktool} -t \${LEGATO_TARGET} \${LEGATO_DEF_FILE}`;
         let kind: vscode.TaskDefinition = {
           type: 'Legato'
         };
@@ -132,10 +142,10 @@ export class LegatoUiManager {
    */
   public startLegatoServer() {
     let path = require('path');
-    LegatoManager.getInstance().getLegatoRoot().then((legatoPath: string) => {
+    LegatoManager.getInstance().getLegatoRoot().then((legatoPath: string | undefined) => {
       let serverModule = path.join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
       if (!fs.existsSync(serverModule)) {
-        throw new Error(`${serverModule} LSP doesn't exist`);
+        throw new Error(serverModule + " LSP doesn't exist");
       }
 
       // The debug options for the server
@@ -178,7 +188,7 @@ export class LegatoUiManager {
       // Start the client. This will also launch the server
       this.lspClient.start();
     }).catch((reason: any) => {
-      console.log(`Failed to start the Legato Language server - reason: ${reason}`);
+      vscode.window.showWarningMessage(`Failed to start the Legato Language server - reason: ${reason}`);
     });
   }
 }

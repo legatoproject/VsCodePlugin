@@ -7,9 +7,11 @@ import { unwatchFile, watchFile, readlinkSync } from "fs";
 import { exec } from 'child_process';
 import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './leafTaskManager';
 import { LEAF_INTERFACE_COMMANDS, LeafInterface } from './leafInterface';
-
-export const LEAF_ENV = {
-  LEAF_PROFILE: 'LEAF_PROFILE'
+export const LEAF_ENV_SCOPE = {
+  package: "package",
+  workspace: "workspace",
+  profile: "profile",
+  user: "user"
 };
 export const LEAF_COMMANDS = {
   shell: "shell"
@@ -146,13 +148,13 @@ export class LeafManager extends EventEmitter {
     }
   }
 
-  public async getEnvValue(envvar: string): Promise<string> {
+  public async getEnvValue(envvar: string): Promise<string | undefined> {
     let envVariables = await this.getEnvVars();
     return envVariables[envvar];
   }
 
-  public setEnvValue(envar: string, value: string) {
-    let command = `leaf env profile --set ${envar}=\"${value}\"`;
+  public setEnvValue(envar: string, value: string, scope: string = LEAF_ENV_SCOPE.profile) {
+    let command = `leaf env ${scope} --set ${envar}=\'${value}\'`;
     return this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
   }
 

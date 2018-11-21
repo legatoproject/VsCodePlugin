@@ -40,9 +40,11 @@ suite("Leaf Tests", function () {
     const EXPECTED_IP_ADRESS = "10.0.0.1";
     test(`Set DEST_IP`, function (done) {
         this.timeout(LEAF_TIMEOUT);
+        let alreadyProcessed:boolean = false;
         tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
-            console.log(`EVENT -TASK=${event.execution.task.name}`);
-            if (event.execution.task.name === LEAF_TASKS.setEnv) {
+            console.log(`EVENT#TASK=${event.execution.task.name}`);
+            if (event.execution.task.name === LEAF_TASKS.setEnv && !alreadyProcessed) {
+                alreadyProcessed = true;
                 if (event.exitCode === 0) {
                     done();
                 } else {
@@ -50,16 +52,20 @@ suite("Leaf Tests", function () {
                 }
             }
         });
+        this.slow(2000);
         leafManager.setEnvValue("DEST_IP", EXPECTED_IP_ADRESS);
     });
 
 
     test(`Get DEST_IP value`, function (done) {
         this.timeout(30000);
-        leafManager.getEnvValue("DEST_IP").then((ip: string) => {
-            console.log("DEST_IP=" + ip);
-            assert.equal(ip, EXPECTED_IP_ADRESS);
-            done();
+        this.slow(2000);
+        leafManager.getEnvValue("DEST_IP").then((ip: string|undefined) => {
+            if(ip) {
+                console.log("DEST_IP=" + ip);
+                assert.equal(ip, EXPECTED_IP_ADRESS);
+                done();
+            }
         }).catch((reason: any) => {
             console.log(`Failed to get IP - reason: ${reason}`);
         });
@@ -72,7 +78,7 @@ suite("Legato Tests", function () {
             files.forEach((uri: Uri) => { console.log(`DEF_FILE=${uri.path}`); });
             console.log(`Workspace scanned:${workspace.rootPath} - DEF found:${files.length}`);
             assert.notEqual(files.length, 0, "To continue, ensure at least one definition file is provided in the workspace");
-            LegatoManager.getInstance().setActiveDefFile(files[0]);
+            LegatoManager.getInstance().saveActiveDefFile(files[0]);
             done();
         });
     });
@@ -96,33 +102,43 @@ suite("Legato Tests", function () {
     function buildActiveDefFile(testCallback: ITestCallbackContext, defFileFilter: any, expectedMktool: string, done: MochaDone) {
         LegatoManager.getInstance().listDefinitionFiles().then((files) => {
             let foundSdef: Uri | undefined = files.find(defFileFilter);
-            if (foundSdef !== undefined) {
-                LegatoManager.getInstance().setActiveDefFile(foundSdef);
-                testCallback.timeout(300000);
-                let fetchedTasks = tasks.fetchTasks();
-                console.log(`Building active definition file \'${require('path').basename(foundSdef.fsPath)}\'`);
-                fetchedTasks.then((result: Task[]) => {
-                    result.forEach((t: Task) => {
-                        if (t.name === expectedMktool) {
-                            console.log(`Legato build task ${t.name}... `);
-                            tasks.executeTask(t).then((taskExec: TaskExecution) => {
-                                //on success build, assert OK
-                                tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
-                                    if (event.execution.task === t) {
-                                        console.log(`Build terminated with exitCode:${event.exitCode}`);
-                                        if (event.exitCode !== 0) {
-                                            done(new Error(`Build failed: ${event.exitCode}`));
-                                            assert.equal(0, event.exitCode, `Build successfully ended`);
-                                        }
-                                        done();
-                                    }
+            if (foundSdef) {
+                let alreadyProcessed:boolean = false;
+                tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
+                    if (event.execution.task.name === LEAF_TASKS.setEnv && !alreadyProcessed) {
+                        alreadyProcessed = true;
+                        if (event.exitCode === 0) {
+                            console.log(`Building active definition file \'${foundSdef?require('path').basename(foundSdef.fsPath):"N/A"}\'`);
+                            let fetchedTasks = tasks.fetchTasks();
+                            fetchedTasks.then((result: Task[]) => {
+                                result.forEach((t: Task) => {
+                                    if (t.name === expectedMktool) {
+                                        console.log(`Legato build task ${t.name}... `);
+                                        tasks.executeTask(t).then((taskExec: TaskExecution) => {
+                                            //on success build, assert OK
+                                            tasks.onDidEndTaskProcess((event: TaskProcessEndEvent) => {
+                                                if (event.execution.task === t) {
+                                                    console.log(`Build terminated with exitCode:${event.exitCode}`);
+                                                    if (event.exitCode !== 0) {
+                                                        done(new Error(`Build failed: ${event.exitCode}`));
+                                                        assert.equal(0, event.exitCode, `Build successfully ended`);
+                                                    }
+                                                    done();
+                                                }
+                                            });
+                                        });
+                                    } 
                                 });
                             });
                         } else {
-                            done(new Error("No build task found!"));
+                            done(new Error(`Failed to set active def file ${foundSdef}`));
                         }
-                    });
+                    }
                 });
+
+                LegatoManager.getInstance().saveActiveDefFile(foundSdef);
+                testCallback.timeout(300000);
+
             } else {
                 assert.fail("To continue, ensure at least one definition file is provided in the workspace");
             }
