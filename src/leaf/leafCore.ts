@@ -29,7 +29,7 @@ export const LEAF_TASKS = {
 export class LeafManager extends EventEmitter {
   public static readonly INSTANCE: LeafManager = new LeafManager();
   private readonly leafPath: Promise<string>;
-  private readonly leafVersion: Promise<string>;
+  private readonly leafInfo: Promise<any>;
   private readonly currentProfilePath: string;
   private readonly taskManager: AbstractLeafTaskManager = new SequencialLeafTaskManager();
   private readonly leafInterface: LeafInterface = new LeafInterface();
@@ -37,7 +37,7 @@ export class LeafManager extends EventEmitter {
   private constructor() {
     super();
     this.leafPath = this.executeInWsShell(`which leaf`);
-    this.leafVersion = this.leafInterface.send(LEAF_INTERFACE_COMMANDS.VERSION);
+    this.leafInfo = this.leafInterface.send(LEAF_INTERFACE_COMMANDS.INFO);
     this.currentProfilePath = join(this.getLeafWorkspaceDirectory(), 'leaf-data', 'current');
     this.watchCurrentProfile();
   }
@@ -74,8 +74,8 @@ export class LeafManager extends EventEmitter {
     return this.leafPath;
   }
 
-  public async getLeafVersion(): Promise<string> {
-    return this.leafVersion;
+  public async getLeafInfo(): Promise<any> {
+    return this.leafInfo;
   }
 
   public getLeafWorkspaceDirectory(): string {

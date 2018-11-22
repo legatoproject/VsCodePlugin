@@ -9,7 +9,7 @@ import { PromiseCallbacks } from '../utils'
  * Available leaf interface commands
  */
 export const LEAF_INTERFACE_COMMANDS = {
-    VERSION: "version",
+    INFO: "info",
     REMOTES: "remotes",
     INSTALLED_PACKAGES: "installedPackages",
     AVAILABLE_PACKAGES: "availablePackages",

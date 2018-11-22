@@ -46,21 +46,6 @@ class LeafHandler(ABC):
         pass
 
 
-class VersionHandler(LeafHandler):
-    '''
-    Input Payload:
-    {
-        "command": "version"
-    }
-    '''
-
-    def getName(self):
-        return "version"
-
-    def execute(self, **kwargs):
-        return __version__
-
-
 class RemotesHandler(LeafHandler):
     '''
     Input Payload:
@@ -188,6 +173,27 @@ class VariablesHandler(LeafHandler):
         return out
 
 
+class InfoHandler(LeafHandler):
+    '''
+    Input Payload:
+    {
+        "command": "info"
+    }
+    '''
+
+    def getName(self):
+        return "info"
+
+    def execute(self, **kwargs):
+        out = {}
+        pm = PackageManager(Verbosity.QUIET)
+        out['version'] = __version__
+        out['configFolder'] = str(pm.configurationFolder)
+        out['cacheFolder'] = str(pm.cacheFolder)
+        out['packageFolder'] = str(pm.getInstallFolder())
+        return out
+
+
 def sendResponse(requestId, result=None, error=None):
     out = {}
     if requestId is not None:
@@ -201,7 +207,7 @@ def sendResponse(requestId, result=None, error=None):
 
 if __name__ == '__main__':
     handlers = {}
-    for handler in (VersionHandler(),
+    for handler in (InfoHandler(),
                     RemotesHandler(),
                     InstalledPackagesHandler(),
                     AvailablePackagesHandler(),

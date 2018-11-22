@@ -13,7 +13,7 @@ LCI_BIN = ROOT_FOLDER = Path(__file__).parent.parent / "leaf-codeInterface.py"
 
 
 COMMAND_EXIT = "exit\n"
-COMMAND_VERSION = '{"command":"version"}\n'
+COMMAND_INFO = '{"command":"info"}\n'
 COMMAND_REMOTES = '{"command":"remotes"}\n'
 COMMAND_INSTALLED = '{"command":"installedPackages"}\n'
 COMMAND_AVAILABLE = '{"command":"availablePackages"}\n'
@@ -26,12 +26,15 @@ COMMAND_VARIABLES__ws_name = '{"command":"resolveVariables","workspace":"%s","ar
 
 class TestLeafCodeInterface(unittest.TestCase):
 
-    def testVersion(self):
+    def testInfo(self):
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
-            outs, errs = proc.communicate(input=COMMAND_VERSION.encode())
+            outs, errs = proc.communicate(input=COMMAND_INFO.encode())
             result = json.loads(outs.decode())
             self.assertIsNone(result.get('error'))
-            self.assertEqual(__version__, result['result'])
+            self.assertEqual(__version__, result['result']['version'])
+            self.assertTrue(Path(result['result']['packageFolder']).is_dir())
+            self.assertTrue(Path(result['result']['configFolder']).is_dir())
+            self.assertTrue(Path(result['result']['cacheFolder']).is_dir())
 
     def testRemotes(self):
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:

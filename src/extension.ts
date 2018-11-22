@@ -18,8 +18,8 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(LeafManager.INSTANCE);
 
     // Check if leaf is available
-    let leafVersion = await LeafManager.INSTANCE.getLeafVersion();
-    vscode.window.showInformationMessage(`Found: ${leafVersion}`);
+    let leafInfo = await LeafManager.INSTANCE.getLeafInfo();
+    vscode.window.showInformationMessage(`Found: ${leafInfo.version}`);
 
     // Exclude leaf-data from file watcher
     let config = vscode.workspace.getConfiguration(undefined, null);
