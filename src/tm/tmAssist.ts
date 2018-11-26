@@ -24,23 +24,38 @@ export class TargetUiManager extends CommandRegister {
     this.targetStatusbar.show();
 
     // Listen to profile changes
-    let profileListener = (selectedProfile: string) => this.updateIPStatusBar(selectedProfile);
+    const profileListener = (_selectedProfile: string) =>
+      LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then((ip: string | undefined) => this.updateIPStatusBar(ip));
     LeafManager.INSTANCE.addListener(LEAF_EVENT.profileChanged, profileListener);
     this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.profileChanged, profileListener));
 
-    // Read DEST_IP on start
-    this.updateIPStatusBar(LeafManager.INSTANCE.getCurrentProfileName());
+    // Listen to env changes
+    const envListener = async (env: any) => {
+      await this.onEnvChanged(env);
+    };
+    LeafManager.INSTANCE.addListener(LEAF_EVENT.envChanged, envListener);
+    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.envChanged, envListener));
 
-    // Create commands    
+    // Read DEST_IP on start
+    LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then(ip => this.updateIPStatusBar(ip));
+
+    // Create commands
     this.createCommand(LEGATO_IDS.COMMANDS.TM.SHOW_TERMINAL, () => this.showRemoteTerminal());
     this.createCommand(LEGATO_IDS.COMMANDS.TM.SET_DEVICE_IP, () => this.askForNewIP());
+  }
+
+  private async onEnvChanged(env: any) {
+    let legatoDeviceIpChange = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP, env);
+    if (legatoDeviceIpChange) {
+      this.updateIPStatusBar(legatoDeviceIpChange);
+    }
   }
 
   private async showRemoteTerminal() {
     if (!this.remoteTerminal) {
       this.remoteTerminal = window.createTerminal({
         name: TARGET_SHELL_LABEL,
-        shellPath: process.env.SHELL,
+        shellPath: "/bin/sh",
         shellArgs: ["-c", "ssh root@$DEST_IP"],
         cwd: LeafManager.INSTANCE.getLeafWorkspaceDirectory(),
         env: await LeafManager.INSTANCE.getEnvVars()
@@ -67,8 +82,9 @@ export class TargetUiManager extends CommandRegister {
     }
   }
 
-  private async updateIPStatusBar(this: any, profileName: string): Promise<void> {
-    let ip = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP);
-    this.targetStatusbar.text = ip;
+  private async updateIPStatusBar(this: any, ip: string | undefined) {
+    if (ip) {
+      this.targetStatusbar.text = ip;
+    }
   }
 }

@@ -1,12 +1,12 @@
 'use strict';
 
+import { exec } from 'child_process';
 import { EventEmitter } from "events";
+import { readlinkSync, unwatchFile, watch } from "fs";
 import { join } from "path";
 import { workspace } from "vscode";
-import { unwatchFile, watchFile, readlinkSync } from "fs";
-import { exec } from 'child_process';
+import { LeafInterface, LEAF_INTERFACE_COMMANDS } from './leafInterface';
 import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './leafTaskManager';
-import { LEAF_INTERFACE_COMMANDS, LeafInterface } from './leafInterface';
 export const LEAF_ENV_SCOPE = {
   package: "package",
   workspace: "workspace",
@@ -17,7 +17,8 @@ export const LEAF_COMMANDS = {
   shell: "shell"
 };
 export const LEAF_EVENT = {
-  profileChanged: "profileChanged"
+  profileChanged: "profileChanged",
+  envChanged: "envChanged"
 };
 export const LEAF_TASKS = {
   setEnv: "set Leaf env"
@@ -31,15 +32,24 @@ export class LeafManager extends EventEmitter {
   private readonly leafPath: Promise<string>;
   private readonly leafInfo: Promise<any>;
   private readonly currentProfilePath: string;
-  private readonly taskManager: AbstractLeafTaskManager = new SequencialLeafTaskManager();
+  public readonly taskManager: AbstractLeafTaskManager = new SequencialLeafTaskManager();
   private readonly leafInterface: LeafInterface = new LeafInterface();
+  private watchedLeafFiles: string[] = [];
+  private lastProfileName: string | undefined;
+  private lastLeafEnv: any | undefined;
 
   private constructor() {
     super();
     this.leafPath = this.executeInWsShell(`which leaf`);
     this.leafInfo = this.leafInterface.send(LEAF_INTERFACE_COMMANDS.INFO);
     this.currentProfilePath = join(this.getLeafWorkspaceDirectory(), 'leaf-data', 'current');
-    this.watchCurrentProfile();
+    this.leafInfo.then((info: any) => this.startWatchingLeafFiles(info));
+  }
+
+  private startWatchingLeafFiles(info: any) {
+    //leaf files to watch initialized below
+    this.watchedLeafFiles = [join(this.getLeafWorkspaceDirectory(), 'leaf-workspace.json'), join(info.configFolder, 'config.json')];
+    this.watchLeafState();
   }
 
   private async executeInWsShell(command: string): Promise<string> {
@@ -63,13 +73,6 @@ export class LeafManager extends EventEmitter {
     });
   }
 
-  private watchCurrentProfile() {
-    // 'watch' is recomanded and have better performance than 'watchfFile', but it seems that it does not work with symlinks
-    watchFile(this.currentProfilePath, async (_curr, _prev) => {
-      this.emit(LEAF_EVENT.profileChanged, this.getCurrentProfileName());
-    });
-  }
-
   public async getLeafPath(): Promise<string> {
     return this.leafPath;
   }
@@ -86,7 +89,8 @@ export class LeafManager extends EventEmitter {
   }
 
   public getCurrentProfileName(): string {
-    return readlinkSync(this.currentProfilePath);
+    this.lastProfileName = readlinkSync(this.currentProfilePath);
+    return this.lastProfileName;
   }
 
   public async requestInstalledPackages(): Promise<any> {
@@ -165,9 +169,8 @@ export class LeafManager extends EventEmitter {
     return this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR);
   }
 
-  public async getEnvValue(envvar: string): Promise<string | undefined> {
-    let envVariables = await this.getEnvVars();
-    return envVariables[envvar];
+  public async getEnvValue(envvar: string, env?: any): Promise<string | undefined> {
+    return env ? env[envvar] : await this.getEnvVars().then(envVariables => envVariables[envvar]);
   }
 
   public setEnvValue(envar: string, value: string, scope: string = LEAF_ENV_SCOPE.profile) {
@@ -183,8 +186,48 @@ export class LeafManager extends EventEmitter {
     return this.taskManager.executeAsTask(`Remove remote ${alias}`, `leaf remote remove ${alias.join(' ')}`);
   }
 
+  private async watchLeafState() {
+    this.lastLeafEnv = await this.getEnvVars();
+    this.watchedLeafFiles.forEach(file => {
+      let path = require('path');
+      let fsWait: any = false;
+      let directory = path.dirname(file);
+      let watchedFilename = path.basename(file);
+      let fsWatcher = watch(directory);
+      const onLeafFileChange: (eventType: string, filename: string | Buffer) => void = async (_eventType, filename) => {
+        if (filename === watchedFilename) {
+          // debouncing to prevent multiple event
+          if (fsWait) {
+            return;
+          }
+          fsWait = setTimeout(() => {
+            fsWait = false;
+          }, 100);
+          let currentProfileName = this.getCurrentProfileName();
+          if (this.lastProfileName !== currentProfileName) {
+            this.lastProfileName = currentProfileName;
+            this.emit(LEAF_EVENT.profileChanged, currentProfileName);
+          }
+          else {
+            let currentLeafEnv: any = await this.getEnvVars();
+            //check if env has changed
+            if (JSON.stringify(currentLeafEnv) !== JSON.stringify(this.lastLeafEnv)) {
+              this.emit(LEAF_EVENT.envChanged, await this.getEnvVars());
+              this.lastLeafEnv = currentLeafEnv;
+            }
+          }
+        }
+      };
+      fsWatcher.addListener("change", onLeafFileChange);
+    });
+  }
+
   public async dispose() {
-    unwatchFile(this.currentProfilePath);
+    let path = require('path');
+    this.watchedLeafFiles.forEach(file => {
+      unwatchFile(path.dirname(file));
+    });
     this.taskManager.dispose();
   }
 }
+

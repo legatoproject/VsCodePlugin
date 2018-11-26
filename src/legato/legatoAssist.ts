@@ -1,17 +1,12 @@
 'use strict';
 
-import { LEGATO_IDS } from '../identifiers';
-import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as vscode from 'vscode';
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { LEGATO_IDS } from '../identifiers';
+import { LeafManager, LEAF_EVENT } from '../leaf/leafCore';
 import { CommandRegister } from '../uiUtils';
-import { LegatoManager, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS, LEGATO_ENV } from './legatoCore';
-import {
-  LanguageClient,
-  LanguageClientOptions,
-  ServerOptions,
-  TransportKind
-} from 'vscode-languageclient';
-import { LeafManager } from '../leaf/leafCore';
+import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './legatoCore';
 
 export class LegatoUiManager extends CommandRegister {
 
@@ -42,7 +37,7 @@ export class LegatoUiManager extends CommandRegister {
     }
 
     // Tasks definition
-    let legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO, {
+    const legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO, {
       provideTasks: () => {
         return this.getLegatoTasks();
       },
@@ -54,6 +49,19 @@ export class LegatoUiManager extends CommandRegister {
 
     // Create command
     this.createCommand(LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE, () => this.onPickDefFileCommand());
+
+    const defFileListener = async (env: any) => {
+      await this.onEnvChanged(env);
+    };
+    LeafManager.INSTANCE.addListener(LEAF_EVENT.envChanged, defFileListener);
+    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.envChanged, defFileListener));
+  }
+
+  private async onEnvChanged(env: any) {
+    let defFile = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, env);
+    if (defFile) {
+      this.updateDefFileStatusBar(vscode.Uri.file(defFile));
+    }
   }
 
   private async onPickDefFileCommand() {

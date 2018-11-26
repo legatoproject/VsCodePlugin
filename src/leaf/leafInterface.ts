@@ -3,7 +3,7 @@
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
-import { PromiseCallbacks } from '../utils'
+import { PromiseCallbacks } from '../utils';
 
 /**
  * Available leaf interface commands

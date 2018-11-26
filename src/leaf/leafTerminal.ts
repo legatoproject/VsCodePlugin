@@ -3,7 +3,7 @@
 import { Terminal, window } from "vscode";
 import { LeafManager, LEAF_COMMANDS, LEAF_EVENT } from './leafCore';
 import { LEAF_IDS } from '../identifiers';
-import { CommandRegister } from '../uiUtils';
+import { CommandRegister, ACTION_LABELS } from '../uiUtils';
 
 const LEAF_SHELL_LABEL = `Leaf shell`;
 
@@ -24,6 +24,11 @@ export class LeafTerminalManager extends CommandRegister {
     LeafManager.INSTANCE.addListener(LEAF_EVENT.profileChanged, profileChangeListener);
     this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.profileChanged, profileChangeListener));
 
+    //on env change, update leaf terminal
+    let envChangeListener = async (_env: any) => await this.onLeafChange();
+    LeafManager.INSTANCE.addListener(LEAF_EVENT.envChanged, envChangeListener);
+    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.envChanged, envChangeListener));
+
     // Also, let's add leaf commands
     this.createCommand(LEAF_IDS.COMMANDS.TERMINAL.OPENLEAF, () => this.showTerminal());
 
@@ -32,6 +37,13 @@ export class LeafTerminalManager extends CommandRegister {
 
     // Set current profile
     this.onProfileChanged(LeafManager.INSTANCE.getCurrentProfileName());
+  }
+
+  private async onLeafChange() {
+    if (this.leafTerminal
+      && ACTION_LABELS.APPLY === await window.showWarningMessage("Leaf environment has changed; Click to update the Leaf shell terminal.", ACTION_LABELS.CANCEL, ACTION_LABELS.APPLY)) {
+      this.leafTerminal.sendText("leaf status");
+    }
   }
 
   private async showTerminal() {
@@ -59,9 +71,8 @@ export class LeafTerminalManager extends CommandRegister {
     if (!this.terminalCreated) {
       window.showInformationMessage(`Preparing Leaf shell based on ${selectedProfile}`);
       this.showTerminal();
-    } else if (this.leafTerminal) {
-      window.showInformationMessage(`Update Leaf shell based on ${selectedProfile}`);
-      this.leafTerminal.sendText("leaf status");
+    } else {
+      this.onLeafChange();
     }
   }
 }

@@ -7,6 +7,7 @@ import * as path from 'path';
  * Dialog labels
  */
 export const ACTION_LABELS = {
+	APPLY: "Apply",
 	CANCEL: "Cancel",
 	REMOVE: "Remove",
 	ADD_TO_QUEUE: "Queue",
