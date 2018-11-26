@@ -16,7 +16,7 @@ export abstract class AbstractLeafTaskManager {
 
     public constructor() {
         // Listen to task ending
-        this.listener = vscode.tasks.onDidEndTask(event => this.onDidEndTask(event));
+        this.listener = vscode.tasks.onDidEndTask(this.onDidEndTask, this);
     }
 
     /**
@@ -46,13 +46,13 @@ export abstract class AbstractLeafTaskManager {
     /**
      * Resolve or reject task
      */
-    protected terminate(taskId?: string, cancelled = false) {
-        if (taskId && taskId in this.pendingRequests) {
-            let task = this.pendingRequests[taskId];
+    protected terminate(taskId: string, cancelled = false) {
+        if (taskId in this.pendingRequests) {
+            let request = this.pendingRequests[taskId];
             if (cancelled) {
-                task.reject(new Error("Operation canceled by user"));
+                request.reject(new Error("Operation canceled by user"));
             } else {
-                task.resolve();
+                request.resolve();
             }
             delete this.pendingRequests[taskId];
         }
@@ -111,7 +111,7 @@ export abstract class AbstractLeafTaskManager {
     }
 
     /**
-     * Strop listening tasks ending
+     * Stop listening tasks ending
      */
     public dispose() {
         this.listener.dispose();
@@ -152,7 +152,7 @@ export class SequencialLeafTaskManager extends AbstractLeafTaskManager {
             this.runNextTask();
         } else {
             console.log(`Task canceled by user: ${task.definition.taskId}/${task.name}`);
-            this.terminate(task.definition.taskId, false);
+            this.terminate(task.definition.taskId, true);
         }
     }
 

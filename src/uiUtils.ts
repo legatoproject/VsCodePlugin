@@ -106,15 +106,12 @@ export abstract class TreeDataProvider2 extends CommandRegister implements vscod
 
 	async getChildren(element?: TreeItem2): Promise<TreeItem2[]> {
 		if (element) {
-			let out = await element.getChildren();
-			return out;
+			return element.getChildren();
 		}
 		return this.getRootElements();
 	}
 
-	async getRootElements(): Promise<TreeItem2[]> {
-		throw new Error('You have to implement the method doSomething!');
-	}
+	async abstract getRootElements(): Promise<TreeItem2[]>;
 }
 
 /**
