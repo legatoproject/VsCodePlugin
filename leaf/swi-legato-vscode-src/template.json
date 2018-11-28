@@ -1,0 +1,21 @@
+{
+  "info": {
+    "features": {
+      "legato-vscode-src": {
+        "key": "LEGATO_VSCODE_SRC",
+        "description": "Source mode for VS Code Legato extension",
+        "values": {
+          "binary": null,
+          "source": "tag",
+          "source-master": "master"
+        }
+      }
+    }
+  },
+  "sync": [
+    {
+      "command": ["@{DIR}/clone.sh", "@{DIR:swi-cloneutils_latest}/clone.sh", "@{VERSION}"],
+      "verbose": true
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "install": [
+    {
+      "command": ["@{DIR}/hook.sh", "install", "@{DIR}/legato-plugin-@{VERSION}.vsix"],
+      "verbose": true
+    }
+  ],
+  "sync": [
+    {
+      "command": ["@{DIR}/hook.sh", "install", "@{DIR}/legato-plugin-@{VERSION}.vsix"],
+      "verbose": true
+    }
+  ],
+  "uninstall": [
+    {
+      "command": ["@{DIR}/hook.sh", "uninstall", "@{DIR}/legato-plugin-@{VERSION}.vsix"],
+      "verbose": true
+    }
+  ]
+}

@@ -4,8 +4,12 @@ package
 leafWorkspace
 .vscode-test/
 *.vsix
+output/
 
 # Python support
 /venv
 *.pyc
 __pycache__
+
+# leaf packages artifacts
+leaf/out/*

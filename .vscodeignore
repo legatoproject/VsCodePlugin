@@ -11,3 +11,4 @@ Makefile
 python-src/test/**
 leafWorkspace
 venv
+leaf/**
