@@ -1,17 +1,17 @@
 'use strict';
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { LEAF_IDS } from '../identifiers';
 import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../uiUtils';
 import { RemoteQuickPickItem, RemoteTreeItem } from './leafUiComponents';
 import { LeafManager } from './leafCore';
 
+
 /**
  * Remotes view and commands
  */
 export class LeafRemotesView extends TreeDataProvider2 {
-	private static readonly validProtocols: ReadonlyArray<string> = ['http', 'https', 'file'];
-
 	constructor() {
 		super();
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REFRESH, this.refresh);
@@ -74,14 +74,20 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	}
 
 	private validateUrl(value: string) {
+		// Valid URL
 		let uri = vscode.Uri.parse(value);
-		if (LeafRemotesView.validProtocols.indexOf(uri.scheme) === -1) {
-			return `The possible protocols are: ${LeafRemotesView.validProtocols.join(', ')}`;
+		if (uri.scheme) {
+			// Check valid URL
+			if (uri.authority) {
+				return undefined;
+			}
+		} else {
+			// Test if local file
+			if (fs.existsSync(value) && fs.statSync(value).isFile()) {
+				return undefined;
+			}
 		}
-		if (!uri.authority && !uri.path) {
-			return 'This url is malformed';
-		}
-		return undefined;
+		return "Enter a valid URL or the path to an existing local json file";
 	}
 
 	private async removeRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined) {
