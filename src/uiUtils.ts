@@ -139,7 +139,7 @@ export async function showMultiStepInputBox(
 	}
 
 	box.onDidAccept(() => {
-		if (box.value.length > 0 && !box.validationMessage) {
+		if (!box.validationMessage) {
 			result = box.value;
 			box.hide();
 		}
