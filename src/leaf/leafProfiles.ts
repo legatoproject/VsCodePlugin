@@ -1,10 +1,11 @@
 'use strict';
 
-import { window, commands, StatusBarItem, StatusBarAlignment } from "vscode";
+import { window, StatusBarItem, StatusBarAlignment } from "vscode";
 import { LeafManager, LEAF_EVENT } from './leafCore';
 import { LEAF_IDS } from '../identifiers';
 import { ProfileQuickPickItem } from './leafUiComponents';
-import { showMultiStepQuickPick, toItems, CommandRegister } from '../uiUtils';
+import { showMultiStepQuickPick, toItems } from '../uiUtils';
+import { CommandRegister } from '../utils';
 
 /**
  * Leaf manager.
@@ -13,32 +14,41 @@ import { showMultiStepQuickPick, toItems, CommandRegister } from '../uiUtils';
  */
 export class LeafProfileStatusBar extends CommandRegister {
 
-  private leafStatusbar: StatusBarItem | undefined;
+  private leafStatusbar: StatusBarItem;
 
   public constructor() {
     super();
     // So lets add status bar
     this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
-    this.disposables.push(this.leafStatusbar); // Dispose status bar on deactivate
+    this.toDispose(this.leafStatusbar);
     this.leafStatusbar.text = "Loading current profile...";
     this.leafStatusbar.tooltip = "Current Leaf profile";
     this.leafStatusbar.show();
 
     // Also, let's register leaf command
-    this.disposables.push(commands.registerCommand(LEAF_IDS.COMMANDS.PROFILE.SWITCH, () => this.switchProfile(), this));
+    this.createCommand(LEAF_IDS.COMMANDS.PROFILE.SWITCH, () => this.switchProfile());
     this.leafStatusbar.command = LEAF_IDS.COMMANDS.PROFILE.SWITCH;
 
     // Subscribe to leaf events
-    let profileChangeListener = (selectedProfile: string) => this.onProfileChanged(selectedProfile);
-    LeafManager.INSTANCE.addListener(LEAF_EVENT.profileChanged, profileChangeListener);
-    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.profileChanged, profileChangeListener));
-
-    // Set current profile
-    this.onProfileChanged(LeafManager.INSTANCE.getCurrentProfileName());
+    LeafManager.getInstance().addListener(
+      LEAF_EVENT.profileChanged,
+      (oldProfileName, newProfileName) => this.onProfileChanged(oldProfileName, newProfileName),
+      this);
+    this.setInitialState();
   }
 
+  /**
+   * Async initialisation
+   */
+  private async setInitialState() {
+    this.onProfileChanged(undefined, await LeafManager.getInstance().getCurrentProfileName());
+  }
+
+  /**
+   * Ask user to select a profile then switch to it
+   */
   private async switchProfile(): Promise<void> {
-    let profiles = await LeafManager.INSTANCE.requestProfiles();
+    let profiles = await LeafManager.getInstance().getProfiles();
     let items: ProfileQuickPickItem[] = toItems(profiles, ProfileQuickPickItem);
     let result = await showMultiStepQuickPick(
       "leaf profile switch",
@@ -46,21 +56,19 @@ export class LeafProfileStatusBar extends CommandRegister {
       undefined,
       "Please select the profile you want to switch to...",
       items
-    )
+    );
     if (result) {
-      window.showInformationMessage(`Switch to profile: ${result.id}`);
-      return LeafManager.INSTANCE.switchProfile(result.id);
+      console.log(`Switch to profile: ${result.id}`);
+      return LeafManager.getInstance().switchProfile(result.id);
     }
   }
 
-  private onProfileChanged(selectedProfile: string) {
-    if (selectedProfile === undefined) {
-      window.showErrorMessage(`No current profile is set. Please start by this step.`);
-    } else {
-      window.showInformationMessage(`Profile ${selectedProfile} selected`);
-    }
+  /**
+   * Profile has changed, let's update status bar
+   */
+  private onProfileChanged(oldProfileName: string | undefined, newProfileName: string | undefined) {
     if (this.leafStatusbar) {
-      this.leafStatusbar.text = selectedProfile ? selectedProfile : 'No profile';
+      this.leafStatusbar.text = newProfileName ? newProfileName : 'No profile';
     }
   }
 }

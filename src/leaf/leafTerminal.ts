@@ -1,9 +1,10 @@
 'use strict';
 
 import { Terminal, window } from "vscode";
-import { LeafManager, LEAF_COMMANDS, LEAF_EVENT } from './leafCore';
+import { LeafManager, LEAF_EVENT } from './leafCore';
 import { LEAF_IDS } from '../identifiers';
-import { CommandRegister, ACTION_LABELS } from '../uiUtils';
+import { ACTION_LABELS } from '../uiUtils';
+import { CommandRegister } from '../utils';
 
 const LEAF_SHELL_LABEL = `Leaf shell`;
 
@@ -19,33 +20,49 @@ export class LeafTerminalManager extends CommandRegister {
   public constructor() {
     super();
 
-    // Subscribe to leaf events
-    let profileChangeListener = (selectedProfile: string) => this.onProfileChanged(selectedProfile);
-    LeafManager.INSTANCE.addListener(LEAF_EVENT.profileChanged, profileChangeListener);
-    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.profileChanged, profileChangeListener));
+    // On profile change, 
+    LeafManager.getInstance().addListener(LEAF_EVENT.profileChanged,
+      (oldProfileName, newProfileName) => this.onProfileChanged(oldProfileName, newProfileName),
+      this);
 
-    //on env change, update leaf terminal
-    let envChangeListener = async (_env: any) => await this.onLeafChange();
-    LeafManager.INSTANCE.addListener(LEAF_EVENT.envChanged, envChangeListener);
-    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.envChanged, envChangeListener));
+    // On env change, update leaf terminal
+    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged,
+      (oldEnvVars, newEnvVars) => this.onEnvVarsChange(oldEnvVars, newEnvVars),
+      this);
 
     // Also, let's add leaf commands
     this.createCommand(LEAF_IDS.COMMANDS.TERMINAL.OPENLEAF, () => this.showTerminal());
 
     // Listen to terminal closing (by user) and launch terminal
-    this.disposables.push(window.onDidCloseTerminal(this.onCloseTerminal, this));
+    this.toDispose(window.onDidCloseTerminal(this.onCloseTerminal, this));
 
     // Set current profile
-    this.onProfileChanged(LeafManager.INSTANCE.getCurrentProfileName());
+    this.setInitialState();
   }
 
-  private async onLeafChange() {
-    if (this.leafTerminal
-      && ACTION_LABELS.APPLY === await window.showWarningMessage("Leaf environment has changed; Click to update the Leaf shell terminal.", ACTION_LABELS.CANCEL, ACTION_LABELS.APPLY)) {
+  /**
+   * Async initialisation
+   */
+  private async setInitialState() {
+    this.onProfileChanged(undefined, await LeafManager.getInstance().getCurrentProfileName());
+  }
+
+  /**
+   * EnVars have been modified
+   */
+  private async onEnvVarsChange(oldEnvVars: any | undefined, newEnvVars: any | undefined) {
+    if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
+      "Leaf environment has changed; Click to update the Leaf shell terminal.",
+      ACTION_LABELS.CANCEL,
+      ACTION_LABELS.APPLY)) {
+      this.leafTerminal.show();
       this.leafTerminal.sendText("leaf status");
     }
   }
 
+  /**
+   * Create and show terminal
+   */
   private async showTerminal() {
     this.terminalCreated = true;
     if (!this.leafTerminal) {
@@ -54,6 +71,9 @@ export class LeafTerminalManager extends CommandRegister {
     this.leafTerminal.show();
   }
 
+  /**
+   * Dispose terminal on user close action
+   */
   private onCloseTerminal(closedTerminal: Terminal): void {
     if (closedTerminal.name === LEAF_SHELL_LABEL) {
       closedTerminal.dispose();
@@ -61,18 +81,34 @@ export class LeafTerminalManager extends CommandRegister {
     }
   }
 
+  /**
+   * Create new terminal
+   */
   private async newLeafShellTerminal(args?: string[]) {
     console.log(`Create Leaf shell named \'${LEAF_SHELL_LABEL}\'`);
-    let leafBinPath = await LeafManager.INSTANCE.getLeafPath();
-    return window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, [LEAF_COMMANDS.shell]);
+    let leafBinPath = await LeafManager.getInstance().getLeafPath();
+    return window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, ["shell"]);
   }
 
-  private onProfileChanged(selectedProfile: string) {
-    if (!this.terminalCreated) {
-      window.showInformationMessage(`Preparing Leaf shell based on ${selectedProfile}`);
+  /**
+   * Profile changed, show terminal if exist
+   */
+  private onProfileChanged(oldProfileName: string | undefined, newProfileName: string | undefined) {
+    if (newProfileName && !this.terminalCreated) {
+      console.log(`Preparing Leaf shell based on ${newProfileName}`);
       this.showTerminal();
-    } else {
-      this.onLeafChange();
+    }
+  }
+
+  /**
+   * Hide and dispose temrinal if exist
+   * Dispose resources
+   */
+  public dispose() {
+    super.dispose();
+    if (this.leafTerminal) {
+      this.leafTerminal.hide();
+      this.leafTerminal.dispose();
     }
   }
 }

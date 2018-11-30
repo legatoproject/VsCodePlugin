@@ -2,7 +2,7 @@
 
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
-import * as path from 'path';
+import { join } from 'path';
 import { PromiseCallbacks } from '../utils';
 
 /**
@@ -31,7 +31,7 @@ export class LeafInterface {
 
     public constructor() {
         // Launch interface
-        let pathToExec = path.join(__filename, '..', '..', '..', 'python-src', 'leaf-codeInterface.py');
+        let pathToExec = join(__filename, '..', '..', '..', 'python-src', 'leaf-codeInterface.py');
 
         // Copy system env vars
         let env: NodeJS.ProcessEnv = {};
@@ -73,6 +73,7 @@ export class LeafInterface {
                 workspace: workspace.rootPath
             };
             this.process.stdin.write(JSON.stringify(requestObject) + '\n');
+            console.log(`[Leaf Bridge] Sent comand '${cmd}' with id '${id}'`);
         });
     }
 
@@ -83,23 +84,28 @@ export class LeafInterface {
     private onInterfaceResponse(chunk: Buffer | string) {
         this.stdoutBuffer += chunk.toString();
         if (this.stdoutBuffer.endsWith("\n")) {
-            let lines = this.stdoutBuffer.split(/\r?\n/).filter((value) => value.length > 0);
+            let lines: string[] = this.stdoutBuffer.split(/\r?\n/).filter((value) => value.length > 0);
             this.stdoutBuffer = "";
-            for (var index in lines) {
+            for (let index in lines) {
                 try {
-                    let leafResponse = JSON.parse(lines[index]);
-                    if (this.pendingRequests && leafResponse.id in this.pendingRequests) {
-                        let pendingRequest = this.pendingRequests[leafResponse.id];
-                        if (leafResponse.result) {
-                            pendingRequest.resolve(leafResponse.result);
-                        } else if (leafResponse.error) {
-                            pendingRequest.reject(new Error(leafResponse.error));
+                    let jsonResponse: string = lines[index];
+                    let anyResponse: any = JSON.parse(jsonResponse);
+                    if (this.pendingRequests && anyResponse.id in this.pendingRequests) {
+                        let pendingRequest = this.pendingRequests[anyResponse.id];
+                        if (anyResponse.result) {
+                            pendingRequest.resolve(anyResponse.result);
+                            console.log(`[Leaf Bridge] Response received for id '${anyResponse.id}': '${jsonResponse.substring(0, 10)}...'`);
+                        } else if (anyResponse.error) {
+                            pendingRequest.resolve(undefined);
+                            console.log(`[Leaf Bridge] Error received for id '${anyResponse.id}': '${anyResponse.error}...'`);
                         } else {
-                            pendingRequest.reject(new Error(`Unable to parse leaf interface : ${leafResponse}`));
+                            pendingRequest.resolve(undefined);
+                            console.log(`[Leaf Bridge] No 'result' or 'error' child node in parsed json '${jsonResponse.substring(0, 10)}...'`);
                         }
-                        delete this.pendingRequests[leafResponse.id];
+                        delete this.pendingRequests[anyResponse.id];
                     } else {
-                        throw new Error(`Unknown response id ${leafResponse.id}`);
+                        console.log(`[Leaf Bridge] Unknown response id ${anyResponse.id}`);
+                        throw new Error(`Unknown response id ${anyResponse.id}`);
                     }
                 } catch (e) {
                     console.log(`${e}: ${chunk}`);

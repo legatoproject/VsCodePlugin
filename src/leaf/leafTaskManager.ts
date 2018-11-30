@@ -67,7 +67,7 @@ export abstract class AbstractLeafTaskManager {
             taskId: this.idGenerator.next().value
         };
         let target: vscode.WorkspaceFolder = {
-            uri: vscode.Uri.file(LeafManager.INSTANCE.getLeafWorkspaceDirectory()),
+            uri: vscode.Uri.file(LeafManager.getInstance().getLeafWorkspaceDirectory()),
             name: 'leaf-workspace',
             index: 0
         };
@@ -135,7 +135,7 @@ export class SequencialLeafTaskManager extends AbstractLeafTaskManager {
     protected onDidEndTask(event: vscode.TaskEndEvent) {
         super.onDidEndTask(event);
         if (this.runningTask && event.execution.task === this.runningTask) {
-            console.log(`End task: ${this.runningTask.definition.taskId}/${this.runningTask.name}`);
+            console.log(`[TaskManager] End task: ${this.runningTask.definition.taskId}/${this.runningTask.name}`);
             this.runningTask = undefined;
             this.runNextTask();
         }
@@ -147,11 +147,11 @@ export class SequencialLeafTaskManager extends AbstractLeafTaskManager {
      */
     protected async executeTask(task: vscode.Task): Promise<void> {
         if (!this.runningTask || await this.askUserAboutAddingToQueue()) {
-            console.log(`Add task to queue: ${task.definition.taskId}/${task.name}`);
+            console.log(`[TaskManager] Add task to queue: ${task.definition.taskId}/${task.name}`);
             this.currentTasksQueue.push(task);
             this.runNextTask();
         } else {
-            console.log(`Task canceled by user: ${task.definition.taskId}/${task.name}`);
+            console.log(`[TaskManager] Task canceled by user: ${task.definition.taskId}/${task.name}`);
             this.terminate(task.definition.taskId, true);
         }
     }
@@ -173,12 +173,12 @@ export class SequencialLeafTaskManager extends AbstractLeafTaskManager {
         if (this.runningTask) {
             let len = this.currentTasksQueue.length;
             if (len > 0) {
-                console.log(`${len} task(s) postponed due to other task running: ${this.runningTask.name}`);
+                console.log(`[TaskManager] ${len} task(s) postponed due to other task running: ${this.runningTask.name}`);
             }
         } else {
             this.runningTask = this.currentTasksQueue.shift();
             if (this.runningTask) {
-                console.log(`Start task: ${this.runningTask.definition.taskId}/${this.runningTask.name}`);
+                console.log(`[TaskManager] Start task: ${this.runningTask.definition.taskId}/${this.runningTask.name}`);
                 vscode.tasks.executeTask(this.runningTask);
             }
         }

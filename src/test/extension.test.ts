@@ -10,7 +10,7 @@ import { LeafManager, LEAF_TASKS } from '../leaf/leafCore';
 import { LegatoManager, LEGATO_MKTOOLS } from '../legato/legatoCore';
 import { ITestCallbackContext } from 'mocha';
 
-const leafManager: LeafManager = LeafManager.INSTANCE;
+const leafManager: LeafManager = LeafManager.getInstance();
 const LEAF_TIMEOUT: number = 10000;
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
@@ -21,13 +21,13 @@ suite("Leaf Tests", function () {
     // Defines a Mocha unit test
     test(`Check Leaf installation`, function () {
         console.log(`WORKSPACE: ${process.env.CODE_TESTS_WORKSPACE}`);
-        leafManager.getLeafPath().then((path: string) => assert.ok(path, 'Leaf installation checked successfully')).catch((reason: any) =>
+        leafManager.getLeafPath().then((path: string | undefined) => assert.ok(path, 'Leaf installation checked successfully')).catch((reason: any) =>
             assert.fail(`Leaf is not installed`));
     });
 
     test(`List profiles`, function (done) {
         this.timeout(LEAF_TIMEOUT);
-        leafManager.requestProfiles().then(profiles => {
+        leafManager.getProfiles().then(profiles => {
             profiles = Object.keys(profiles);
             console.log(`Found profiles: ${profiles}`);
             assert.notEqual(profiles, undefined, `No profile found`);

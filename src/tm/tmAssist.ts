@@ -3,7 +3,7 @@
 import { StatusBarAlignment, StatusBarItem, Terminal, window } from "vscode";
 import { LeafManager, LEAF_EVENT } from "../leaf/leafCore";
 import { LEGATO_ENV } from "../legato/legatoCore";
-import { CommandRegister } from '../uiUtils';
+import { CommandRegister } from '../utils';
 import { LEGATO_IDS } from '../identifiers';
 
 const TARGET_SHELL_LABEL = `Remote shell`;
@@ -17,35 +17,35 @@ export class TargetUiManager extends CommandRegister {
 
     // Status bar
     this.targetStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 5);
-    this.disposables.push(this.targetStatusbar); // Dispose status bar on deactivate
+    this.toDispose(this.targetStatusbar); // Dispose status bar on deactivate
     this.targetStatusbar.text = "<Unknown>";
     this.targetStatusbar.tooltip = "Legato device IP address";
     this.targetStatusbar.command = LEGATO_IDS.COMMANDS.TM.SET_DEVICE_IP;
     this.targetStatusbar.show();
 
-    // Listen to profile changes
-    const profileListener = (_selectedProfile: string) =>
-      LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then((ip: string | undefined) => this.updateIPStatusBar(ip));
-    LeafManager.INSTANCE.addListener(LEAF_EVENT.profileChanged, profileListener);
-    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.profileChanged, profileListener));
-
     // Listen to env changes
-    const envListener = async (env: any) => {
-      await this.onEnvChanged(env);
-    };
-    LeafManager.INSTANCE.addListener(LEAF_EVENT.envChanged, envListener);
-    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.envChanged, envListener));
-
-    // Read DEST_IP on start
-    LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP).then(ip => this.updateIPStatusBar(ip));
+    LeafManager.getInstance().addListener(
+      LEAF_EVENT.leafEnvVarChanged,
+      (oldEnvVar, newEnvVar) => this.onEnvVarsChange(oldEnvVar, newEnvVar),
+      this);
 
     // Create commands
     this.createCommand(LEGATO_IDS.COMMANDS.TM.SHOW_TERMINAL, () => this.showRemoteTerminal());
     this.createCommand(LEGATO_IDS.COMMANDS.TM.SET_DEVICE_IP, () => this.askForNewIP());
+
+    // Show DEST_IP on start
+    this.setInitialState();
   }
 
-  private async onEnvChanged(env: any) {
-    let legatoDeviceIpChange = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP, env);
+  /**
+   * Async initialisation
+   */
+  private async setInitialState() {
+    this.onEnvVarsChange(undefined, await LeafManager.getInstance().getEnvVars());
+  }
+
+  private async onEnvVarsChange(oldEnvVars?: any, newEnvVars?: any) {
+    let legatoDeviceIpChange = newEnvVars ? newEnvVars[LEGATO_ENV.DEST_IP] : undefined;
     if (legatoDeviceIpChange) {
       this.updateIPStatusBar(legatoDeviceIpChange);
     }
@@ -57,8 +57,8 @@ export class TargetUiManager extends CommandRegister {
         name: TARGET_SHELL_LABEL,
         shellPath: "/bin/sh",
         shellArgs: ["-c", "ssh root@$DEST_IP"],
-        cwd: LeafManager.INSTANCE.getLeafWorkspaceDirectory(),
-        env: await LeafManager.INSTANCE.getEnvVars()
+        cwd: LeafManager.getInstance().getLeafWorkspaceDirectory(),
+        env: await LeafManager.getInstance().getEnvVars()
       });
       window.onDidCloseTerminal((closedTerminal: Terminal) => {
         if (closedTerminal.name === TARGET_SHELL_LABEL) {
@@ -71,14 +71,14 @@ export class TargetUiManager extends CommandRegister {
   }
 
   private async askForNewIP() {
-    let ip = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.DEST_IP);
+    let ip = await LeafManager.getInstance().getEnvValue(LEGATO_ENV.DEST_IP);
     let newIP = await window.showInputBox({
       prompt: "Please set the Legato device IP address",
       placeHolder: ip
     });
     if (newIP) {
       this.targetStatusbar.text = newIP;
-      LeafManager.INSTANCE.setEnvValue(LEGATO_ENV.DEST_IP, newIP);
+      LeafManager.getInstance().setEnvValue(LEGATO_ENV.DEST_IP, newIP);
     }
   }
 

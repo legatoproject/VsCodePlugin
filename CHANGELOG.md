@@ -5,6 +5,8 @@
 - Commands to add and remove remotes
 - Capability to queue leaf tasks when triggering new ones while leaf is already busy
 - Persist active def file in leaf environment
+- Clean useless notifications and keep silent (no status bar displayed) until a leaf workspace is created
+- Improve performances and latency time to detect profile/environmnent change
 
 ## 0.2.0
 - Active definition file selection

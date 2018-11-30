@@ -2,6 +2,7 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { CommandRegister } from './utils';
 
 /**
  * Dialog labels
@@ -11,7 +12,9 @@ export const ACTION_LABELS = {
 	CANCEL: "Cancel",
 	REMOVE: "Remove",
 	ADD_TO_QUEUE: "Queue",
-	FORGET: "Forget"
+	FORGET: "Forget",
+	CHECK_AGAIN: "Check again",
+	IGNORE: "Ignore"
 };
 
 /**
@@ -71,31 +74,17 @@ export abstract class TreeItem2 extends IUiItems implements vscode.TreeItem {
 	} : undefined;
 }
 
-export abstract class CommandRegister implements vscode.Disposable {
-	protected disposables: vscode.Disposable[] = [];
-
-	protected createCommand(id: string, cb: (...args: any[]) => any) {
-		let disposable = vscode.commands.registerCommand(id, cb, this);
-		this.disposables.push(disposable);
-	}
-
-	public dispose(): void {
-		for (let index in this.disposables) {
-			this.disposables[index].dispose();
-		}
-	}
-
-	protected disposeOnDeactivate(toExecute: () => void) {
-		this.disposables.push({ dispose: toExecute });
-	}
-}
-
 /**
 * Base for TreeDataProvider
 */
 export abstract class TreeDataProvider2 extends CommandRegister implements vscode.TreeDataProvider<TreeItem2> {
 	private _onDidChangeTreeData: vscode.EventEmitter<TreeItem2 | undefined> = new vscode.EventEmitter<TreeItem2 | undefined>();
 	readonly onDidChangeTreeData: vscode.Event<TreeItem2 | undefined> = this._onDidChangeTreeData.event;
+
+	constructor(viewId: string) {
+		super();
+		this.toDispose(vscode.window.registerTreeDataProvider(viewId, this));
+	}
 
 	refresh(): void {
 		this._onDidChangeTreeData.fire();

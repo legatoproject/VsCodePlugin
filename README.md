@@ -23,7 +23,7 @@ This extension integrates the `leaf` command-line package/workspace management t
 
 - open leaf shell terminal (`Leaf: Open shell` command)
 - leaf profile status bar
-- leaf profile change detection
+- leaf workspace/profile/environment change detection
 - `Leaf: Switch to Another Profile` command (or click on the status bar) to select another profile
 
 ### Legato integration

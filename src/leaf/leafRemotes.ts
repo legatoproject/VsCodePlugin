@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { LEAF_IDS } from '../identifiers';
 import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../uiUtils';
 import { RemoteQuickPickItem, RemoteTreeItem } from './leafUiComponents';
-import { LeafManager } from './leafCore';
+import { LeafManager, LEAF_EVENT } from './leafCore';
 
 
 /**
@@ -13,27 +13,34 @@ import { LeafManager } from './leafCore';
  */
 export class LeafRemotesView extends TreeDataProvider2 {
 	constructor() {
-		super();
+		super(LEAF_IDS.VIEWS.REMOTES);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REFRESH, this.refresh);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.ADD, this.addRemote);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REMOVE, this.removeRemote);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.ENABLE, node => this.enableRemote(node));
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.DISABLE, node => this.enableRemote(node, false));
-		this.disposables.push(vscode.window.registerTreeDataProvider(LEAF_IDS.VIEWS.REMOTES, this));
+		LeafManager.getInstance().addListener(LEAF_EVENT.leafRemotesChanged, () => this.refresh(), this);
 	}
 
+	/**
+	 * Enable a remote
+	 * Ask user to select one if there is no selection in the tree
+	 */
 	private async enableRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined, enabled: boolean = true) {
 		if (!node) {
 			node = await this.askRemoteToUser(`${enabled ? "Enable" : "Disable"} Leaf remote`);
 		}
 		if (node) {
-			await LeafManager.INSTANCE.enableRemote(node.id, enabled);
-			this.refresh();
+			LeafManager.getInstance().enableRemote(node.id, enabled);
 		}
 	}
 
+	/**
+	 * Add a new remote
+	 * Ask user for alias and url the add it
+	 */
 	private async addRemote() {
-		let remotes = await LeafManager.INSTANCE.requestRemotes();
+		let remotes = await LeafManager.getInstance().getRemotes();
 		let title = "Add new remote";
 		let step = 1;
 		let totalSteps = 2;
@@ -58,11 +65,15 @@ export class LeafRemotesView extends TreeDataProvider2 {
 			return;
 		}
 
-		// Launch task and refresh
-		await LeafManager.INSTANCE.addRemote(alias, url);
-		this.refresh();
+		// Launch task
+		LeafManager.getInstance().addRemote(alias, url);
 	}
 
+	/**
+	 * Validate alias :
+	 * - no spaces
+	 * - no already used profile name
+	 */
 	private validateAlias(remotes: any, value: string) {
 		if (value in remotes) {
 			return 'This remote alias is already used';
@@ -73,6 +84,11 @@ export class LeafRemotesView extends TreeDataProvider2 {
 		return undefined;
 	}
 
+	/**
+	 * Validate url
+	 * - Check if uri has a scheme and authority
+	 * - Check if uri has a no scheme but exist in filesystem (local path)
+	 */
 	private validateUrl(value: string) {
 		// Valid URL
 		let uri = vscode.Uri.parse(value);
@@ -90,24 +106,33 @@ export class LeafRemotesView extends TreeDataProvider2 {
 		return "Enter a valid URL or the path to an existing local json file";
 	}
 
+	/**
+	 * Remove remote
+	 * Ask user to select one if there is no selection in the tree
+	 */
 	private async removeRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined) {
 		if (!node) {
 			node = await this.askRemoteToUser("Remove Leaf remote");
 		}
 		if (node && ACTION_LABELS.REMOVE === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", ACTION_LABELS.CANCEL, ACTION_LABELS.REMOVE)) {
-			await LeafManager.INSTANCE.removeRemote(node.id);
-			this.refresh();
+			LeafManager.getInstance().removeRemote(node.id);
 		}
 	}
 
+	/**
+	 * Ask user to select a remote from existing ones
+	 */
 	private async askRemoteToUser(title: string): Promise<RemoteQuickPickItem | undefined> {
-		let remotes = await LeafManager.INSTANCE.requestRemotes();
+		let remotes = await LeafManager.getInstance().getRemotes();
 		let items = toItems(remotes, RemoteQuickPickItem);
 		return showMultiStepQuickPick(title, undefined, undefined, "Please select the remote", items);
 	}
 
+	/**
+	 * Return root elements in remotes tree view
+	 */
 	async getRootElements(): Promise<TreeItem2[]> {
-		let remotes = await LeafManager.INSTANCE.requestRemotes();
+		let remotes = await LeafManager.getInstance().getRemotes();
 		return toItems(remotes, RemoteTreeItem);
 	}
 }

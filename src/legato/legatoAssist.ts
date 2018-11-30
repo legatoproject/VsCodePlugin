@@ -2,10 +2,11 @@
 
 import * as fs from 'fs';
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import { LEGATO_IDS } from '../identifiers';
 import { LeafManager, LEAF_EVENT } from '../leaf/leafCore';
-import { CommandRegister } from '../uiUtils';
+import { CommandRegister } from '../utils';
 import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './legatoCore';
 
 export class LegatoUiManager extends CommandRegister {
@@ -18,23 +19,29 @@ export class LegatoUiManager extends CommandRegister {
 
     // Status bar
     this.defStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
-    this.disposables.push(this.defStatusbar);  // Dispose on extension/deactivate
+    this.toDispose(this.defStatusbar);  // Dispose on extension/deactivate
     this.defStatusbar.command = LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE;
-    this.defStatusbar.text = "<No def file selected>";
+    this.defStatusbar.text = "Searching sdef file...";
     this.defStatusbar.tooltip = "Active definition file";
     this.defStatusbar.show();
 
-    this.start();
+    this.setInitialState();
   }
 
-  private async start() {
+  /**
+   * Async initialisation
+   */
+  private async setInitialState() {
     await this.startLegatoServer();
 
-    // Set starting status bar value
-    let savedDefFile = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE);
-    if (savedDefFile) {
-      this.updateDefFileStatusBar(vscode.Uri.file(savedDefFile));
-    }
+    // Update status bar on env var change
+    LeafManager.getInstance().addListener(
+      LEAF_EVENT.leafEnvVarChanged,
+      (oldEnvVar, newEnvVar) => this.onEnvVarChanged(oldEnvVar, newEnvVar),
+      this);
+
+    // Set initial value of status bar
+    this.onEnvVarChanged(undefined, await LeafManager.getInstance().getEnvVars());
 
     // Tasks definition
     const legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO, {
@@ -45,39 +52,30 @@ export class LegatoUiManager extends CommandRegister {
         return undefined;
       }
     });
-    this.disposables.push(legatoTaskProvider);  // Dispose on extension/deactivate
+    this.toDispose(legatoTaskProvider);  // Dispose on extension/deactivate
 
     // Create command
     this.createCommand(LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE, () => this.onPickDefFileCommand());
-
-    const defFileListener = async (env: any) => {
-      await this.onEnvChanged(env);
-    };
-    LeafManager.INSTANCE.addListener(LEAF_EVENT.envChanged, defFileListener);
-    this.disposeOnDeactivate(() => LeafManager.INSTANCE.removeListener(LEAF_EVENT.envChanged, defFileListener));
   }
 
-  private async onEnvChanged(env: any) {
-    let defFile = await LeafManager.INSTANCE.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, env);
-    if (defFile) {
-      this.updateDefFileStatusBar(vscode.Uri.file(defFile));
-    }
+  private async onEnvVarChanged(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
+    let defFile = newEnvVar ? newEnvVar[LEGATO_ENV.LEGATO_DEF_FILE] : undefined;
+    let uri = defFile ? vscode.Uri.file(defFile) : undefined;
+    this.updateDefFileStatusBar(uri);
   }
 
   private async onPickDefFileCommand() {
-    let selectedDef = await this.chooseActiveDef();
-    if (selectedDef) {
-      this.updateDefFileStatusBar(selectedDef, true);
-    }
+    this.updateDefFileStatusBar(await this.chooseActiveDef(), true);
   }
 
   private updateDefFileStatusBar(selectedDef: vscode.Uri | undefined, persist: boolean = false) {
     if (selectedDef) {
-      let path = require('path');
       this.defStatusbar.text = path.basename(selectedDef.path);
       if (persist) {
         LegatoManager.getInstance().saveActiveDefFile(selectedDef);
       }
+    } else {
+      this.defStatusbar.text = "<No def file selected>";
     }
   }
 
@@ -87,7 +85,7 @@ export class LegatoUiManager extends CommandRegister {
       vscode.window.showErrorMessage("No *.sdef nor *.adef files found in workspace.");
       return undefined;
     } else if (xdefs.length === 1) {
-      vscode.window.showInformationMessage(`Active definition file set to the only one - ${xdefs[0].path}`);
+      console.log(`Active definition file set to the only one - ${xdefs[0].path}`);
       return xdefs[0];
     } else {
       let xdefPath: string | undefined = await vscode.window.showQuickPick(
@@ -133,11 +131,11 @@ export class LegatoUiManager extends CommandRegister {
           type: LEGATO_IDS.TASK_DEFINITION.LEGATO
         };
         let shellOptions: vscode.ShellExecutionOptions = {
-          env: await LeafManager.INSTANCE.getEnvVars()
+          env: await LeafManager.getInstance().getEnvVars()
         };
 
         let legatoTaskTarget: vscode.WorkspaceFolder = {
-          uri: vscode.Uri.file(LeafManager.INSTANCE.getLeafWorkspaceDirectory()),
+          uri: vscode.Uri.file(LeafManager.getInstance().getLeafWorkspaceDirectory()),
           name: 'leaf-workspace',
           index: 0
         };
@@ -157,9 +155,11 @@ export class LegatoUiManager extends CommandRegister {
    * Start the Legato LSP
    */
   public async startLegatoServer() {
-    let path = require('path');
     try {
       let legatoPath = await LegatoManager.getInstance().getLegatoRoot();
+      if (!legatoPath) {
+        throw new Error("Unable to get LEGATO_ROOT env var");
+      }
       let serverModule = path.join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
       if (!fs.existsSync(serverModule)) {
         throw new Error(serverModule + " LSP doesn't exist");
