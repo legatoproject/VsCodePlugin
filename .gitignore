@@ -2,6 +2,8 @@ out
 node_modules
 package
 leafWorkspace
+leaf-workspace.json
+leaf-data
 .vscode-test/
 *.vsix
 output/

@@ -71,8 +71,11 @@ export abstract class AbstractLeafTaskManager {
             name: 'leaf-workspace',
             index: 0
         };
+        let env: { [key: string]: string } = {};
+        env["LEAF_WORKSPACE"] = "";
         let execution = new vscode.ShellExecution(cmd, {
-            cwd: vscode.workspace.rootPath
+            cwd: vscode.workspace.rootPath,
+            env: env
         });
         let task = new vscode.Task(taskDefinition, target, name, 'Leaf', execution);
         task.group = vscode.TaskGroup.Build;

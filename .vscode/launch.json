@@ -11,6 +11,7 @@
             "request": "launch",
             "runtimeExecutable": "${execPath}",
             "args": [
+                "${env:CODE_TESTS_WORKSPACE}",
                 "--extensionDevelopmentPath=${workspaceFolder}"
             ],
             "outFiles": [
@@ -26,6 +27,21 @@
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "--extensionTestsPath=${workspaceFolder}/out/test"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/out/test/**/*.js"
+            ],
+            "preLaunchTask": "npm: watch"
+        },
+        {
+            "name": "Extension Tests CI-mode",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "${env:CODE_TESTS_WORKSPACE}",
+                "--extensionDevelopmentPath=${workspaceFolder}",
+                "--extensionTestsPath=${env:CODE_TESTS_PATH}"
             ],
             "outFiles": [
                 "${workspaceFolder}/out/test/**/*.js"
