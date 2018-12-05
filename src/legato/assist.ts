@@ -7,6 +7,10 @@ import { LeafManager, LEAF_EVENT } from '../leaf/core';
 import { CommandRegister } from '../utils';
 import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './core';
 
+const LEGATO_TASKS = {
+  BUILD: "Build",
+  BUILD_AND_INSTALL: "Build and install"
+};
 export class LegatoUiManager extends CommandRegister {
 
   private defStatusbar: vscode.StatusBarItem;
@@ -39,7 +43,7 @@ export class LegatoUiManager extends CommandRegister {
     this.onEnvVarChanged(undefined, await LeafManager.getInstance().getEnvVars());
 
     // Tasks definition
-    const legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO, {
+    const legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO_BUILD, {
       provideTasks: () => {
         return this.getLegatoTasks();
       },
@@ -90,59 +94,71 @@ export class LegatoUiManager extends CommandRegister {
     }
   }
 
-  private async getLegatoTasks(): Promise<vscode.Task[]> {
-    let legatoBuildTasks: vscode.Task[] = [];
-    let workspaceRoot = vscode.workspace.rootPath;
-    if (!workspaceRoot) {
-      return [];
+  private buildCommand(activeDefFile: vscode.Uri) {
+    let command: string | undefined;
+    let mktool: undefined | string;
+    let path = require('path');
+    let ext = path.extname(activeDefFile.fsPath);
+    switch (ext) {
+      case LEGATO_FILE_EXTENSIONS.sdef:
+        mktool = LEGATO_MKTOOLS.mksys;
+        break;
+      case LEGATO_FILE_EXTENSIONS.adef:
+        mktool = LEGATO_MKTOOLS.mkapp;
+        break;
+      default:
+        break;
     }
-    let xdefBuildTask = await this.xdefBuildTask();
-    if (xdefBuildTask) {
-      legatoBuildTasks.push(xdefBuildTask);
+
+    if (mktool) {
+      command = `${mktool} -t \${LEGATO_TARGET} \${LEGATO_DEF_FILE}`;
     }
-    return legatoBuildTasks;
+    return command;
   }
 
-  private async xdefBuildTask(): Promise<undefined | vscode.Task> {
+  private async buildTask(type: string, taskName: string, command: string | undefined): Promise<vscode.Task | undefined> {
+    if (command) {
+      let kind: vscode.TaskDefinition = {
+        type: type
+      };
+      let shellOptions: vscode.ShellExecutionOptions = {
+        env: await LeafManager.getInstance().getEnvVars()
+      };
+
+      let legatoTaskTarget: vscode.WorkspaceFolder = {
+        uri: vscode.Uri.file(LeafManager.getInstance().getLeafWorkspaceDirectory()),
+        name: 'leaf-workspace',
+        index: 0
+      };
+      let task = new vscode.Task(kind, legatoTaskTarget, taskName, 'Legato', new vscode.ShellExecution(command, shellOptions));
+      task.group = vscode.TaskGroup.Build;
+      task.problemMatchers = ['$legato'];
+      task.presentationOptions = {
+        reveal: vscode.TaskRevealKind.Always,
+        panel: vscode.TaskPanelKind.Dedicated
+      };
+      return task;
+    }
+  }
+
+  private async getLegatoTasks(): Promise<vscode.Task[]> {
+    let legatoTasks = new Array<vscode.Task>();
     let activeDefFile: vscode.Uri | undefined = await LegatoManager.getInstance().getActiveDefFile();
-    let mktool: undefined | string;
     if (activeDefFile) {
-      let path = require('path');
-      let ext = path.extname(activeDefFile.fsPath);
-      switch (ext) {
-        case LEGATO_FILE_EXTENSIONS.sdef:
-          mktool = LEGATO_MKTOOLS.mksys;
-          break;
-        case LEGATO_FILE_EXTENSIONS.adef:
-          mktool = LEGATO_MKTOOLS.mkapp;
-          break;
-        default:
-          break;
-      }
+      let buildCommand = this.buildCommand(activeDefFile);
+      let buildTask: vscode.Task | undefined = await this.buildTask(LEGATO_IDS.TASK_DEFINITION.LEGATO_BUILD, LEGATO_TASKS.BUILD, buildCommand);
+      if (buildTask) {
+        legatoTasks.push(buildTask);
 
-      if (mktool) {
-        let command = `${mktool} -t \${LEGATO_TARGET} \${LEGATO_DEF_FILE}`;
-        let kind: vscode.TaskDefinition = {
-          type: LEGATO_IDS.TASK_DEFINITION.LEGATO
-        };
-        let shellOptions: vscode.ShellExecutionOptions = {
-          env: await LeafManager.getInstance().getEnvVars()
-        };
-
-        let legatoTaskTarget: vscode.WorkspaceFolder = {
-          uri: vscode.Uri.file(LeafManager.getInstance().getLeafWorkspaceDirectory()),
-          name: 'leaf-workspace',
-          index: 0
-        };
-        let task = new vscode.Task(kind, legatoTaskTarget, mktool, 'Legato', new vscode.ShellExecution(command, shellOptions));
-        task.group = vscode.TaskGroup.Build;
-        task.problemMatchers = ['$legato'];
-        task.presentationOptions = {
-          reveal: vscode.TaskRevealKind.Always,
-          panel: vscode.TaskPanelKind.Shared
-        };
-        return task;
+        let buildAndInstallTask: vscode.Task | undefined = await this.buildTask(LEGATO_IDS.TASK_DEFINITION.LEGATO_INSTALL,
+          LEGATO_TASKS.BUILD_AND_INSTALL,
+          `${buildCommand} && update $(basename \${LEGATO_DEF_FILE%.*def}).$LEGATO_TARGET.update`
+        );
+        if (buildAndInstallTask) {
+          legatoTasks.push(buildAndInstallTask);
+        }
       }
     }
+    return legatoTasks;
   }
 }

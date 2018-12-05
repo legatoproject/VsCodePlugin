@@ -56,6 +56,7 @@ export const LEGATO_IDS = { // legato
         }
     },
     TASK_DEFINITION: {
-        LEGATO: "Legato"
+        LEGATO_BUILD: "Legato Build",
+        LEGATO_INSTALL: "Legato Install"
     }
 };

@@ -258,7 +258,10 @@
         ],
         "taskDefinitions": [
             {
-                "type": "Legato"
+                "type": "Legato Build"
+            },
+            {
+                "type": "Legato Install"
             },
             {
                 "type": "Leaf",
