@@ -8,6 +8,7 @@ import { LegatoUiManager } from './legato/legatoAssist';
 import { LeafPackagesView } from './leaf/leafPackages';
 import { LeafRemotesView } from './leaf/leafRemotes';
 import { TargetUiManager } from './tm/tmAssist';
+import { LegatoLanguageManager } from './legato/legatoLanguage';
 
 
 // this method is called when your extension is activated
@@ -39,7 +40,8 @@ export async function activate(context: vscode.ExtensionContext) {
     // Launch/Dispose on In/Out of LegatoWorkspace
     LegatoManager.getInstance().createAndDisposeOnLegatoWorkspace(
         LegatoUiManager,
-        TargetUiManager);
+        TargetUiManager, 
+        LegatoLanguageManager);
 }
 
 // this method is called when your extension is deactivated

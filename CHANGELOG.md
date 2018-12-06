@@ -7,6 +7,8 @@
 - Persist active def file in leaf environment
 - Clean useless notifications and keep silent (no status bar displayed) until a leaf workspace is created
 - Improve performances and latency time to detect profile/environmnent change
+- Stopping and starting Language Server when switching between Legato versions
+- Push environment changes to Language Server when detected
 
 ## 0.2.0
 - Active definition file selection

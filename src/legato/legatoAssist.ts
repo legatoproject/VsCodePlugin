@@ -1,9 +1,7 @@
 'use strict';
 
-import * as fs from 'fs';
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import { LEGATO_IDS } from '../identifiers';
 import { LeafManager, LEAF_EVENT } from '../leaf/leafCore';
 import { CommandRegister } from '../utils';
@@ -11,7 +9,6 @@ import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } fro
 
 export class LegatoUiManager extends CommandRegister {
 
-  private lspClient: LanguageClient | undefined;
   private defStatusbar: vscode.StatusBarItem;
 
   public constructor() {
@@ -32,8 +29,6 @@ export class LegatoUiManager extends CommandRegister {
    * Async initialisation
    */
   private async setInitialState() {
-    await this.startLegatoServer();
-
     // Update status bar on env var change
     LeafManager.getInstance().addListener(
       LEAF_EVENT.leafEnvVarChanged,
@@ -148,64 +143,6 @@ export class LegatoUiManager extends CommandRegister {
         };
         return task;
       }
-    }
-  }
-
-  /**
-   * Start the Legato LSP
-   */
-  public async startLegatoServer() {
-    try {
-      let legatoPath = await LegatoManager.getInstance().getLegatoRoot();
-      if (!legatoPath) {
-        throw new Error("Unable to get LEGATO_ROOT env var");
-      }
-      let serverModule = path.join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
-      if (!fs.existsSync(serverModule)) {
-        throw new Error(serverModule + " LSP doesn't exist");
-      }
-
-      // The debug options for the server
-      // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-      let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
-
-      // If the extension is launched in debug mode then the debug server options are used
-      // Otherwise the run options are used
-      let serverOptions: ServerOptions = {
-        run: { module: serverModule, transport: TransportKind.ipc },
-        debug: {
-          module: serverModule,
-          transport: TransportKind.ipc,
-          options: debugOptions
-        }
-      };
-
-      // Options to control the language client
-      let clientOptions: LanguageClientOptions = {
-        // Register the server for plain text documents
-        documentSelector: [
-          { scheme: 'file', language: 'sdef' },
-          { scheme: 'file', language: 'adef' },
-          { scheme: 'file', language: 'cdef' },
-          { scheme: 'file', language: 'mdef' }
-        ],
-        synchronize: {
-          // Notify the server about file changes to '.clientrc files contained in the workspace
-          fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
-        }
-      };
-      // Create the language client and start the client.
-      this.lspClient = new LanguageClient(
-        'legatoServer',
-        'Legato Language Server',
-        serverOptions,
-        clientOptions
-      );
-
-      // Start the client. This will also launch the server
-      this.lspClient.start();
-    } catch (e) {
-      vscode.window.showWarningMessage(`Failed to start the Legato Language server - reason: ${e}`);
     }
   }
 }

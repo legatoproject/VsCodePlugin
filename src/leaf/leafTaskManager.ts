@@ -2,7 +2,7 @@
 
 import * as vscode from "vscode";
 import { LeafManager } from './leafCore';
-import { PromiseCallbacks } from '../utils';
+import { PromiseCallbacks, EnvVars } from '../utils';
 import { LEAF_IDS } from '../identifiers';
 import { ACTION_LABELS } from '../uiUtils';
 
@@ -71,7 +71,7 @@ export abstract class AbstractLeafTaskManager {
             name: 'leaf-workspace',
             index: 0
         };
-        let env: { [key: string]: string } = {};
+        let env: EnvVars = {};
         env["LEAF_WORKSPACE"] = "";
         let execution = new vscode.ShellExecution(cmd, {
             cwd: vscode.workspace.rootPath,
