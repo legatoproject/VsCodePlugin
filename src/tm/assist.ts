@@ -1,8 +1,8 @@
 'use strict';
 
 import { StatusBarAlignment, StatusBarItem, Terminal, window } from "vscode";
-import { LeafManager, LEAF_EVENT } from "../leaf/leafCore";
-import { LEGATO_ENV } from "../legato/legatoCore";
+import { LeafManager, LEAF_EVENT } from "../leaf/core";
+import { LEGATO_ENV } from "../legato/core";
 import { CommandRegister } from '../utils';
 import { LEGATO_IDS } from '../identifiers';
 

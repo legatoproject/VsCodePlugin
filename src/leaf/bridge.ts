@@ -31,7 +31,7 @@ export class LeafInterface {
 
     public constructor() {
         // Launch interface
-        let pathToExec = join(__filename, '..', '..', '..', 'python-src', 'leaf-codeInterface.py');
+        let pathToExec = join(__filename, '..', '..', '..', 'python-src', 'leaf-bridge.py');
 
         // Copy system env vars
         let env: NodeJS.ProcessEnv = {};

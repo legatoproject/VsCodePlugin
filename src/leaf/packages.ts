@@ -2,8 +2,8 @@
 
 import { LEAF_IDS } from '../identifiers';
 import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../uiUtils';
-import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem } from './leafUiComponents';
-import { LeafManager } from './leafCore';
+import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem } from './uiComponents';
+import { LeafManager } from './core';
 
 /**
  * Packages view and commands

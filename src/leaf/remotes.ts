@@ -4,8 +4,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { LEAF_IDS } from '../identifiers';
 import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../uiUtils';
-import { RemoteQuickPickItem, RemoteTreeItem } from './leafUiComponents';
-import { LeafManager, LEAF_EVENT } from './leafCore';
+import { RemoteQuickPickItem, RemoteTreeItem } from './uiComponents';
+import { LeafManager, LEAF_EVENT } from './core';
 
 
 /**

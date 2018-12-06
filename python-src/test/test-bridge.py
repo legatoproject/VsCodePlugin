@@ -9,7 +9,7 @@ from pathlib import Path
 from leaf import __version__
 
 
-LCI_BIN = ROOT_FOLDER = Path(__file__).parent.parent / "leaf-codeInterface.py"
+LCI_BIN = ROOT_FOLDER = Path(__file__).parent.parent / "leaf-bridge.py"
 
 
 COMMAND_EXIT = "exit\n"

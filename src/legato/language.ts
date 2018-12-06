@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
-import { LeafManager, LEAF_EVENT } from "../leaf/leafCore";
+import { LeafManager, LEAF_EVENT } from "../leaf/core";
 import { DisposableBag } from "../utils";
-import { LegatoManager, LEGATO_EVENT } from "./legatoCore";
+import { LegatoManager, LEGATO_EVENT } from "./core";
 
 
 export class LegatoLanguageManager extends DisposableBag {

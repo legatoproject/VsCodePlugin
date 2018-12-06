@@ -1,7 +1,7 @@
 'use strict';
 
 import { Terminal, window } from "vscode";
-import { LeafManager, LEAF_EVENT } from './leafCore';
+import { LeafManager, LEAF_EVENT } from './core';
 import { LEAF_IDS } from '../identifiers';
 import { ACTION_LABELS } from '../uiUtils';
 import { CommandRegister } from '../utils';

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { LanguageClient } from 'vscode-languageclient';
-import { LegatoLanguageManager } from '../legato/legatoLanguage';
+import { LegatoLanguageManager } from '../legato/language';
 
 /**
  * Tests suite to validate Legato language integration

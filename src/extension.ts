@@ -1,14 +1,14 @@
 'use strict';
 import * as vscode from 'vscode';
 import { LeafTerminalManager } from './leaf/leafTerminal';
-import { LeafProfileStatusBar } from './leaf/leafProfiles';
-import { LeafManager } from './leaf/leafCore';
-import { LegatoManager } from './legato/legatoCore';
-import { LegatoUiManager } from './legato/legatoAssist';
-import { LeafPackagesView } from './leaf/leafPackages';
-import { LeafRemotesView } from './leaf/leafRemotes';
-import { TargetUiManager } from './tm/tmAssist';
-import { LegatoLanguageManager } from './legato/legatoLanguage';
+import { LeafProfileStatusBar } from './leaf/profiles';
+import { LeafManager } from './leaf/core';
+import { LegatoManager } from './legato/core';
+import { LegatoUiManager } from './legato/assist';
+import { LeafPackagesView } from './leaf/packages';
+import { LeafRemotesView } from './leaf/remotes';
+import { TargetUiManager } from './tm/assist';
+import { LegatoLanguageManager } from './legato/language';
 
 
 // this method is called when your extension is activated

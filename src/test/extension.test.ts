@@ -6,8 +6,8 @@
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
 import { Task, TaskExecution, TaskProcessEndEvent, tasks, Uri, workspace } from 'vscode';
-import { LeafManager, LEAF_TASKS } from '../leaf/leafCore';
-import { LegatoManager, LEGATO_MKTOOLS } from '../legato/legatoCore';
+import { LeafManager, LEAF_TASKS } from '../leaf/core';
+import { LegatoManager, LEGATO_MKTOOLS } from '../legato/core';
 import { ITestCallbackContext } from 'mocha';
 
 const leafManager: LeafManager = LeafManager.getInstance();

@@ -1,6 +1,6 @@
 'use strict';
 import * as vscode from "vscode";
-import { LeafManager, LEAF_ENV_SCOPE, LEAF_EVENT } from "../leaf/leafCore";
+import { LeafManager, LEAF_ENV_SCOPE, LEAF_EVENT } from "../leaf/core";
 import { AbstractManager, EnvVars } from '../utils';
 
 export const LEGATO_ENV = {

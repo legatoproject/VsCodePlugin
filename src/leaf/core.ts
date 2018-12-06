@@ -2,8 +2,8 @@
 
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { LeafInterface, LEAF_INTERFACE_COMMANDS } from './leafInterface';
-import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './leafTaskManager';
+import { LeafInterface, LEAF_INTERFACE_COMMANDS } from './bridge';
+import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './taskManager';
 import { ACTION_LABELS } from '../uiUtils';
 import { executeInShell, EnvVars, AbstractManager, debounce } from '../utils';
 import { join } from 'path';

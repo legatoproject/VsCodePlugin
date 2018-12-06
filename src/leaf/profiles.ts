@@ -1,9 +1,9 @@
 'use strict';
 
 import { window, StatusBarItem, StatusBarAlignment } from "vscode";
-import { LeafManager, LEAF_EVENT } from './leafCore';
+import { LeafManager, LEAF_EVENT } from './core';
 import { LEAF_IDS } from '../identifiers';
-import { ProfileQuickPickItem } from './leafUiComponents';
+import { ProfileQuickPickItem } from './uiComponents';
 import { showMultiStepQuickPick, toItems } from '../uiUtils';
 import { CommandRegister } from '../utils';
 

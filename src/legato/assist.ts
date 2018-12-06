@@ -3,9 +3,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { LEGATO_IDS } from '../identifiers';
-import { LeafManager, LEAF_EVENT } from '../leaf/leafCore';
+import { LeafManager, LEAF_EVENT } from '../leaf/core';
 import { CommandRegister } from '../utils';
-import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './legatoCore';
+import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './core';
 
 export class LegatoUiManager extends CommandRegister {
 

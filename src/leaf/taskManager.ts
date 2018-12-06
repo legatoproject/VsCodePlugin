@@ -1,8 +1,8 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { LeafManager } from './leafCore';
 import { PromiseCallbacks, EnvVars } from '../utils';
+import { LeafManager } from './core';
 import { LEAF_IDS } from '../identifiers';
 import { ACTION_LABELS } from '../uiUtils';
 
