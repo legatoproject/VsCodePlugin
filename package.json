@@ -136,14 +136,19 @@
                 "category": "Legato"
             },
             {
-                "command": "legato.cmd.tm.openShell",
-                "title": "Open remote shell",
-                "category": "Legato"
+                "command": "legato.cmd.device.shell",
+                "title": "Open Shell",
+                "category": "Legato/Device"
             },
             {
-                "command": "legato.cmd.tm.newIP",
-                "title": "Set device IP address",
-                "category": "Legato"
+                "command": "legato.cmd.device.logs",
+                "title": "Open Logs",
+                "category": "Legato/Device"
+            },
+            {
+                "command": "legato.cmd.device.ip",
+                "title": "Set IP address",
+                "category": "Legato/Device"
             }
         ],
         "languages": [

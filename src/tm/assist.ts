@@ -1,17 +1,21 @@
 'use strict';
 
 import { StatusBarAlignment, StatusBarItem, Terminal, window } from "vscode";
+import { CommandId, ContextualCommandPalette } from "../commands";
 import { LeafManager, LEAF_EVENT } from "../leaf/core";
 import { LEGATO_ENV } from "../legato/core";
 import { CommandRegister } from '../utils';
-import { LEGATO_IDS } from '../identifiers';
 
-const TARGET_SHELL_LABEL = `Remote shell`;
+const TARGET_SHELL_LABEL = 'Device shell';
+const LOG_SHELL_LABEL = 'Device logs';
 
 export class TargetUiManager extends CommandRegister {
-  private remoteTerminal: Terminal | undefined;
-  private targetStatusbar: StatusBarItem;
 
+  private targetStatusbar: StatusBarItem;
+  private remoteTerminal = new RemoteTerminal(TARGET_SHELL_LABEL, "/bin/sh", ["-c", "ssh root@$DEST_IP"]);
+  private logTerminal = new RemoteTerminal(LOG_SHELL_LABEL, "/bin/sh", ["-c", "ssh root@$DEST_IP \"/sbin/logread -f\""]);
+  private paletteOnDeviceIP: ContextualCommandPalette;
+  
   public constructor() {
     super();
 
@@ -20,18 +24,37 @@ export class TargetUiManager extends CommandRegister {
     this.toDispose(this.targetStatusbar); // Dispose status bar on deactivate
     this.targetStatusbar.text = "<Unknown>";
     this.targetStatusbar.tooltip = "Legato device IP address";
-    this.targetStatusbar.command = LEGATO_IDS.COMMANDS.TM.SET_DEVICE_IP;
     this.targetStatusbar.show();
+
+    // Commands declaration to be used as QuickPickItem
+    this.paletteOnDeviceIP = new ContextualCommandPalette(
+      this.targetStatusbar,
+      CommandId.DEVICE_IP_COMMAND_PALETTE,
+      [
+        {
+          id: CommandId.SET_DEVICE_IP,
+          label: "Set Device IP",
+          callback: () => this.askForNewIP()
+        },
+        {
+          id: CommandId.DEVICE_SHELL,
+          label: 'Open Device shell',
+          callback: () => this.remoteTerminal.show()
+        },
+        {
+          id: CommandId.DEVICE_LOGS,
+          label: "Open Device logs",
+          callback: () => this.logTerminal.show()
+        }
+      ],
+      'Select command to apply on device...');
+    this.paletteOnDeviceIP.register();
 
     // Listen to env changes
     LeafManager.getInstance().addListener(
       LEAF_EVENT.leafEnvVarChanged,
       (oldEnvVar, newEnvVar) => this.onEnvVarsChange(oldEnvVar, newEnvVar),
       this);
-
-    // Create commands
-    this.createCommand(LEGATO_IDS.COMMANDS.TM.SHOW_TERMINAL, () => this.showRemoteTerminal());
-    this.createCommand(LEGATO_IDS.COMMANDS.TM.SET_DEVICE_IP, () => this.askForNewIP());
 
     // Show DEST_IP on start
     this.setInitialState();
@@ -51,25 +74,6 @@ export class TargetUiManager extends CommandRegister {
     }
   }
 
-  private async showRemoteTerminal() {
-    if (!this.remoteTerminal) {
-      this.remoteTerminal = window.createTerminal({
-        name: TARGET_SHELL_LABEL,
-        shellPath: "/bin/sh",
-        shellArgs: ["-c", "ssh root@$DEST_IP"],
-        cwd: LeafManager.getInstance().getLeafWorkspaceDirectory(),
-        env: await LeafManager.getInstance().getEnvVars()
-      });
-      window.onDidCloseTerminal((closedTerminal: Terminal) => {
-        if (closedTerminal.name === TARGET_SHELL_LABEL) {
-          closedTerminal.dispose();
-          this.remoteTerminal = undefined;
-        }
-      }, this);
-    }
-    this.remoteTerminal.show();
-  }
-
   private async askForNewIP() {
     let ip = await LeafManager.getInstance().getEnvValue(LEGATO_ENV.DEST_IP);
     let newIP = await window.showInputBox({
@@ -86,5 +90,37 @@ export class TargetUiManager extends CommandRegister {
     if (ip) {
       this.targetStatusbar.text = ip;
     }
+  }
+}
+
+class RemoteTerminal {
+  private leafTerminal: Terminal | undefined;
+  private terminalLabel: string;
+  private shellPath: string;
+  private shellArgs: string[];
+  constructor(label: string, path: string, shellArgs: string[]) {
+    this.terminalLabel = label;
+    this.shellPath = path;
+    this.shellArgs = shellArgs;
+
+    window.onDidCloseTerminal((closedTerminal: Terminal) => {
+      if (closedTerminal.name === this.terminalLabel) {
+        closedTerminal.dispose();
+        this.leafTerminal = undefined;
+      }
+    }, this);
+  }
+
+  public async show(preserveFocus?: boolean) {
+    if (!this.leafTerminal) {
+      this.leafTerminal = window.createTerminal({
+        name: this.terminalLabel,
+        shellPath: this.shellPath,
+        shellArgs: this.shellArgs,
+        cwd: LeafManager.getInstance().getLeafWorkspaceDirectory(),
+        env: await LeafManager.getInstance().getEnvVars()
+      });
+    }
+    this.leafTerminal.show(true);
   }
 }
