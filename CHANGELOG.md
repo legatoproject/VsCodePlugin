@@ -4,6 +4,8 @@
 - New build task to trigger build+install in one step
 - Device status bar now pops up a menu with device related commands
 - New command to open Device logs
+- New command to install app/system on device
+- New build task to build and install in one action
 
 ## 0.3.0
 - All commands reworked to be functional from the command palette

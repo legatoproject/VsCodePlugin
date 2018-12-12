@@ -38,7 +38,9 @@ This extension provides the following features to ease Legato development in VS 
 #### Build
 
 - active definition file status bar + `Legato: Select active definition file` command (or click on the status bar) to pick one
-- build task to invoke `mksys`|`mkapp` on the active definition file on `Ctrl+Shift+B`
+- build tasks (available on `Ctrl+Shift+B`):
+  - `Legato: build`: invokes `mksys`|`mkapp` on the active definition file
+  - `Legato: build and install`: as above + triggers install on device
 - errors parsing from both `mksys`|`mkapp` and C/C++ compilation
 
 #### Target Management
@@ -47,6 +49,7 @@ This extension provides the following features to ease Legato development in VS 
 - `Legato/Device: Set IP address` command for IP address configuration
 - `Legato/Device: Open Shell` command to open an SSH terminal on the remote Legato device
 - `Legato/Device: Open Logs` command to open an SSH terminal showing remote Legato device logs
+- `Legato/Device: Install on device` command for app/device install (also available in **\*.update** files right-click menu)
 
 ## Settings
 

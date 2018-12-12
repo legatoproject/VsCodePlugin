@@ -1,10 +1,9 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { PromiseCallbacks, EnvVars } from '../utils';
-import { LeafManager } from './core';
 import { LEAF_IDS } from '../identifiers';
 import { ACTION_LABELS } from '../uiUtils';
+import { EnvVars, PromiseCallbacks } from '../utils';
 
 /**
  * Take care of task creation, launching and create a corresponding promise to let the user do somthing at the end og the task
@@ -23,8 +22,8 @@ export abstract class AbstractLeafTaskManager {
      * Execute shell command as task
      * @returns a promise that is resolved at the end of the task or rejected if the user cancel it
      */
-    public async executeAsTask(name: string, cmd: string): Promise<void> {
-        let task = this.createNewTask(name, cmd);
+    public async executeAsTask(name: string, cmd: string, additionalEnv?: EnvVars): Promise<void> {
+        let task = this.createNewTask(name, cmd, additionalEnv);
         let out = this.toPromise(task);
         this.executeTask(task);
         return out;
@@ -61,18 +60,21 @@ export abstract class AbstractLeafTaskManager {
     /**
      * Create a task with ShellExecution
      */
-    private createNewTask(name: string, cmd: string): vscode.Task {
+    private createNewTask(name: string, cmd: string, additionalEnv?: EnvVars): vscode.Task {
         let taskDefinition = {
             type: LEAF_IDS.TASK_DEFINITION.LEAF,
             taskId: this.idGenerator.next().value
         };
         let target: vscode.WorkspaceFolder = {
-            uri: vscode.Uri.file(LeafManager.getInstance().getLeafWorkspaceDirectory()),
+            uri: vscode.Uri.file(<string>vscode.workspace.rootPath),
             name: 'leaf-workspace',
             index: 0
         };
-        let env: EnvVars = {};
-        env["LEAF_WORKSPACE"] = "";
+        let env: EnvVars = additionalEnv ? additionalEnv : {};
+        //if the custom env does not provide LEAF_WORKSPACE, override the inherited one 
+        if (additionalEnv && !additionalEnv["LEAF_WORKSPACE"]) {
+            env["LEAF_WORKSPACE"] = "";
+        }
         let execution = new vscode.ShellExecution(cmd, {
             cwd: vscode.workspace.rootPath,
             env: env

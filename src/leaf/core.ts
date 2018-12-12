@@ -38,7 +38,7 @@ export class LeafManager extends AbstractManager {
   private static INSTANCE: LeafManager;
 
   // Task management
-  private readonly taskManager: AbstractLeafTaskManager = this.disposables.toDispose(new SequencialLeafTaskManager());
+  public readonly taskManager: AbstractLeafTaskManager = this.disposables.toDispose(new SequencialLeafTaskManager());
 
   // Leaf Bridge
   private readonly leafInterface: LeafInterface = new LeafInterface();

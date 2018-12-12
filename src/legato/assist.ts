@@ -5,6 +5,7 @@ import * as path from 'path';
 import { LEGATO_IDS } from '../identifiers';
 import { LeafManager, LEAF_EVENT } from '../leaf/core';
 import { CommandRegister } from '../utils';
+import { chooseFile, listDefinitionFiles } from './files';
 import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './core';
 
 const LEGATO_TASKS = {
@@ -64,7 +65,13 @@ export class LegatoUiManager extends CommandRegister {
   }
 
   private async onPickDefFileCommand() {
-    this.updateDefFileStatusBar(await this.chooseActiveDef(), true);
+    let xdefs: vscode.Uri[] = await listDefinitionFiles();
+    let selectedXdef = await chooseFile(xdefs,
+      {
+        noFileFoundMessage: "Neither *.sdef nor *.adef files found in workspace.",
+        quickPickPlaceHolder: "Please select active definition file among ones available in the workspace..."
+      });
+    this.updateDefFileStatusBar(selectedXdef, true);
   }
 
   private updateDefFileStatusBar(selectedDef: vscode.Uri | undefined, persist: boolean = false) {
@@ -78,21 +85,7 @@ export class LegatoUiManager extends CommandRegister {
     }
   }
 
-  private async chooseActiveDef(): Promise<vscode.Uri | undefined> {
-    let xdefs: vscode.Uri[] = await LegatoManager.getInstance().listDefinitionFiles();
-    if (xdefs.length === 0) {
-      vscode.window.showErrorMessage("No *.sdef nor *.adef files found in workspace.");
-      return undefined;
-    } else if (xdefs.length === 1) {
-      console.log(`Active definition file set to the only one - ${xdefs[0].path}`);
-      return xdefs[0];
-    } else {
-      let xdefPath: string | undefined = await vscode.window.showQuickPick(
-        xdefs.map(s => s.path),
-        { placeHolder: "Please select active definition file among ones available in the workspace..." });
-      return xdefPath !== undefined ? vscode.Uri.file(xdefPath) : undefined;
-    }
-  }
+
 
   private buildCommand(activeDefFile: vscode.Uri) {
     let command: string | undefined;

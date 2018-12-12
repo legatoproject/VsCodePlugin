@@ -36,6 +36,14 @@
             ]
         },
         "menus": {
+            "explorer/context": [
+                {
+                    "command": "legato.cmd.device.install.on",
+                    "group": "z_commands",
+                    "when": "resourceExtname == .update"
+
+                }
+            ],
             "view/title": [
                 {
                     "command": "leaf.cmd.pkg.refresh",
@@ -148,6 +156,11 @@
             {
                 "command": "legato.cmd.device.ip",
                 "title": "Set IP address",
+                "category": "Legato/Device"
+            },
+            {
+                "command": "legato.cmd.device.install.on",
+                "title": "Install on device",
                 "category": "Legato/Device"
             }
         ],

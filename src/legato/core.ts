@@ -43,11 +43,6 @@ export class LegatoManager extends AbstractManager {
             this.disposables);
     }
 
-    // Lists def files in project, and if there's only one, set it as the active one.
-    public listDefinitionFiles(): Thenable<vscode.Uri[]> {
-        return vscode.workspace.findFiles("**/*.[as]def", "**/leaf-data/*");
-    }
-
     public saveActiveDefFile(uri: vscode.Uri) {
         LeafManager.getInstance().setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}`, LEAF_ENV_SCOPE.workspace);
     }

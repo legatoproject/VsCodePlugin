@@ -9,6 +9,7 @@ import { Task, TaskExecution, TaskProcessEndEvent, tasks, Uri, workspace } from 
 import { LeafManager, LEAF_TASKS } from '../leaf/core';
 import { LegatoManager, LEGATO_MKTOOLS } from '../legato/core';
 import { ITestCallbackContext } from 'mocha';
+import { listDefinitionFiles } from '../legato/files';
 
 const leafManager: LeafManager = LeafManager.getInstance();
 const LEAF_TIMEOUT: number = 10000;
@@ -74,7 +75,7 @@ suite("Leaf Tests", function () {
 
 suite("Legato Tests", function () {
     test(`List def files`, function (done) {
-        LegatoManager.getInstance().listDefinitionFiles().then((files) => {
+        listDefinitionFiles().then((files) => {
             files.forEach((uri: Uri) => { console.log(`DEF_FILE=${uri.path}`); });
             console.log(`Workspace scanned:${workspace.rootPath} - DEF found:${files.length}`);
             assert.notEqual(files.length, 0, "To continue, ensure at least one definition file is provided in the workspace");
@@ -100,7 +101,7 @@ suite("Legato Tests", function () {
     });
 
     function buildActiveDefFile(testCallback: ITestCallbackContext, defFileFilter: any, expectedMktool: string, done: MochaDone) {
-        LegatoManager.getInstance().listDefinitionFiles().then((files) => {
+        listDefinitionFiles().then((files) => {
             let foundSdef: Uri | undefined = files.find(defFileFilter);
             if (foundSdef) {
                 let alreadyProcessed: boolean = false;
