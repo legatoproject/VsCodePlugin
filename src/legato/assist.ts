@@ -35,10 +35,7 @@ export class LegatoUiManager extends CommandRegister {
    */
   private async setInitialState() {
     // Update status bar on env var change
-    LeafManager.getInstance().addListener(
-      LEAF_EVENT.leafEnvVarChanged,
-      (oldEnvVar, newEnvVar) => this.onEnvVarChanged(oldEnvVar, newEnvVar),
-      this);
+    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.onEnvVarChanged, this);
 
     // Set initial value of status bar
     this.onEnvVarChanged(undefined, await LeafManager.getInstance().getEnvVars());
@@ -55,7 +52,7 @@ export class LegatoUiManager extends CommandRegister {
     this.toDispose(legatoTaskProvider);  // Dispose on extension/deactivate
 
     // Create command
-    this.createCommand(LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE, () => this.onPickDefFileCommand());
+    this.createCommand(LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE, this.onPickDefFileCommand);
   }
 
   private async onEnvVarChanged(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {

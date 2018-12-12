@@ -118,16 +118,20 @@ export class DisposableBag extends Array<vscode.Disposable> implements vscode.Di
 export abstract class AbstractManager extends EventEmitter implements vscode.Disposable {
 
     // Dispose management 
-    protected readonly disposables = new DisposableBag();
+    protected readonly disposables = new CommandRegister();
     protected onEventDisposables: { [key: string]: vscode.Disposable[] } = {};
 
     /**
      * Override super method to add disposable bag
      */
-    public addListener(event: string | symbol, listener: (...args: any[]) => void, disposables?: DisposableBag): this {
-        super.addListener(event, listener);
+    public addListener(event: string | symbol, listener: (...args: any[]) => void, caller?: any, disposables?: DisposableBag): this {
+        super.addListener(event, (...args: any[]) => {
+            listener.apply(caller, args);
+        });
         if (disposables) {
             disposables.onDispose(() => this.removeListener(event, listener));
+        } else if (caller instanceof DisposableBag) {
+            caller.onDispose(() => this.removeListener(event, listener));
         }
         return this;
     }
@@ -154,8 +158,8 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
             if (newValue) {
                 let dispArray = event in this.onEventDisposables ? this.onEventDisposables[event] : [];
                 console.log(`[AbstractManager] Instanciate ${newComponents.length} elements on event '${event}'`);
-                for (let index in newComponents) {
-                    dispArray.push(new newComponents[index]);
+                for (let newComponent of newComponents) {
+                    dispArray.push(new newComponent);
                 }
                 this.onEventDisposables[event] = dispArray;
             } else if (event in this.onEventDisposables) {
@@ -173,6 +177,16 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
         }
     }
 
+    /**
+     * Register a command then add it to disposables
+     * @param id A unique identifier for the command.
+     * @param cb A command handler function.
+     * @param thisArg The `this` context used when invoking the handler function.
+     */
+    protected createCommand(id: string, cb: (...args: any[]) => any, thisArg: any = this) {
+        this.disposables.createCommand(id, cb, thisArg);
+    }
+
     public dispose(): any {
         this.removeAllListeners();
         this.disposables.dispose();
@@ -182,8 +196,21 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
 /**
  * Let register a command and handle disposing
  */
-export abstract class CommandRegister extends DisposableBag {
-    protected createCommand(id: string, cb: (...args: any[]) => any) {
-        this.toDispose(vscode.commands.registerCommand(id, cb, this));
+export class CommandRegister extends DisposableBag {
+    /**
+     * Register a command then add it to disposables
+     * @param id A unique identifier for the command.
+     * @param cb A command handler function.
+     * @param thisArg The `this` context used when invoking the handler function.
+     */
+    public createCommand(id: string, cb: (...args: any[]) => any, thisArg: any = this) {
+        this.toDispose(vscode.commands.registerCommand(id, cb, thisArg));
     }
+}
+
+/**
+ * Remove duplicate in an array
+ */
+export function removeDuplicates<T>(arr: Array<T>): Array<T> {
+    return arr.filter((value: T, index: number, array: T[]) => index === array.indexOf(value));
 }

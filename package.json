@@ -46,13 +46,8 @@
             ],
             "view/title": [
                 {
-                    "command": "leaf.cmd.pkg.refresh",
+                    "command": "leaf.cmd.pkg.fetch",
                     "when": "view == leaf-v-pkg",
-                    "group": "navigation"
-                },
-                {
-                    "command": "leaf.cmd.rmt.refresh",
-                    "when": "view == leaf-v-rmt",
                     "group": "navigation"
                 },
                 {
@@ -63,8 +58,18 @@
             ],
             "view/item/context": [
                 {
+                    "command": "_leaf.cmd.pkg.filter.add",
+                    "when": "view == leaf-v-pkg && viewItem == leaf-vi-pkg-filters-container",
+                    "group": "inline"
+                },
+                {
+                    "command": "_leaf.cmd.pkg.filter.remove",
+                    "when": "view == leaf-v-pkg && viewItem == leaf-vi-pkg-filter-element",
+                    "group": "inline"
+                },
+                {
                     "command": "leaf.cmd.pkg.addtoprofile",
-                    "when": "view == leaf-v-pkg && viewItem =~ /leaf-vi-pkg-.*/",
+                    "when": "view == leaf-v-pkg && viewItem =~ /leaf-vi-pkg-(installed|available)/",
                     "group": "inline"
                 },
                 {
@@ -96,8 +101,18 @@
                 "category": "Leaf"
             },
             {
-                "command": "leaf.cmd.pkg.refresh",
-                "title": "Refresh view",
+                "command": "_leaf.cmd.pkg.filter.add",
+                "title": "add...",
+                "category": "Leaf/Packages/Filter"
+            },
+            {
+                "command": "_leaf.cmd.pkg.filter.remove",
+                "title": "remove",
+                "category": "Leaf/Packages/Filter"
+            },
+            {
+                "command": "leaf.cmd.pkg.fetch",
+                "title": "Fetch remotes",
                 "icon": {
                     "light": "resources/refresh.svg",
                     "dark": "resources/refresh.svg"
@@ -108,15 +123,6 @@
                 "command": "leaf.cmd.pkg.addtoprofile",
                 "title": "Add to profile...",
                 "category": "Leaf/Packages"
-            },
-            {
-                "command": "leaf.cmd.rmt.refresh",
-                "title": "Refresh view",
-                "icon": {
-                    "light": "resources/refresh.svg",
-                    "dark": "resources/refresh.svg"
-                },
-                "category": "Leaf/Remotes"
             },
             {
                 "command": "leaf.cmd.rmt.enable",

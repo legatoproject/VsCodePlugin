@@ -12,14 +12,18 @@ import { LeafManager, LEAF_EVENT } from './core';
  * Remotes view and commands
  */
 export class LeafRemotesView extends TreeDataProvider2 {
+
+	/**
+	 * Listen to remote changes
+	 * Create commands
+	 */
 	constructor() {
 		super(LEAF_IDS.VIEWS.REMOTES);
-		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REFRESH, this.refresh);
+		LeafManager.getInstance().addListener(LEAF_EVENT.leafRemotesChanged, this.refresh, this);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.ADD, this.addRemote);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.REMOVE, this.removeRemote);
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.ENABLE, node => this.enableRemote(node));
 		this.createCommand(LEAF_IDS.COMMANDS.REMOTES.DISABLE, node => this.enableRemote(node, false));
-		LeafManager.getInstance().addListener(LEAF_EVENT.leafRemotesChanged, () => this.refresh(), this);
 	}
 
 	/**

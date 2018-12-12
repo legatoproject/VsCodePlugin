@@ -1,7 +1,6 @@
 'use strict';
 
 // This module centralize all ids used in package.json
-
 export const LEAF_IDS = { // leaf
     COMMANDS: { // -cmd
         TERMINAL: { // -trm
@@ -11,11 +10,13 @@ export const LEAF_IDS = { // leaf
             SWITCH: "leaf.cmd.prf.switch"
         },
         PACKAGES: { // -pkg
-            REFRESH: "leaf.cmd.pkg.refresh",
+            ADD_FILTER: "_leaf.cmd.pkg.filter.add", // internal
+            REMOVE_FILTER: "_leaf.cmd.pkg.filter.remove", // internal
+            TOGGLE_FILTER: "_leaf.cmd.pkg.filter.toggle", // internal
+            FETCH: "leaf.cmd.pkg.fetch",
             ADD_TO_PROFILE: "leaf.cmd.pkg.addtoprofile"
         },
         REMOTES: { // -rmt
-            REFRESH: "leaf.cmd.rmt.refresh",
             ADD: "leaf.cmd.rmt.add",
             REMOVE: "leaf.cmd.rmt.remove",
             ENABLE: "leaf.cmd.rmt.enable",
@@ -32,6 +33,10 @@ export const LEAF_IDS = { // leaf
     },
     VIEW_ITEMS: { // -vi
         PACKAGES: { // -pkg
+            PACKAGE_CONTAINER: "leaf-vi-pkg-pkg-container",
+            FILTER_CONTAINER: "leaf-vi-pkg-filters-container",
+            PERMANENT_FILTER: "leaf-vi-pkg-filters-permanent",
+            FILTER: "leaf-vi-pkg-filter-element",
             INSTALLED: "leaf-vi-pkg-installed",
             AVAILABLE: "leaf-vi-pkg-available"
         },

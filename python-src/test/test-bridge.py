@@ -15,8 +15,9 @@ LCI_BIN = ROOT_FOLDER = Path(__file__).parent.parent / "leaf-bridge.py"
 COMMAND_EXIT = "exit\n"
 COMMAND_INFO = '{"command":"info"}\n'
 COMMAND_REMOTES = '{"command":"remotes"}\n'
-COMMAND_INSTALLED = '{"command":"installedPackages"}\n'
-COMMAND_AVAILABLE = '{"command":"availablePackages"}\n'
+COMMAND_PACKAGES = '{"command":"packages"}\n'
+COMMAND_PACKAGES_INSTALLED = '{"command":"packages","args":{"skipAvailable":true}}\n'
+COMMAND_PACKAGES_AVAILABLE = '{"command":"packages","args":{"skipInstalled":true}}\n'
 COMMAND_WORKSPACE = '{"command":"workspaceInfo"}\n'
 COMMAND_WORKSPACE__ws = '{"command":"workspaceInfo","workspace":"%s"}\n'
 COMMAND_VARIABLES__ws = '{"command":"resolveVariables","workspace":"%s"}\n'
@@ -44,20 +45,35 @@ class TestLeafCodeInterface(unittest.TestCase):
             self.assertTrue(isinstance(result['result'], dict))
             self.assertEqual(3, len(result['result']))
 
-    def testAvailable(self):
+    def testPackages(self):
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
-            outs, errs = proc.communicate(input=COMMAND_AVAILABLE.encode())
+            outs, errs = proc.communicate(input=COMMAND_PACKAGES.encode())
             result = json.loads(outs.decode())
             self.assertIsNone(result.get('error'))
             self.assertTrue(isinstance(result['result'], dict))
-            self.assertGreater(len(result['result']), 1)
+            self.assertEqual(len(result['result']), 2)
+            self.assertTrue(isinstance(result['result']['installedPackages'], dict))
+            self.assertTrue(isinstance(result['result']['availablePackages'], dict))
+            self.assertGreater(len(result['result']['installedPackages']), 1)
+            self.assertGreater(len(result['result']['availablePackages']), 1)
 
-    def testInstalled(self):
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
-            outs, errs = proc.communicate(input=COMMAND_INSTALLED.encode())
+            outs, errs = proc.communicate(input=COMMAND_PACKAGES_AVAILABLE.encode())
             result = json.loads(outs.decode())
             self.assertIsNone(result.get('error'))
             self.assertTrue(isinstance(result['result'], dict))
+            self.assertEqual(len(result['result']), 1)
+            self.assertTrue(isinstance(result['result']['availablePackages'], dict))
+            self.assertGreater(len(result['result']['availablePackages']), 1)
+
+        with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
+            outs, errs = proc.communicate(input=COMMAND_PACKAGES_INSTALLED.encode())
+            result = json.loads(outs.decode())
+            self.assertIsNone(result.get('error'))
+            self.assertTrue(isinstance(result['result'], dict))
+            self.assertEqual(len(result['result']), 1)
+            self.assertTrue(isinstance(result['result']['installedPackages'], dict))
+            self.assertGreater(len(result['result']['installedPackages']), 1)
 
     def testWorkspace(self):
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:

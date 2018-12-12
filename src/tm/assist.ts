@@ -60,10 +60,7 @@ export class TargetUiManager extends CommandRegister {
     this.paletteOnDeviceIP.register();
 
     // Listen to env changes
-    LeafManager.getInstance().addListener(
-      LEAF_EVENT.leafEnvVarChanged,
-      (oldEnvVar, newEnvVar) => this.onEnvVarsChange(oldEnvVar, newEnvVar),
-      this);
+    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.onEnvVarsChange, this);
 
     // Show DEST_IP on start
     this.setInitialState();
@@ -76,8 +73,8 @@ export class TargetUiManager extends CommandRegister {
     this.onEnvVarsChange(undefined, await LeafManager.getInstance().getEnvVars());
   }
 
-  private async onEnvVarsChange(oldEnvVars?: any, newEnvVars?: any) {
-    let legatoDeviceIpChange = newEnvVars ? newEnvVars[LEGATO_ENV.DEST_IP] : undefined;
+  private async onEnvVarsChange(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
+    let legatoDeviceIpChange = newEnvVar ? newEnvVar[LEGATO_ENV.DEST_IP] : undefined;
     if (legatoDeviceIpChange) {
       this.targetStatusbar.text = legatoDeviceIpChange;
     }

@@ -21,17 +21,13 @@ export class LeafTerminalManager extends CommandRegister {
     super();
 
     // On profile change, 
-    LeafManager.getInstance().addListener(LEAF_EVENT.profileChanged,
-      (oldProfileName, newProfileName) => this.onProfileChanged(oldProfileName, newProfileName),
-      this);
+    LeafManager.getInstance().addListener(LEAF_EVENT.profileChanged, this.onProfileChanged, this);
 
     // On env change, update leaf terminal
-    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged,
-      (oldEnvVars, newEnvVars) => this.onEnvVarsChange(oldEnvVars, newEnvVars),
-      this);
+    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.onEnvVarsChange, this);
 
     // Also, let's add leaf commands
-    this.createCommand(LEAF_IDS.COMMANDS.TERMINAL.OPENLEAF, () => this.showTerminal());
+    this.createCommand(LEAF_IDS.COMMANDS.TERMINAL.OPENLEAF, this.showTerminal);
 
     // Listen to terminal closing (by user) and launch terminal
     this.toDispose(window.onDidCloseTerminal(this.onCloseTerminal, this));
@@ -50,7 +46,7 @@ export class LeafTerminalManager extends CommandRegister {
   /**
    * EnVars have been modified
    */
-  private async onEnvVarsChange(oldEnvVars: any | undefined, newEnvVars: any | undefined) {
+  private async onEnvVarsChange(oldEnvVars: any | undefined, _newEnvVars: any | undefined) {
     if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
       "Leaf environment has changed; Click to update the Leaf shell terminal.",
       ACTION_LABELS.CANCEL,
@@ -93,7 +89,7 @@ export class LeafTerminalManager extends CommandRegister {
   /**
    * Profile changed, show terminal if exist
    */
-  private onProfileChanged(oldProfileName: string | undefined, newProfileName: string | undefined) {
+  private onProfileChanged(_oldProfileName: string | undefined, newProfileName: string | undefined) {
     if (newProfileName && !this.terminalCreated) {
       console.log(`Preparing Leaf shell based on ${newProfileName}`);
       this.showTerminal();

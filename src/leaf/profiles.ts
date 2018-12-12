@@ -26,14 +26,11 @@ export class LeafProfileStatusBar extends CommandRegister {
     this.leafStatusbar.show();
 
     // Also, let's register leaf command
-    this.createCommand(LEAF_IDS.COMMANDS.PROFILE.SWITCH, () => this.switchProfile());
+    this.createCommand(LEAF_IDS.COMMANDS.PROFILE.SWITCH, this.switchProfile);
     this.leafStatusbar.command = LEAF_IDS.COMMANDS.PROFILE.SWITCH;
 
     // Subscribe to leaf events
-    LeafManager.getInstance().addListener(
-      LEAF_EVENT.profileChanged,
-      (oldProfileName, newProfileName) => this.onProfileChanged(oldProfileName, newProfileName),
-      this);
+    LeafManager.getInstance().addListener(LEAF_EVENT.profileChanged, this.onProfileChanged, this);
     this.setInitialState();
   }
 
@@ -66,7 +63,7 @@ export class LeafProfileStatusBar extends CommandRegister {
   /**
    * Profile has changed, let's update status bar
    */
-  private onProfileChanged(oldProfileName: string | undefined, newProfileName: string | undefined) {
+  private onProfileChanged(_oldProfileName: string | undefined, newProfileName: string | undefined) {
     if (this.leafStatusbar) {
       this.leafStatusbar.text = newProfileName ? newProfileName : 'No profile';
     }

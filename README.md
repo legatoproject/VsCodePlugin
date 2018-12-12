@@ -12,10 +12,17 @@ This extension integrates the `leaf` command-line package/workspace management t
 #### Packages and Remotes
 
 - **Leaf/Packages** view, listing available and installed packages
-  - `Refresh view` command to refresh packages list
+  - `Fetch remotes` command to refresh packages list
   - `Add to profile...` command to configure selected package in existing/new profile
+  - **Filters** node, allowing to handle packages list filtering:
+    - Built-in filters:
+      - **\[master\]**: only "master" (top-level) packages are displayed
+      - **\[available\]**: only available packages (not installed) are displayed
+      - **\[installed\]**: only installed packages are displayed
+    - Custom filters:
+      - Using a regular expression, matching the package identifier or description
+      - Based on one of the package tags
 - **Leaf/Remotes** view, listing configured leaf remotes
-  - `Refresh view` command to refresh remotes list
   - `Add`/`Remove` commands to manage list of known remotes
   - `Enable`/`Disable` commands to configure remote status
 

@@ -1,6 +1,6 @@
 'use strict';
 import * as vscode from 'vscode';
-import { TreeItem2, QuickPickItem2, IUiItems } from '../uiUtils';
+import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem } from '../uiUtils';
 import { LEAF_IDS } from '../identifiers';
 
 // This module is used to declare model/ui mappings using vscode items
@@ -51,6 +51,17 @@ export class PackageQuickPickItem extends QuickPickItem2 {
 	}
 }
 
+export class PackagesContainerTreeItem extends TreeItem2 {
+	constructor() {
+		super("PackageContainer", undefined, // model data
+			"Packages", // label
+			"Packages", // tooltip
+			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
+			LEAF_IDS.VIEW_ITEMS.PACKAGES.PACKAGE_CONTAINER, // contextValue
+			"PackageAvailable.svg"); // iconFileName
+	}
+}
+
 export class PackageTreeItem extends TreeItem2 {
 	constructor(
 		public readonly id: any,
@@ -95,5 +106,67 @@ export class ProfileQuickPickItem extends QuickPickItem2 {
 			return 1;
 		}
 		return super.compareTo(other);
+	}
+}
+
+/***************************
+ *          TAGS           *
+ ***************************/
+
+export class TagQuickPickItem extends QuickPickItem2 {
+	constructor(
+		public readonly tag: string,
+		public readonly packCount: any
+	) {
+		super(tag, packCount,// model data
+			`@${tag}`, // label
+			`${packCount} package(s)`, // description
+			undefined); // details
+	}
+}
+
+/***************************
+ *        FILTERS          *
+ ***************************/
+
+export class FilterContainerTreeItem extends TreeItem2 {
+
+	/**
+	 * Set empty/default values then call refreshLabel()
+	 */
+	constructor(public permanentChildren: FilterTreeItem[], public children: FilterTreeItem[]) {
+		super("FilterContainer", undefined, // model data
+			"Filters", // label
+			"Filters", // tooltip
+			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
+			LEAF_IDS.VIEW_ITEMS.PACKAGES.FILTER_CONTAINER, // contextValue
+			"Filter.svg"); // iconFileName
+	}
+
+	/**
+	 * Return filters as tree items children
+	 */
+	public async getChildren(): Promise<FilterTreeItem[]> {
+		let out: FilterTreeItem[] = []
+		out.push(...this.permanentChildren);
+		out.push(...this.children);
+		return out;
+	}
+}
+
+export class FilterTreeItem extends CheckboxTreeItem {
+	/**
+	 * Text for regexp, start with @ for tag
+	 */
+	constructor(
+		public readonly value: string,
+		contextValue: string = LEAF_IDS.VIEW_ITEMS.PACKAGES.FILTER
+	) {
+		super(`Filter:${value}`, undefined, // model data
+			value, // label
+			value, // tooltip
+			vscode.TreeItemCollapsibleState.None, // collapsibleState
+			contextValue, // contextValue
+			LEAF_IDS.COMMANDS.PACKAGES.TOGGLE_FILTER); // commandId
 	}
 }

@@ -6,6 +6,7 @@
 - New command to open Device logs
 - New command to install app/system on device
 - New build task to build and install in one action
+- Add filters to the package view
 
 ## 0.3.0
 - All commands reworked to be functional from the command palette

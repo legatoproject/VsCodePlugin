@@ -1,6 +1,6 @@
 'use strict';
 import * as vscode from 'vscode';
-import { LeafTerminalManager } from './leaf/leafTerminal';
+import { LeafTerminalManager } from './leaf/terminal';
 import { LeafProfileStatusBar } from './leaf/profiles';
 import { LeafManager } from './leaf/core';
 import { LegatoManager } from './legato/core';
@@ -18,7 +18,7 @@ export async function activate(context: vscode.ExtensionContext) {
     console.log('Extension "Legato Plugin" is now active!');
 
     // Check Leaf installation
-    await LeafManager.checkLeafInstalled();
+    await LeafManager.checkLeafInstalled(context);
 
     // Exclude leaf-data from file watcher
     let config = vscode.workspace.getConfiguration(undefined, null);
@@ -40,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Launch/Dispose on In/Out of LegatoWorkspace
     LegatoManager.getInstance().createAndDisposeOnLegatoWorkspace(
         LegatoUiManager,
-        TargetUiManager, 
+        TargetUiManager,
         LegatoLanguageManager);
 }
 

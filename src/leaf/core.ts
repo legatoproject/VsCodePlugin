@@ -5,8 +5,9 @@ import * as vscode from "vscode";
 import { LeafInterface, LEAF_INTERFACE_COMMANDS } from './bridge';
 import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './taskManager';
 import { ACTION_LABELS } from '../uiUtils';
-import { executeInShell, EnvVars, AbstractManager, debounce } from '../utils';
+import { executeInShell, EnvVars, AbstractManager, debounce, removeDuplicates } from '../utils';
 import { join } from 'path';
+import { LEAF_IDS } from '../identifiers';
 
 export const LEAF_ENV_SCOPE = {
   package: "package",
@@ -18,6 +19,7 @@ export const LEAF_EVENT = { // Events with theirs parameters
   profileChanged: "profileChanged", // oldProfileName: string | undefined, newProfileName: string | undefined
   leafRemotesChanged: "leafRemotesChanged", // oldRemotes: any | undefined, newRemotes: any | undefined
   leafEnvVarChanged: "leafEnvVarChanged", // oldEnvVar: any | undefined, newEnvVar: any | undefined
+  leafPackagesChanged: "leafPackagesChanged", // oldPackages: any | undefined, newPackages: any | undefined
   leafWorkspaceInfoChanged: "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
   onInLeafWorkspaceChange: "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
 };
@@ -26,7 +28,8 @@ export const LEAF_TASKS = {
 };
 const LEAF_FILES = {
   DATA_FOLDER: 'leaf-data',
-  WORKSPACE_FILE: 'leaf-workspace.json'
+  WORKSPACE_FILE: 'leaf-workspace.json',
+  REMOTE_CACHE_FILE: 'remotes.json'
 };
 
 /**
@@ -51,11 +54,12 @@ export class LeafManager extends AbstractManager {
   private leafWorkspaceInfo: Promise<any | undefined> = Promise.resolve(undefined);
   private leafRemotes: Promise<any | undefined> = Promise.resolve(undefined);
   private leafEnvVar: Promise<EnvVars | undefined> = Promise.resolve(undefined);
+  private leafPackages: Promise<any | undefined> = Promise.resolve(undefined);
 
   /**
    * Initialize model infos and start watching leaf files
    */
-  private constructor(leafPath: string) {
+  private constructor(leafPath: string, public readonly context: vscode.ExtensionContext) {
     super();
 
     // Get leaf path
@@ -65,12 +69,18 @@ export class LeafManager extends AbstractManager {
     this.leafInfo = this.requestBridgeInfo();
 
     // Subscribe to workspaceInfo bridge node modification to trig leaf workspace event and profiles event if necessary
-    this.addListener(LEAF_EVENT.leafWorkspaceInfoChanged, this.checkCurrentProfileChangeAndEmit, this.disposables);
-    this.addListener(LEAF_EVENT.leafWorkspaceInfoChanged, this.checkIsLeafWorkspaceChangeAndEmit, this.disposables);
+    this.addListener(LEAF_EVENT.leafWorkspaceInfoChanged, this.checkCurrentProfileChangeAndEmit, this, this.disposables);
+    this.addListener(LEAF_EVENT.leafWorkspaceInfoChanged, this.checkIsLeafWorkspaceChangeAndEmit, this, this.disposables);
+
+    // Create fetch command
+    this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.FETCH, this.fetchRemote);
 
     // Start watching leaf file and set initial values
     this.watchLeafFiles();
-    this.onLeafFileChange(); // Trig first model refreshing
+
+    // Trig first model refreshing
+    this.refreshInfosFromBridge();
+    this.refreshPackagesFromBridge();
   }
 
   /**
@@ -87,7 +97,7 @@ export class LeafManager extends AbstractManager {
   /**
    * Check leaf installation, ask user to install it then check again
    */
-  public static async checkLeafInstalled() {
+  public static async checkLeafInstalled(context: vscode.ExtensionContext) {
     let leafPath = undefined;
     do {
       try {
@@ -104,7 +114,7 @@ export class LeafManager extends AbstractManager {
     } while (!leafPath);
 
     // Initialized singletion
-    LeafManager.INSTANCE = new LeafManager(leafPath);
+    LeafManager.INSTANCE = new LeafManager(leafPath, context);
   }
 
   /**
@@ -150,8 +160,8 @@ export class LeafManager extends AbstractManager {
     this.watchLeafFileByVsCodeWatcher(
       new vscode.RelativePattern(this.getLeafWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER),
       // On leaf-data creation, create watcher for content
-      () => leafDataContentWatcher = this.watchLeafFolderByFsWatch(join(this.getLeafWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER), this.onLeafFileChange),
-      // Do nothing on change (it's filtered by configuration 'files.watcherExclude'  anyway)
+      () => leafDataContentWatcher = this.watchLeafFolderByFsWatch(join(this.getLeafWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER), this.refreshInfosFromBridge),
+      // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
       undefined,
       // On leaf-data deletion, close watcher for content
       () => leafDataContentWatcher ? leafDataContentWatcher.close() : undefined
@@ -160,12 +170,16 @@ export class LeafManager extends AbstractManager {
     // Listen leaf-workspace.json (creation/deletion/change)
     this.watchLeafFileByVsCodeWatcher(
       join(this.getLeafWorkspaceDirectory(), LEAF_FILES.WORKSPACE_FILE),
-      this.onLeafFileChange, this.onLeafFileChange, this.onLeafFileChange);
+      this.refreshInfosFromBridge, this.refreshInfosFromBridge, this.refreshInfosFromBridge);
 
     // Listen config folder
+    let info = await this.leafInfo;
+    this.watchLeafFolderByFsWatch(info.configFolder, this.refreshInfosFromBridge);
+
+    // Listen remotes.json in leaf cache folder
     this.watchLeafFolderByFsWatch(
-      (await this.leafInfo).configFolder,
-      this.onLeafFileChange);
+      info.cacheFolder,
+      filename => filename === LEAF_FILES.REMOTE_CACHE_FILE ? this.refreshPackagesFromBridge() : undefined);
   }
 
   /**
@@ -209,13 +223,13 @@ export class LeafManager extends AbstractManager {
    * folder: The folder to watch
    * WARNING: This watcher is closed forever when the folder is deleted.
    */
-  private watchLeafFolderByFsWatch(folder: string, callback: () => any): fs.FSWatcher {
+  private watchLeafFolderByFsWatch(folder: string, callback: (filename: string) => any): fs.FSWatcher {
     console.log(`[FileWatcher] Watch folder using fs '${folder}' for changes in any files}`);
     let watcher = fs.watch(folder);
     this.disposables.onDispose(() => watcher.close());
     watcher.addListener("change", (eventType: string, filename: string | Buffer) => {
       console.log(`[FileWatcher] File watcher from fs fire an event: type=${eventType} filename=${filename.toString()}`);
-      callback.apply(this);
+      callback.call(this, filename);
     });
     return watcher;
   }
@@ -225,19 +239,38 @@ export class LeafManager extends AbstractManager {
    * Check workspace change and emit event if necessary
    */
   @debounce(100) // This method call is debounced (100ms)
-  private onLeafFileChange() {
-    console.log("[LeafManager] Refresh infos from leaf bridge");
-    this.leafWorkspaceInfo = this.compareAndTrigEvent(LEAF_EVENT.leafWorkspaceInfoChanged, LEAF_INTERFACE_COMMANDS.WORKSPACE_INFO, this.leafWorkspaceInfo);
-    this.leafEnvVar = this.compareAndTrigEvent(LEAF_EVENT.leafEnvVarChanged, LEAF_INTERFACE_COMMANDS.RESOLVE_VAR, this.leafEnvVar);
-    this.leafRemotes = this.compareAndTrigEvent(LEAF_EVENT.leafRemotesChanged, LEAF_INTERFACE_COMMANDS.REMOTES, this.leafRemotes);
+  private refreshInfosFromBridge() {
+    console.log("[LeafManager] Refresh workspaceInfo, envars and remotes from leaf bridge");
+    this.leafWorkspaceInfo = this.compareAndTrigEvent(
+      LEAF_EVENT.leafWorkspaceInfoChanged,
+      this.leafWorkspaceInfo,
+      this.leafInterface.send(LEAF_INTERFACE_COMMANDS.WORKSPACE_INFO));
+    this.leafEnvVar = this.compareAndTrigEvent(
+      LEAF_EVENT.leafEnvVarChanged,
+      this.leafEnvVar,
+      this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR));
+    this.leafRemotes = this.compareAndTrigEvent(
+      LEAF_EVENT.leafRemotesChanged,
+      this.leafRemotes,
+      this.leafInterface.send(LEAF_INTERFACE_COMMANDS.REMOTES));
+  }
+
+  /**
+   * Called when something change in remote.json in leaf cache folder
+   * Check packages change and emit event if necessary
+   */
+  @debounce(100) // This method call is debounced (100ms)
+  private refreshPackagesFromBridge() {
+    console.log("[LeafManager] Refresh packages from leaf bridge");
+    this.leafPackages = this.compareAndTrigEvent(LEAF_EVENT.leafPackagesChanged, this.leafPackages, this.requestMasterPackages());
   }
 
   /**
    * Send request from leaf bridge and emit the correspoding event if something change
    */
-  private async compareAndTrigEvent(event: string, cmd: string, currentPromise: Promise<any | undefined>): Promise<any> {
-    let oldValue = await currentPromise;
-    let newValue = await this.leafInterface.send(cmd);
+  private async compareAndTrigEvent(event: string, oldPromise: Promise<any | undefined>, newPromise: Promise<any | undefined>): Promise<any> {
+    let oldValue = await oldPromise;
+    let newValue = await newPromise;
     if (!oldValue || JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
       this.emit(event, oldValue, newValue);
     }
@@ -310,25 +343,68 @@ export class LeafManager extends AbstractManager {
    * Return master packages (available and installed)
    * Set installed property on returned object
    */
-  public async requestMasterPackages(): Promise<any> {
+  private async requestMasterPackages(): Promise<any> {
+
+    // Get all packages available.
     let out: { [key: string]: any } = {};
-    let ap = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.AVAILABLE_PACKAGES);
+    let packs = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.PACKAGES);
+    let ap = packs.availablePackages;
     for (let packId in ap) {
+      // Get available package
       let pack = ap[packId];
-      if (pack.info.master) {
-        out[packId] = pack;
-        out[packId].installed = false;
-      }
+      // Add to out
+      out[packId] = pack;
+      // Mark as not installed (available)
+      out[packId].installed = false;
     }
-    let ip = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.INSTALLED_PACKAGES);
+
+    // Get installed packages to override available packages with.
+    let ip = packs.installedPackages;
     for (let packId in ip) {
+      // Get installed package
       let pack = ip[packId];
-      if (pack.info.master) {
-        out[packId] = pack;
-        out[packId].installed = true;
+      // Get available package with the same id
+      let overiddenPack = out[packId];
+      if (overiddenPack) {
+        // Copy tags from overridden one
+        this.mergeAvailableAndInstalledInfoField("tags", overiddenPack, pack);
+        this.mergeAvailableAndInstalledInfoField("customTags", overiddenPack, pack);
+      }
+
+      // Mark as installed
+      pack.installed = true;
+
+      // Add to out (and maybe override an available)
+      out[packId] = pack;
+    }
+
+    // Merge tags and customTags into Tags
+    for (let packId in out) {
+      let tags: string[] = out[packId].info.tags;
+      if (!tags) {
+        tags = [];
+      }
+      let customTags = out[packId].info.customTags;
+      if (customTags) {
+        tags.push(...customTags);
+      }
+      out[packId].info.tags = removeDuplicates(tags); // Avoid duplicates
+    }
+
+    return out;
+  }
+
+  /**
+   * Populate tags from available to corresponding install package
+   */
+  private mergeAvailableAndInstalledInfoField(infoField: string, fromPack: any, toPack: any) {
+    if (fromPack.info[infoField]) {
+      if (toPack.info[infoField]) {
+        toPack.info[infoField].push(...fromPack.info[infoField]);
+      } else {
+        toPack.info[infoField] = fromPack.info[infoField];
       }
     }
-    return out;
   }
 
   /**
@@ -344,6 +420,29 @@ export class LeafManager extends AbstractManager {
   public async getProfiles(): Promise<any> {
     let wsInfo = await this.leafWorkspaceInfo;
     return wsInfo ? wsInfo.profiles : undefined;
+  }
+
+  /**
+   * @return master available and installed packages as a object
+   */
+  public async getAllPackages(): Promise<any> {
+    return this.leafPackages;
+  }
+
+  /**
+   * Return tags with package count
+   */
+  public async getTags(): Promise<{ [key: string]: number }> {
+    let packs = await this.leafPackages;
+    let out: { [key: string]: number } = {};
+    if (packs) {
+      for (let packId in packs) {
+        for (let tag of packs[packId].info.tags) {
+          tag in out ? out[tag]++ : out[tag] = 1;
+        }
+      }
+    }
+    return out;
   }
 
   /**

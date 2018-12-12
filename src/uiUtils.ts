@@ -47,19 +47,20 @@ export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPic
 		super(id, properties);
 	}
 }
+
 /**
  * Base for TreeItem
  */
-export abstract class TreeItem2 extends IUiItems implements vscode.TreeItem {
+export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 	constructor(
 		public readonly id: string,
 		public readonly properties: any,
-		public readonly label: string,
-		public readonly tooltip: string,
+		public label: string,
+		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly contextValue: string,
 		private iconFileName?: string,
-		public readonly command?: vscode.Command
+		public command?: vscode.Command
 	) {
 		super(id, properties);
 	}
@@ -68,10 +69,43 @@ export abstract class TreeItem2 extends IUiItems implements vscode.TreeItem {
 		return [];
 	}
 
-	iconPath = this.iconFileName ? {
-		light: path.join(__filename, '..', '..', 'resources', this.iconFileName),
-		dark: path.join(__filename, '..', '..', 'resources', this.iconFileName)
-	} : undefined;
+	iconPath = this.iconFileName ? path.join(__filename, '..', '..', 'resources', this.iconFileName) : undefined;
+}
+
+
+/**
+ * Checkbox
+ */
+export class CheckboxTreeItem extends TreeItem2 {
+	private checked: boolean = true;
+
+	constructor(
+		public readonly id: string,
+		public readonly properties: any,
+		public label: string,
+		public tooltip: string,
+		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly contextValue: string,
+		commandId: string
+	) {
+		super(id, properties, label, tooltip, collapsibleState, contextValue);
+		this.command = {
+			title: "Toggle checkbox",
+			command: commandId,
+			arguments: [this]
+		};
+		this.setChecked(this.checked); // Set initial icon
+	}
+
+	public setChecked(value: boolean) {
+		this.checked = value;
+		let iconFileName = value ? 'CheckedCheckbox.svg' : 'UncheckedCheckbox.svg';
+		this.iconPath = path.join(__filename, '..', '..', 'resources', iconFileName);
+	}
+
+	public isChecked(): boolean {
+		return this.checked;
+	}
 }
 
 /**
@@ -86,22 +120,22 @@ export abstract class TreeDataProvider2 extends CommandRegister implements vscod
 		this.toDispose(vscode.window.registerTreeDataProvider(viewId, this));
 	}
 
-	refresh(): void {
+	protected refresh(): void {
 		this._onDidChangeTreeData.fire();
 	}
 
-	getTreeItem(element: TreeItem2): vscode.TreeItem {
+	public getTreeItem(element: TreeItem2): vscode.TreeItem {
 		return element;
 	}
 
-	async getChildren(element?: TreeItem2): Promise<TreeItem2[]> {
+	public async getChildren(element?: TreeItem2): Promise<TreeItem2[]> {
 		if (element) {
 			return element.getChildren();
 		}
 		return this.getRootElements();
 	}
 
-	async abstract getRootElements(): Promise<TreeItem2[]>;
+	protected async abstract getRootElements(): Promise<TreeItem2[]>;
 }
 
 /**

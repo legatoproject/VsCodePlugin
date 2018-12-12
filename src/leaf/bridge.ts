@@ -11,8 +11,7 @@ import { PromiseCallbacks } from '../utils';
 export const LEAF_INTERFACE_COMMANDS = {
     INFO: "info",
     REMOTES: "remotes",
-    INSTALLED_PACKAGES: "installedPackages",
-    AVAILABLE_PACKAGES: "availablePackages",
+    PACKAGES: "packages",
     WORKSPACE_INFO: "workspaceInfo",
     RESOLVE_VAR: "resolveVariables",
     EXIT: "exit"
@@ -86,21 +85,20 @@ export class LeafInterface {
         if (this.stdoutBuffer.endsWith("\n")) {
             let lines: string[] = this.stdoutBuffer.split(/\r?\n/).filter((value) => value.length > 0);
             this.stdoutBuffer = "";
-            for (let index in lines) {
+            for (let line of lines) {
                 try {
-                    let jsonResponse: string = lines[index];
-                    let anyResponse: any = JSON.parse(jsonResponse);
+                    let anyResponse: any = JSON.parse(line);
                     if (this.pendingRequests && anyResponse.id in this.pendingRequests) {
                         let pendingRequest = this.pendingRequests[anyResponse.id];
                         if (anyResponse.result) {
                             pendingRequest.resolve(anyResponse.result);
-                            console.log(`[Leaf Bridge] Response received for id '${anyResponse.id}': '${jsonResponse.substring(0, 10)}...'`);
+                            console.log(`[Leaf Bridge] Response received for id '${anyResponse.id}': '${line.substring(0, 10)}...'`);
                         } else if (anyResponse.error) {
                             pendingRequest.resolve(undefined);
                             console.log(`[Leaf Bridge] Error received for id '${anyResponse.id}': '${anyResponse.error}...'`);
                         } else {
                             pendingRequest.resolve(undefined);
-                            console.log(`[Leaf Bridge] No 'result' or 'error' child node in parsed json '${jsonResponse.substring(0, 10)}...'`);
+                            console.log(`[Leaf Bridge] No 'result' or 'error' child node in parsed json '${line.substring(0, 10)}...'`);
                         }
                         delete this.pendingRequests[anyResponse.id];
                     } else {

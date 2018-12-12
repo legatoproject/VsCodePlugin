@@ -15,11 +15,13 @@ import subprocess
 import sys
 import traceback
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from pathlib import Path
 
 from leaf import __version__
 from leaf.constants import EnvConstants
 from leaf.core.packagemanager import PackageManager, RemoteManager
+from leaf.core.tags import TagManager
 from leaf.core.workspacemanager import WorkspaceManager
 from leaf.format.logger import Verbosity
 
@@ -67,43 +69,51 @@ class RemotesHandler(LeafHandler):
         return out
 
 
-class InstalledPackagesHandler(LeafHandler):
+class PackagesHandler(LeafHandler):
     '''
     Input Payload:
     {
-        "command": "installedPackages"
+        "command": "packages"
+        "args": {
+            "skipInstalled": true, // Optional, default false
+            "skipAvailable": true // Optional, default false
+        }
     }
     '''
 
     def getName(self):
-        return "installedPackages"
+        return "packages"
 
     def execute(self, **kwargs):
         pm = PackageManager(Verbosity.QUIET)
+        ipMap = None
+        apMap = None
+        if 'skipInstalled' not in kwargs or not kwargs['skipInstalled']:
+            ipMap = pm.listInstalledPackages()
+        if 'skipAvailable' not in kwargs or not kwargs['skipAvailable']:
+            apMap = pm.listAvailablePackages()
+        
+        # if we have install & available packages, tag packages:
+        if ipMap is not None and apMap is not None:
+            mfList = list(ipMap.values()) + list(apMap.values())
+            TagManager().tagLatest(mfList)
+            TagManager().tagInstalled(apMap.values(), ipMap)
         out = {}
-        for pi, ip in pm.listInstalledPackages().items():
-            out[str(pi)] = ip.json
-            out[str(pi)]['folder'] = str(ip.folder)
-        return out
-
-
-class AvailablePackagesHandler(LeafHandler):
-    '''
-    Input Payload:
-    {
-        "command": "availablePackages"
-    }
-    '''
-
-    def getName(self):
-        return "availablePackages"
-
-    def execute(self, **kwargs):
-        pm = PackageManager(Verbosity.QUIET)
-        out = {}
-        for pi, ap in pm.listAvailablePackages().items():
-            out[str(pi)] = ap.json
-            out[str(pi)]['remoteUrl'] = ap.remoteUrl
+        # Build the output list
+        if ipMap is not None:
+            out['installedPackages'] = {}
+            for pi, ip in ipMap.items():
+                data = ip.json
+                data['folder'] = str(ip.folder)
+                data['info']['customTags'] = ip.customTags
+                out['installedPackages'][str(pi)] = data
+        if apMap is not None:
+            out['availablePackages'] = {}
+            for pi, ap in apMap.items():
+                data = ap.json
+                data['remoteUrl'] = ap.remoteUrl
+                data['info']['customTags'] = ap.customTags
+                out['availablePackages'][str(pi)] = data
         return out
 
 
@@ -209,8 +219,7 @@ if __name__ == '__main__':
     handlers = {}
     for handler in (InfoHandler(),
                     RemotesHandler(),
-                    InstalledPackagesHandler(),
-                    AvailablePackagesHandler(),
+                    PackagesHandler(),
                     WorkspaceHandler(),
                     VariablesHandler()):
         handlers[handler.getName()] = handler
