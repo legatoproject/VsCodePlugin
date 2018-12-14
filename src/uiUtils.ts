@@ -10,6 +10,7 @@ import { Views, Commands, Contexts } from './identifiers';
  */
 export const ACTION_LABELS = {
 	APPLY: "Apply",
+	OK: "OK",
 	CANCEL: "Cancel",
 	REMOVE: "Remove",
 	ADD_TO_QUEUE: "Queue",

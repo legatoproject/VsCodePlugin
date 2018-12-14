@@ -58,6 +58,8 @@ This extension provides the following features to ease Legato development in VS 
 - `Legato/Device: Open Shell` command to open an SSH terminal on the remote Legato device
 - `Legato/Device: Open Logs` command to open an SSH terminal showing remote Legato device logs
 - `Legato/Device: Install on device` command for app/device install (also available in **\*.update** files right-click menu)
+- `Legato/Device: Flash image to device` command for device image flashing (also available in **\*.cwe/\*.spk** files right-click menu)
+- `Legato/Device: Reset user partition` command to restore device file system in its original state
 
 ## Settings
 

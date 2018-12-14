@@ -29,7 +29,10 @@ export const enum Commands { // (cmd)
     LegatoTmShell = "cmd.legato.tm.shell",
     LegatoTmSetIp = "cmd.legato.tm.set.ip",
     LegatoTmLogs = "cmd.legato.tm.logs",
-    LegatoTmInstallOn = "cmd.legato.tm.install.on"
+    LegatoTmInstallOn = "cmd.legato.tm.install.on",
+    LegatoTmDeviceFlashImage = "cmd.legato.tm.flash",
+    LegatoTmFlashImageRecovery = "cmd.legato.tm.flash.recovery",
+    LegatoTmResetUserPartition = "cmd.legato.tm.reset.partition.user"
 }
 
 export const enum Contexts { // (context)

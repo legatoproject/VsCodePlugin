@@ -5,9 +5,10 @@ import * as vscode from "vscode";
 import { ContextualCommandPalette } from "./commands";
 import { LeafManager, LeafEvent } from "../leaf/core";
 import { LEGATO_ENV } from "../legato/core";
-import { chooseFile, listUpdateFiles } from "../legato/files";
+import { chooseFile, listUpdateFiles, listImageFiles } from "../legato/files";
 import { CommandRegister } from '../utils';
 import { Commands } from '../identifiers';
+import { ACTION_LABELS } from '../uiUtils';
 
 const TARGET_SHELL_LABEL = 'Device shell';
 const LOG_SHELL_LABEL = 'Device logs';
@@ -48,14 +49,27 @@ export class TargetUiManager extends CommandRegister {
           id: Commands.LegatoTmLogs,
           label: "Open Device logs",
           callback: () => this.logTerminal.show()
-        }
-        ,
+        },
         {
           id: Commands.LegatoTmInstallOn,
           label: "Install app/system on device...",
           callback: (args: any[]) => this.installOnDevice(args)
+        },
+        {
+          id: Commands.LegatoTmDeviceFlashImage,
+          label: "Flash image to device...",
+          callback: (args: any[]) => this.flashImage(false, args)
+        },
+        {
+          id: Commands.LegatoTmFlashImageRecovery,
+          label: "Flash image to device (recovery mode)...",
+          callback: (args: any[]) => this.flashImage(true, args)
+        },
+        {
+          id: Commands.LegatoTmResetUserPartition,
+          label: "Reset user partition (recovery mode)",
+          callback: () => this.resetUserPartition()
         }
-
       ],
       'Select the command to apply on device...');
     this.paletteOnDeviceIP.register();
@@ -96,7 +110,7 @@ export class TargetUiManager extends CommandRegister {
 
   private async installOnDevice(...selectedFile: any[]) {
     let updateFiles: vscode.Uri[] = await listUpdateFiles();
-    let selectedUpdateFile = selectedFile[0] ? selectedFile[0] : await chooseFile(updateFiles,
+    let selectedUpdateFile = selectedFile && selectedFile[0] ? selectedFile[0] : await chooseFile(updateFiles,
       {
         noFileFoundMessage: "No *.update files found in workspace.",
         quickPickPlaceHolder: "Please select an update file among ones available in the workspace..."
@@ -104,10 +118,39 @@ export class TargetUiManager extends CommandRegister {
 
     if (selectedUpdateFile) {
       let command = `update ${selectedUpdateFile.path}`;
-      LeafManager.getInstance().taskManager.executeAsTask(`Install ${basename(selectedUpdateFile.path)} on device`, command, await LeafManager.getInstance().getEnvVars());
+      LeafManager.getInstance().taskManager.executeAsTask(`Install ${basename(selectedUpdateFile.path)}`, command, await LeafManager.getInstance().getEnvVars());
     }
   }
 
+  private async flashImage(recovery: boolean, ...selectedFile: any[]) {
+    let imageFiles: vscode.Uri[] = await listImageFiles();
+    let selectedUpdateFile = selectedFile && selectedFile[0] ? selectedFile[0] : await chooseFile(imageFiles,
+      {
+        noFileFoundMessage: "Neither *.cwe nor .spk files found in workspace.",
+        quickPickPlaceHolder: "Please select either .cwe or .spk file among ones available in the workspace..."
+      });
+
+    if (selectedUpdateFile) {
+      let command = recovery ? `swiflash -m $LEGATO_TARGET -i ${selectedUpdateFile.path}` : `fwupdate download ${selectedUpdateFile.path}`;
+      LeafManager.getInstance().taskManager.executeAsTask(`${recovery ? "[Recovery]" : ""} Flash ${basename(selectedUpdateFile.path)}`, command, await LeafManager.getInstance().getEnvVars());
+    }
+  }
+
+  private resetUserPartition() {
+    this.askUserToEraseUserPartition().then(async (confirmed: any) => {
+      if (confirmed) {
+        let command = "swiflash -m $LEGATO_TARGET -r";
+        LeafManager.getInstance().taskManager.executeAsTask(`[Recovery] Reset the user partition`, command, await LeafManager.getInstance().getEnvVars());
+      }
+    });
+  }
+
+  private async askUserToEraseUserPartition(): Promise<boolean> {
+    return ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+      "This will restore the device file system by erasing all user files.",
+      ACTION_LABELS.CANCEL,
+      ACTION_LABELS.OK);
+  }
 }
 
 export class RemoteTerminal {

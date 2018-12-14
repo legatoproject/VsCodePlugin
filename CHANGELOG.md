@@ -5,6 +5,7 @@
 - Device status bar now pops up a menu with device related commands
 - New command to open Device logs
 - New command to install app/system on device
+- New commands to flash images on device
 - New build task to build and install in one action
 - Add filters to the package view
 - Add Leaf Profiles view + commands to remove packages from profiles, and to remove profiles

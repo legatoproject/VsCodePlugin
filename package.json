@@ -42,9 +42,29 @@
         "menus": {
             "explorer/context": [
                 {
-                    "command": "cmd.legato.device.install.on",
+                    "command": "cmd.legato.tm.install.on",
                     "group": "z_commands",
                     "when": "resourceExtname == .update"
+                },
+                {
+                    "command": "cmd.legato.tm.flash",
+                    "group": "z_commands@1",
+                    "when": "resourceExtname == .cwe"
+                },
+                {
+                    "command": "cmd.legato.tm.flash",
+                    "group": "z_commands@1",
+                    "when": "resourceExtname == .spk"
+                },
+                {
+                    "command": "cmd.legato.tm.flash.recovery",
+                    "group": "z_commands@2",
+                    "when": "resourceExtname == .cwe"
+                },
+                {
+                    "command": "cmd.legato.tm.flash.recovery",
+                    "group": "z_commands@2",
+                    "when": "resourceExtname == .spk"
                 }
             ],
             "view/title": [
@@ -173,23 +193,38 @@
                 "category": "Legato"
             },
             {
-                "command": "cmd.legato.device.shell",
+                "command": "cmd.legato.tm.shell",
                 "title": "Open Shell",
                 "category": "Legato/Device"
             },
             {
-                "command": "cmd.legato.device.logs",
+                "command": "cmd.legato.tm.logs",
                 "title": "Open Logs",
                 "category": "Legato/Device"
             },
             {
-                "command": "cmd.legato.device.ip",
+                "command": "cmd.legato.tm.ip",
                 "title": "Set IP address",
                 "category": "Legato/Device"
             },
             {
-                "command": "cmd.legato.device.install.on",
+                "command": "cmd.legato.tm.install.on",
                 "title": "Install on device",
+                "category": "Legato/Device"
+            },
+            {
+                "command": "cmd.legato.tm.flash",
+                "title": "Flash image to device",
+                "category": "Legato/Device"
+            },
+            {
+                "command": "cmd.legato.tm.flash.recovery",
+                "title": "Flash image to device (recovery mode)",
+                "category": "Legato/Device"
+            },
+            {
+                "command": "cmd.legato.tm.reset.partition.user",
+                "title": "Reset user partition (recovery mode)",
                 "category": "Legato/Device"
             }
         ],
