@@ -1,67 +1,71 @@
 'use strict';
 
 // This module centralize all ids used in package.json
-export const LEAF_IDS = { // leaf
-    COMMANDS: { // -cmd
-        TERMINAL: { // -trm
-            OPENLEAF: "leaf.cmd.trm.openleaf"
-        },
-        PROFILE: { // -prf
-            SWITCH: "leaf.cmd.prf.switch"
-        },
-        PACKAGES: { // -pkg
-            ADD_FILTER: "_leaf.cmd.pkg.filter.add", // internal
-            REMOVE_FILTER: "_leaf.cmd.pkg.filter.remove", // internal
-            TOGGLE_FILTER: "_leaf.cmd.pkg.filter.toggle", // internal
-            FETCH: "leaf.cmd.pkg.fetch",
-            ADD_TO_PROFILE: "leaf.cmd.pkg.addtoprofile"
-        },
-        REMOTES: { // -rmt
-            ADD: "leaf.cmd.rmt.add",
-            REMOVE: "leaf.cmd.rmt.remove",
-            ENABLE: "leaf.cmd.rmt.enable",
-            DISABLE: "leaf.cmd.rmt.disable"
-        }
+export const enum Commands { // (cmd)
+    // #### LEAF (.leaf) ####
+    // TERMINAL (.trm)
+    LeafTerminalOpenLeaf = "cmd.leaf.trm.openleaf",
+    // PROFILES (.prf)
+    LeafProfileSwitch = "cmd.leaf.prf.switch",
+    LeafProfileRemove = "cmd.leaf.prf.remove",
+    LeafProfilePackageRemove = "cmd.leaf.prf.pkgremove",
+    // PACKAGES (.pkg)
+    LeafPackagesAddFilter = "cmd.leaf.pkg.filter.add",
+    LeafPackagesRemoveFilter = "cmd.leaf.pkg.filter.remove",
+    LeafPackagesToggleFilter = "_cmd.leaf.pkg.filter.toggle", // internal
+    LeafPackagesFetch = "cmd.leaf.pkg.fetch",
+    LeafPackagesAddToProfile = "cmd.leaf.pkg.addtoprofile",
+    // REMOTES (.rmt)
+    LeafRemotesAdd = "cmd.leaf.rmt.add",
+    LeafRemotesRemove = "cmd.leaf.rmt.remove",
+    LeafRemotesEnable = "cmd.leaf.rmt.enable",
+    LeafRemotesDisable = "cmd.leaf.rmt.disable",
 
-    },
-    VIEWS_CONTAINERS: { // -vc
-        LEAF: "leaf-vc"
-    },
-    VIEWS: { // -v
-        PACKAGES: "leaf-v-pkg",
-        REMOTES: "leaf-v-rmt"
-    },
-    VIEW_ITEMS: { // -vi
-        PACKAGES: { // -pkg
-            PACKAGE_CONTAINER: "leaf-vi-pkg-pkg-container",
-            FILTER_CONTAINER: "leaf-vi-pkg-filters-container",
-            PERMANENT_FILTER: "leaf-vi-pkg-filters-permanent",
-            FILTER: "leaf-vi-pkg-filter-element",
-            INSTALLED: "leaf-vi-pkg-installed",
-            AVAILABLE: "leaf-vi-pkg-available"
-        },
-        REMOTES: { // -rmt
-            ENABLED: "leaf-vi-rmt-enabled",
-            DISABLE: "leaf-vi-rmt-disabled"
-        }
-    },
-    TASK_DEFINITION: {
-        LEAF: "Leaf"
-    }
-};
+    // #### LEGATO (.legato) ####
+    // BUILD (.build)
+    LegatoBuildPickDefFile = "cmd.legato.build.pickDefFile",
+    // TM (.tm)
+    LegatoTmCommandPalette = "_cmd.legato.tm.availablecommands", // internal
+    LegatoTmShell = "cmd.legato.tm.shell",
+    LegatoTmSetIp = "cmd.legato.tm.set.ip",
+    LegatoTmLogs = "cmd.legato.tm.logs",
+    LegatoTmInstallOn = "cmd.legato.tm.install.on"
+}
 
-export const LEGATO_IDS = { // legato
-    COMMANDS: { // -cmd
-        BUILD: {
-            PICK_DEF_FILE: "legato.cmd.build.pickDefFile"
-        },
-        TM: { // -tm
-            SHOW_TERMINAL: "legato.cmd.tm.openShell",
-            SET_DEVICE_IP: "legato.cmd.tm.newIP"
-        }
-    },
-    TASK_DEFINITION: {
-        LEGATO_BUILD: "Legato Build",
-        LEGATO_INSTALL: "Legato Install"
-    }
-};
+export const enum Contexts { // (context)
+    // #### LEAF (-leaf) ####
+    // PACKAGES (-pkg)
+    LeafPackagesContainer = "context-leaf-pkg-container",
+    LeafPackagesFilterContainer = "context-leaf-pkg-filters-container",
+    LeafPackagesPermanentFilter = "context-leaf-pkg-filters-permanent",
+    LeafPackagesFilter = "context-leaf-pkg-filter-element",
+    LeafPackageInstalled = "context-leaf-pkg-installed",
+    LeafPackageAvailable = "context-leaf-pkg-available",
+    // REMOTES (-rmt)
+    LeafRemoteEnabled = "context-leaf-rmt-enabled",
+    LeafRemoteDisabled = "context-leaf-rmt-disabled",
+    // PROFILES (-prf)
+    LeafProfileCurrent = "context-leaf-prf-current",
+    LeafProfileOther = "context-leaf-prf-other"
+}
+
+export const enum Views { // (view)
+    // #### LEAF (-leaf) ####
+    LeafPackages = "view-leaf-pkg",
+    LeafRemotes = "view-leaf-rmt",
+    LeafProfiles = "view-leaf-prf"
+}
+
+export const enum ViewsContainers { // (viewcontainer)
+    // #### LEAF #### (-leaf)
+    Leaf = "viewcontainer-leaf"
+}
+
+export const enum TaskDefinitions { //
+    // #### LEAF ####
+    Leaf = "Leaf",
+
+    // #### LEGATO ####
+    LegatoBuild = "Legato Build",
+    LegatoInstall = "Legato Install"
+}

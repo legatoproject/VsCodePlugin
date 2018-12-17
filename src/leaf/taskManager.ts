@@ -1,7 +1,7 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { LEAF_IDS } from '../identifiers';
+import { TaskDefinitions } from '../identifiers';
 import { ACTION_LABELS } from '../uiUtils';
 import { EnvVars, PromiseCallbacks } from '../utils';
 
@@ -62,7 +62,7 @@ export abstract class AbstractLeafTaskManager {
      */
     private createNewTask(name: string, cmd: string, additionalEnv?: EnvVars): vscode.Task {
         let taskDefinition = {
-            type: LEAF_IDS.TASK_DEFINITION.LEAF,
+            type: TaskDefinitions.Leaf,
             taskId: this.idGenerator.next().value
         };
         let target: vscode.WorkspaceFolder = {

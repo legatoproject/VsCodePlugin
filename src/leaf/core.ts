@@ -2,27 +2,28 @@
 
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { LeafInterface, LEAF_INTERFACE_COMMANDS } from './bridge';
+import { LeafBridge, LeafBridgeCommands } from './bridge';
 import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './taskManager';
 import { ACTION_LABELS } from '../uiUtils';
 import { executeInShell, EnvVars, AbstractManager, debounce, removeDuplicates } from '../utils';
 import { join } from 'path';
-import { LEAF_IDS } from '../identifiers';
+import { Commands } from '../identifiers';
 
-export const LEAF_ENV_SCOPE = {
-  package: "package",
-  workspace: "workspace",
-  profile: "profile",
-  user: "user"
-};
-export const LEAF_EVENT = { // Events with theirs parameters
-  profileChanged: "profileChanged", // oldProfileName: string | undefined, newProfileName: string | undefined
-  leafRemotesChanged: "leafRemotesChanged", // oldRemotes: any | undefined, newRemotes: any | undefined
-  leafEnvVarChanged: "leafEnvVarChanged", // oldEnvVar: any | undefined, newEnvVar: any | undefined
-  leafPackagesChanged: "leafPackagesChanged", // oldPackages: any | undefined, newPackages: any | undefined
-  leafWorkspaceInfoChanged: "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
-  onInLeafWorkspaceChange: "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
-};
+export const enum LeafEnvScope {
+  Package = "package",
+  Workspace = "workspace",
+  Profile = "profile",
+  User = "user"
+}
+export const enum LeafEvent { // Events with theirs parameters
+  CurrentProfileChanged = "currentProfileChanged", // oldProfileName: string | undefined, newProfileName: string | undefined
+  ProfilesChanged = "leafProfilesChanged", // oldProfiles: any | undefined, newProfiles: any | undefined
+  RemotesChanged = "leafRemotesChanged", // oldRemotes: any | undefined, newRemotes: any | undefined
+  EnvVarChanged = "leafEnvVarChanged", // oldEnvVar: any | undefined, newEnvVar: any | undefined
+  PackagesChanged = "leafPackagesChanged", // oldPackages: any | undefined, newPackages: any | undefined
+  WorkspaceInfoChanged = "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
+  onInLeafWorkspaceChange = "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
+}
 export const LEAF_TASKS = {
   setEnv: "set Leaf env"
 };
@@ -35,7 +36,7 @@ const LEAF_FILES = {
 /**
  * LeafManager is responsible for the leaf lifecycle.
  */
-export class LeafManager extends AbstractManager {
+export class LeafManager extends AbstractManager<LeafEvent> {
 
   // Singleton instance
   private static INSTANCE: LeafManager;
@@ -44,7 +45,7 @@ export class LeafManager extends AbstractManager {
   public readonly taskManager: AbstractLeafTaskManager = this.disposables.toDispose(new SequencialLeafTaskManager());
 
   // Leaf Bridge
-  private readonly leafInterface: LeafInterface = new LeafInterface();
+  private readonly leafInterface: LeafBridge = new LeafBridge();
 
   // Read-only leaf data
   private readonly leafPath: string;
@@ -69,11 +70,12 @@ export class LeafManager extends AbstractManager {
     this.leafInfo = this.requestBridgeInfo();
 
     // Subscribe to workspaceInfo bridge node modification to trig leaf workspace event and profiles event if necessary
-    this.addListener(LEAF_EVENT.leafWorkspaceInfoChanged, this.checkCurrentProfileChangeAndEmit, this, this.disposables);
-    this.addListener(LEAF_EVENT.leafWorkspaceInfoChanged, this.checkIsLeafWorkspaceChangeAndEmit, this, this.disposables);
+    this.addListener(LeafEvent.WorkspaceInfoChanged, this.checkCurrentProfileChangeAndEmit, this, this.disposables);
+    this.addListener(LeafEvent.WorkspaceInfoChanged, this.checkProfilesChangeAndEmit, this, this.disposables);
+    this.addListener(LeafEvent.WorkspaceInfoChanged, this.checkIsLeafWorkspaceChangeAndEmit, this, this.disposables);
 
     // Create fetch command
-    this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.FETCH, this.fetchRemote);
+    this.createCommand(Commands.LeafPackagesFetch, this.fetchRemote);
 
     // Start watching leaf file and set initial values
     this.watchLeafFiles();
@@ -121,21 +123,31 @@ export class LeafManager extends AbstractManager {
    * Get info node from leaf bridge. Show notification if any.
    */
   private async requestBridgeInfo() {
-    let info = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.INFO);
+    let info = await this.leafInterface.send(LeafBridgeCommands.Info);
     console.log(`Found Leaf version ${info.version}`);
     return info;
   }
 
   /**
    * Called when workspaceinfo from leaf bridge change
+   * Emit event if current profile change
    */
   private checkCurrentProfileChangeAndEmit(oldWorkspaceInfo: any | undefined, newWorkspaceInfo: any | undefined) {
-    // Emit profile change if any
     let oldProfileName = this.getCurrentProfileNameFrom(oldWorkspaceInfo);
     let newProfileName = this.getCurrentProfileNameFrom(newWorkspaceInfo);
     if (oldProfileName !== newProfileName) {
-      this.emit(LEAF_EVENT.profileChanged, oldProfileName, newProfileName);
+      this.emit(LeafEvent.CurrentProfileChanged, oldProfileName, newProfileName);
     }
+  }
+
+  /**
+   * Called when workspaceinfo from leaf bridge change
+   * Emit event if something change in profiles
+   */
+  private checkProfilesChangeAndEmit(oldWorkspaceInfo: any | undefined, newWorkspaceInfo: any | undefined) {
+    let oldProfiles = oldWorkspaceInfo ? oldWorkspaceInfo.profiles : undefined;
+    let newProfiles = newWorkspaceInfo ? newWorkspaceInfo.profiles : undefined;
+    this.compareAndTrigEvent(LeafEvent.ProfilesChanged, oldProfiles, newProfiles);
   }
 
   /**
@@ -147,7 +159,7 @@ export class LeafManager extends AbstractManager {
     let oldInitialized = this.isLeafWorkspace(oldWorkspaceInfo);
     let newInitialized = this.isLeafWorkspace(newWorkspaceInfo);
     if (!oldWorkspaceInfo || oldInitialized !== newInitialized) {
-      this.emit(LEAF_EVENT.onInLeafWorkspaceChange, oldInitialized, newInitialized);
+      this.emit(LeafEvent.onInLeafWorkspaceChange, oldInitialized, newInitialized);
     }
   }
 
@@ -242,17 +254,17 @@ export class LeafManager extends AbstractManager {
   private refreshInfosFromBridge() {
     console.log("[LeafManager] Refresh workspaceInfo, envars and remotes from leaf bridge");
     this.leafWorkspaceInfo = this.compareAndTrigEvent(
-      LEAF_EVENT.leafWorkspaceInfoChanged,
+      LeafEvent.WorkspaceInfoChanged,
       this.leafWorkspaceInfo,
-      this.leafInterface.send(LEAF_INTERFACE_COMMANDS.WORKSPACE_INFO));
+      this.leafInterface.send(LeafBridgeCommands.WorkspaceInfo));
     this.leafEnvVar = this.compareAndTrigEvent(
-      LEAF_EVENT.leafEnvVarChanged,
+      LeafEvent.EnvVarChanged,
       this.leafEnvVar,
-      this.leafInterface.send(LEAF_INTERFACE_COMMANDS.RESOLVE_VAR));
+      this.leafInterface.send(LeafBridgeCommands.ResolveVar));
     this.leafRemotes = this.compareAndTrigEvent(
-      LEAF_EVENT.leafRemotesChanged,
+      LeafEvent.RemotesChanged,
       this.leafRemotes,
-      this.leafInterface.send(LEAF_INTERFACE_COMMANDS.REMOTES));
+      this.leafInterface.send(LeafBridgeCommands.Remotes));
   }
 
   /**
@@ -262,15 +274,23 @@ export class LeafManager extends AbstractManager {
   @debounce(100) // This method call is debounced (100ms)
   private refreshPackagesFromBridge() {
     console.log("[LeafManager] Refresh packages from leaf bridge");
-    this.leafPackages = this.compareAndTrigEvent(LEAF_EVENT.leafPackagesChanged, this.leafPackages, this.requestMasterPackages());
+    this.leafPackages = this.compareAndTrigEvent(LeafEvent.PackagesChanged, this.leafPackages, this.requestMasterPackages());
   }
 
   /**
    * Send request from leaf bridge and emit the correspoding event if something change
    */
-  private async compareAndTrigEvent(event: string, oldPromise: Promise<any | undefined>, newPromise: Promise<any | undefined>): Promise<any> {
-    let oldValue = await oldPromise;
-    let newValue = await newPromise;
+  private async compareAndTrigEvent(
+    event: LeafEvent,
+    oldValue: Promise<any | undefined> | any | undefined,
+    newValue: Promise<any | undefined> | any | undefined
+  ): Promise<any> {
+    if (oldValue instanceof Promise) {
+      oldValue = await oldValue;
+    }
+    if (newValue instanceof Promise) {
+      newValue = await newValue;
+    }
     if (!oldValue || JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
       this.emit(event, oldValue, newValue);
     }
@@ -283,7 +303,7 @@ export class LeafManager extends AbstractManager {
    */
   public createAndDisposeOnLeafWorkspace(...newComponents: { new(): vscode.Disposable }[]) {
     this.createAndDisposeOn(
-      LEAF_EVENT.onInLeafWorkspaceChange,
+      LeafEvent.onInLeafWorkspaceChange,
       async () => this.isLeafWorkspace(await this.leafWorkspaceInfo),
       ...newComponents);
   }
@@ -347,7 +367,7 @@ export class LeafManager extends AbstractManager {
 
     // Get all packages available.
     let out: { [key: string]: any } = {};
-    let packs = await this.leafInterface.send(LEAF_INTERFACE_COMMANDS.PACKAGES);
+    let packs = await this.leafInterface.send(LeafBridgeCommands.Packages);
     let ap = packs.availablePackages;
     for (let packId in ap) {
       // Get available package
@@ -454,6 +474,39 @@ export class LeafManager extends AbstractManager {
   }
 
   /**
+   * Delete profile(s)
+   * profile: profile(s) name(s) to delete
+   */
+  public async deleteProfile(...profile: string[]): Promise<void> {
+    return this.taskManager.executeAsTask(`Deleting profile ${profile}`, `leaf profile delete ${profile.join(' ')}`);
+  }
+
+  /**
+   * Delete profile(s)
+   * profile: profile(s) name(s) to delete
+   */
+  public async configProfile(profile: string, packToAdd: string | undefined, packToRemove: string | undefined): Promise<void> {
+    let taskName = `Configure profile ${profile}:`;
+    let leafCmd = `leaf profile config `;
+    if (!packToAdd && !packToRemove) {
+      throw new Error('No package to add nor remove');
+    }
+    if (packToAdd) {
+      taskName += ` add package ${packToAdd}`;
+      leafCmd += ` --add-package ${packToAdd}`;
+    }
+    if (packToRemove) {
+      if (packToAdd) {
+        taskName += " and";
+      }
+      taskName += ` remove package ${packToRemove}`;
+      leafCmd += ` --rm-package ${packToRemove}`;
+    }
+    leafCmd += ` ${profile}`;
+    return this.taskManager.executeAsTask(taskName, leafCmd);
+  }
+
+  /**
    * Create a new profile
    * profile: the new profile name (can be undefined for default name)
    * packs: the list of packages id to add to the created profile
@@ -522,7 +575,7 @@ export class LeafManager extends AbstractManager {
   /**
    * Set leaf env value
    */
-  public setEnvValue(envar: string, value: string, scope: string = LEAF_ENV_SCOPE.profile) {
+  public setEnvValue(envar: string, value: string, scope: LeafEnvScope = LeafEnvScope.Profile) {
     let command = `leaf env ${scope} --set ${envar}=\'${value}\'`;
     return this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
   }
@@ -546,7 +599,7 @@ export class LeafManager extends AbstractManager {
    */
   public async dispose() {
     super.dispose();
-    this.emit(LEAF_EVENT.onInLeafWorkspaceChange, true, false);
+    this.emit(LeafEvent.onInLeafWorkspaceChange, true, false);
   }
 }
 

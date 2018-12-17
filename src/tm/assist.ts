@@ -2,11 +2,12 @@
 
 import { basename } from 'path';
 import * as vscode from "vscode";
-import { CommandId, ContextualCommandPalette } from "../commands";
-import { LeafManager, LEAF_EVENT } from "../leaf/core";
+import { ContextualCommandPalette } from "./commands";
+import { LeafManager, LeafEvent } from "../leaf/core";
 import { LEGATO_ENV } from "../legato/core";
 import { chooseFile, listUpdateFiles } from "../legato/files";
 import { CommandRegister } from '../utils';
+import { Commands } from '../identifiers';
 
 const TARGET_SHELL_LABEL = 'Device shell';
 const LOG_SHELL_LABEL = 'Device logs';
@@ -31,28 +32,28 @@ export class TargetUiManager extends CommandRegister {
     // Commands declaration to be used as QuickPickItem
     this.paletteOnDeviceIP = new ContextualCommandPalette(
       this.targetStatusbar,
-      CommandId.DEVICE_IP_COMMAND_PALETTE,
+      Commands.LegatoTmCommandPalette,
       [
         {
-          id: CommandId.SET_DEVICE_IP,
+          id: Commands.LegatoTmSetIp,
           label: "Set Device IP address...",
           callback: () => this.askForNewIP()
         },
         {
-          id: CommandId.DEVICE_SHELL,
+          id: Commands.LegatoTmShell,
           label: 'Open Device shell',
           callback: () => this.remoteTerminal.show()
         },
         {
-          id: CommandId.DEVICE_LOGS,
+          id: Commands.LegatoTmLogs,
           label: "Open Device logs",
           callback: () => this.logTerminal.show()
         }
         ,
         {
-          id: CommandId.DEVICE_INSTALL_ON,
+          id: Commands.LegatoTmInstallOn,
           label: "Install app/system on device...",
-          callback: (args:any[]) => this.installOnDevice(args)
+          callback: (args: any[]) => this.installOnDevice(args)
         }
 
       ],
@@ -60,7 +61,7 @@ export class TargetUiManager extends CommandRegister {
     this.paletteOnDeviceIP.register();
 
     // Listen to env changes
-    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.onEnvVarsChange, this);
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarsChange, this);
 
     // Show DEST_IP on start
     this.setInitialState();
@@ -94,7 +95,7 @@ export class TargetUiManager extends CommandRegister {
 
   private async installOnDevice(...selectedFile: any[]) {
     let updateFiles: vscode.Uri[] = await listUpdateFiles();
-    let selectedUpdateFile = selectedFile[0] ? selectedFile[0] :  await chooseFile(updateFiles,
+    let selectedUpdateFile = selectedFile[0] ? selectedFile[0] : await chooseFile(updateFiles,
       {
         noFileFoundMessage: "No *.update files found in workspace.",
         quickPickPlaceHolder: "Please select an update file among ones available in the workspace..."

@@ -32,6 +32,9 @@ This extension integrates the `leaf` command-line package/workspace management t
 - leaf profile status bar
 - leaf workspace/profile/environment change detection
 - `Leaf: Switch to Another Profile` command (or click on the status bar) to select another profile
+- **Leaf/Profiles** view, listing profiles in the workspace
+  - `Remove` command to remove selected profile
+  - `Remove` command to remove selected package from profile
 
 ### Legato integration
 

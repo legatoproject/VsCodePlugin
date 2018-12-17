@@ -1,20 +1,11 @@
-
 'use strict';
 
 import * as vscode from "vscode";
-import { CommandRegister } from "./utils";
+import { CommandRegister } from "../utils";
+import { Commands } from '../identifiers';
 
-export enum CommandId {
-    //device commands
-    DEVICE_IP_COMMAND_PALETTE = "_legato.cmd.device.availablecommands",
-    DEVICE_SHELL = "legato.cmd.device.shell",
-    SET_DEVICE_IP = "legato.cmd.device.ip",
-    DEVICE_LOGS = "legato.cmd.device.logs",
-    DEVICE_INSTALL_ON = "legato.cmd.device.install.on"
-}
-
-export interface CommandDeclaration extends vscode.QuickPickItem {
-    id: CommandId;
+interface CommandDeclaration extends vscode.QuickPickItem {
+    id: Commands;
     callback: Function;
 }
 /**
@@ -25,7 +16,7 @@ export class ContextualCommandPalette extends CommandRegister {
     private commands: CommandDeclaration[];
     private placeHolder?: string;
 
-    constructor(itemListener: vscode.StatusBarItem, paletteId: CommandId, commands: CommandDeclaration[], placeHolder?: string) {
+    constructor(itemListener: vscode.StatusBarItem, paletteId: Commands, commands: CommandDeclaration[], placeHolder?: string) {
         super();
         this.itemListener = itemListener;
         this.itemListener.command = paletteId;
@@ -34,9 +25,9 @@ export class ContextualCommandPalette extends CommandRegister {
     }
 
     public register() {
-        this.createCommand(CommandId.DEVICE_IP_COMMAND_PALETTE, () => this.onItemClick());
+        this.createCommand(Commands.LegatoTmCommandPalette, () => this.onItemClick());
         // contextual commands registering
-        this.commands.forEach((cmdDef: CommandDeclaration) => this.createCommand(cmdDef.id, (args:any[]) => cmdDef.callback(args)));
+        this.commands.forEach((cmdDef: CommandDeclaration) => this.createCommand(cmdDef.id, (args: any[]) => cmdDef.callback(args)));
     }
 
     private onItemClick(): any {
@@ -52,11 +43,11 @@ export class ContextualCommandPalette extends CommandRegister {
     }
 }
 
-export class CommandQuickPickItem implements vscode.QuickPickItem {
+class CommandQuickPickItem implements vscode.QuickPickItem {
     label!: string;
     description!: string;
     detail?: string | undefined;
-    protected command: CommandId | undefined;
+    protected command: Commands | undefined;
     protected args: any[] | undefined;
 
     constructor(item: CommandDeclaration) {

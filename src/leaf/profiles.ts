@@ -1,23 +1,22 @@
 'use strict';
 
 import { window, StatusBarItem, StatusBarAlignment } from "vscode";
-import { LeafManager, LEAF_EVENT } from './core';
-import { LEAF_IDS } from '../identifiers';
-import { ProfileQuickPickItem } from './uiComponents';
-import { showMultiStepQuickPick, toItems } from '../uiUtils';
-import { CommandRegister } from '../utils';
+import { LeafManager, LeafEvent } from './core';
+import { Commands, Views } from '../identifiers';
+import { ProfileQuickPickItem, ProfileTreeItem, PackageTreeItem } from './uiComponents';
+import { showMultiStepQuickPick, toItems, TreeDataProvider2 } from '../uiUtils';
 
 /**
  * Leaf manager.
  * Used to create "create leaf shell" and "switch profile" commands
  * Show current profile in the status bar binded to the "switch profile" command
  */
-export class LeafProfileStatusBar extends CommandRegister {
+export class LeafProfileStatusBar extends TreeDataProvider2 {
 
   private leafStatusbar: StatusBarItem;
 
   public constructor() {
-    super();
+    super(Views.LeafProfiles);
     // So lets add status bar
     this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
     this.toDispose(this.leafStatusbar);
@@ -26,11 +25,14 @@ export class LeafProfileStatusBar extends CommandRegister {
     this.leafStatusbar.show();
 
     // Also, let's register leaf command
-    this.createCommand(LEAF_IDS.COMMANDS.PROFILE.SWITCH, this.switchProfile);
-    this.leafStatusbar.command = LEAF_IDS.COMMANDS.PROFILE.SWITCH;
+    this.createCommand(Commands.LeafProfileRemove, this.deleteProfile);
+    this.createCommand(Commands.LeafProfilePackageRemove, this.removePackage);
+    this.createCommand(Commands.LeafProfileSwitch, this.switchProfile);
+    this.leafStatusbar.command = Commands.LeafProfileSwitch;
 
     // Subscribe to leaf events
-    LeafManager.getInstance().addListener(LEAF_EVENT.profileChanged, this.onProfileChanged, this);
+    LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onProfileChanged, this);
+    LeafManager.getInstance().addListener(LeafEvent.ProfilesChanged, this.refresh, this);
     this.setInitialState();
   }
 
@@ -60,6 +62,43 @@ export class LeafProfileStatusBar extends CommandRegister {
     }
   }
 
+	/**
+	 * Remove filter from filter list
+	 */
+  private async deleteProfile(item: ProfileTreeItem | undefined) {
+    let profileId: string | undefined = undefined;
+    if (item) {
+      profileId = item.id;
+    } else {
+      let profiles = await LeafManager.getInstance().getProfiles();
+      let result = await showMultiStepQuickPick(
+        "leaf profile switch",
+        undefined,
+        undefined,
+        "Please select the profile you want to delete",
+        toItems(profiles, ProfileQuickPickItem)
+      );
+      if (result) {
+        profileId = result.id;
+      }
+    }
+    if (profileId) {
+      console.log(`Delete profile: ${profileId}`);
+      return LeafManager.getInstance().deleteProfile(profileId);
+    }
+  }
+
+  private async removePackage(packageItem: PackageTreeItem | undefined) {
+    if (!packageItem || !packageItem.parent) {
+      throw new Error('Command not available from the palette; try the Leaf Profiles view');
+    }
+    if (packageItem) {
+      let profileItem = packageItem.parent;
+      console.log(`Remove package ${packageItem.id} from profile: ${profileItem.id}`);
+      return LeafManager.getInstance().configProfile(profileItem.id, undefined, packageItem.id);
+    }
+  }
+
   /**
    * Profile has changed, let's update status bar
    */
@@ -67,5 +106,10 @@ export class LeafProfileStatusBar extends CommandRegister {
     if (this.leafStatusbar) {
       this.leafStatusbar.text = newProfileName ? newProfileName : 'No profile';
     }
+  }
+
+  protected async getRootElements(): Promise<ProfileTreeItem[]> {
+    let profiles = await LeafManager.getInstance().getProfiles();
+    return toItems(profiles, ProfileTreeItem);
   }
 }

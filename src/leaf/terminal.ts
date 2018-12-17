@@ -1,8 +1,8 @@
 'use strict';
 
 import { Terminal, window } from "vscode";
-import { LeafManager, LEAF_EVENT } from './core';
-import { LEAF_IDS } from '../identifiers';
+import { LeafManager, LeafEvent } from './core';
+import { Commands } from '../identifiers';
 import { ACTION_LABELS } from '../uiUtils';
 import { CommandRegister } from '../utils';
 
@@ -21,13 +21,13 @@ export class LeafTerminalManager extends CommandRegister {
     super();
 
     // On profile change, 
-    LeafManager.getInstance().addListener(LEAF_EVENT.profileChanged, this.onProfileChanged, this);
+    LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onProfileChanged, this);
 
     // On env change, update leaf terminal
-    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.onEnvVarsChange, this);
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarsChange, this);
 
     // Also, let's add leaf commands
-    this.createCommand(LEAF_IDS.COMMANDS.TERMINAL.OPENLEAF, this.showTerminal);
+    this.createCommand(Commands.LeafTerminalOpenLeaf, this.showTerminal);
 
     // Listen to terminal closing (by user) and launch terminal
     this.toDispose(window.onDidCloseTerminal(this.onCloseTerminal, this));

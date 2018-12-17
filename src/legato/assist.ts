@@ -2,16 +2,16 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { LEGATO_IDS } from '../identifiers';
-import { LeafManager, LEAF_EVENT } from '../leaf/core';
+import { Commands, TaskDefinitions } from '../identifiers';
+import { LeafManager, LeafEvent } from '../leaf/core';
 import { CommandRegister } from '../utils';
 import { chooseFile, listDefinitionFiles } from './files';
 import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './core';
 
-const LEGATO_TASKS = {
-  BUILD: "Build",
-  BUILD_AND_INSTALL: "Build and install"
-};
+enum LegatoTasks {
+  Build = "Build",
+  BuildAndInstall = "Build and install"
+}
 export class LegatoUiManager extends CommandRegister {
 
   private defStatusbar: vscode.StatusBarItem;
@@ -22,7 +22,7 @@ export class LegatoUiManager extends CommandRegister {
     // Status bar
     this.defStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
     this.toDispose(this.defStatusbar);  // Dispose on extension/deactivate
-    this.defStatusbar.command = LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE;
+    this.defStatusbar.command = Commands.LegatoBuildPickDefFile;
     this.defStatusbar.text = "Searching sdef file...";
     this.defStatusbar.tooltip = "Active definition file";
     this.defStatusbar.show();
@@ -35,13 +35,13 @@ export class LegatoUiManager extends CommandRegister {
    */
   private async setInitialState() {
     // Update status bar on env var change
-    LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.onEnvVarChanged, this);
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarChanged, this);
 
     // Set initial value of status bar
     this.onEnvVarChanged(undefined, await LeafManager.getInstance().getEnvVars());
 
     // Tasks definition
-    const legatoTaskProvider = vscode.tasks.registerTaskProvider(LEGATO_IDS.TASK_DEFINITION.LEGATO_BUILD, {
+    const legatoTaskProvider = vscode.tasks.registerTaskProvider(TaskDefinitions.LegatoBuild, {
       provideTasks: () => {
         return this.getLegatoTasks();
       },
@@ -52,7 +52,7 @@ export class LegatoUiManager extends CommandRegister {
     this.toDispose(legatoTaskProvider);  // Dispose on extension/deactivate
 
     // Create command
-    this.createCommand(LEGATO_IDS.COMMANDS.BUILD.PICK_DEF_FILE, this.onPickDefFileCommand);
+    this.createCommand(Commands.LegatoBuildPickDefFile, this.onPickDefFileCommand);
   }
 
   private async onEnvVarChanged(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
@@ -106,7 +106,7 @@ export class LegatoUiManager extends CommandRegister {
     return command;
   }
 
-  private async buildTask(type: string, taskName: string, command: string | undefined): Promise<vscode.Task | undefined> {
+  private async buildTask(type: TaskDefinitions, taskName: LegatoTasks, command: string | undefined): Promise<vscode.Task | undefined> {
     if (command) {
       let kind: vscode.TaskDefinition = {
         type: type
@@ -136,12 +136,12 @@ export class LegatoUiManager extends CommandRegister {
     let activeDefFile: vscode.Uri | undefined = await LegatoManager.getInstance().getActiveDefFile();
     if (activeDefFile) {
       let buildCommand = this.buildCommand(activeDefFile);
-      let buildTask: vscode.Task | undefined = await this.buildTask(LEGATO_IDS.TASK_DEFINITION.LEGATO_BUILD, LEGATO_TASKS.BUILD, buildCommand);
+      let buildTask: vscode.Task | undefined = await this.buildTask(TaskDefinitions.LegatoBuild, LegatoTasks.Build, buildCommand);
       if (buildTask) {
         legatoTasks.push(buildTask);
 
-        let buildAndInstallTask: vscode.Task | undefined = await this.buildTask(LEGATO_IDS.TASK_DEFINITION.LEGATO_INSTALL,
-          LEGATO_TASKS.BUILD_AND_INSTALL,
+        let buildAndInstallTask: vscode.Task | undefined = await this.buildTask(TaskDefinitions.LegatoInstall,
+          LegatoTasks.BuildAndInstall,
           `${buildCommand} && update $(basename \${LEGATO_DEF_FILE%.*def}).$LEGATO_TARGET.update`
         );
         if (buildAndInstallTask) {

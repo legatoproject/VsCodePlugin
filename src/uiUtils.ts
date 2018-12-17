@@ -3,6 +3,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { CommandRegister } from './utils';
+import { Views, Commands, Contexts } from './identifiers';
 
 /**
  * Dialog labels
@@ -52,17 +53,20 @@ export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPic
  * Base for TreeItem
  */
 export class TreeItem2 extends IUiItems implements vscode.TreeItem {
+	public readonly contextValue: string;
+	public parent: TreeItem2 | undefined;
 	constructor(
 		public readonly id: string,
 		public readonly properties: any,
 		public label: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly contextValue: string,
+		contextValue: Contexts,
 		private iconFileName?: string,
 		public command?: vscode.Command
 	) {
 		super(id, properties);
+		this.contextValue = contextValue;
 	}
 
 	public async getChildren(): Promise<TreeItem2[]> {
@@ -85,8 +89,8 @@ export class CheckboxTreeItem extends TreeItem2 {
 		public label: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly contextValue: string,
-		commandId: string
+		public readonly contextValue: Contexts,
+		commandId: Commands
 	) {
 		super(id, properties, label, tooltip, collapsibleState, contextValue);
 		this.command = {
@@ -115,7 +119,7 @@ export abstract class TreeDataProvider2 extends CommandRegister implements vscod
 	private _onDidChangeTreeData: vscode.EventEmitter<TreeItem2 | undefined> = new vscode.EventEmitter<TreeItem2 | undefined>();
 	readonly onDidChangeTreeData: vscode.Event<TreeItem2 | undefined> = this._onDidChangeTreeData.event;
 
-	constructor(viewId: string) {
+	constructor(viewId: Views) {
 		super();
 		this.toDispose(vscode.window.registerTreeDataProvider(viewId, this));
 	}
@@ -213,11 +217,16 @@ export async function showMultiStepQuickPick<T extends QuickPickItem2>(
  */
 export function toItems<T extends IUiItems>(
 	model: any,
-	ItemClass: new (id: string, properties: any) => T
+	ItemClass: new (id: string, properties: any) => T,
+	parent?: TreeItem2
 ): T[] {
 	let out: T[] = [];
 	for (let id in model) {
-		out.push(new ItemClass(id, model[id]));
+		let newItem = new ItemClass(id, model[id]);
+		if (parent && newItem instanceof TreeItem2) {
+			newItem.parent = parent;
+		}
+		out.push(newItem);
 	}
 	out.sort((itemA, itemB) => itemA.compareTo(itemB));
 	return out;

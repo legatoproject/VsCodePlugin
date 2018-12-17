@@ -3,6 +3,7 @@
 import { exec } from 'child_process';
 import * as vscode from 'vscode';
 import { EventEmitter } from "events";
+import { Commands } from './identifiers';
 
 /**
  * This object can store resolve and reject callbacks of a promise
@@ -115,7 +116,7 @@ export class DisposableBag extends Array<vscode.Disposable> implements vscode.Di
 /**
  * Abstract baseclass for manager using DisposableBag
  */
-export abstract class AbstractManager extends EventEmitter implements vscode.Disposable {
+export abstract class AbstractManager<T extends string> extends EventEmitter implements vscode.Disposable {
 
     // Dispose management 
     protected readonly disposables = new CommandRegister();
@@ -124,7 +125,7 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
     /**
      * Override super method to add disposable bag
      */
-    public addListener(event: string | symbol, listener: (...args: any[]) => void, caller?: any, disposables?: DisposableBag): this {
+    public addListener(event: T, listener: (...args: any[]) => void, caller?: any, disposables?: DisposableBag): this {
         super.addListener(event, (...args: any[]) => {
             listener.apply(caller, args);
         });
@@ -139,7 +140,7 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
     /**
      * Call super implementation and log event in console.
      */
-    public emit(event: string | symbol, ...args: any[]): boolean {
+    public emit(event: T, ...args: any[]): boolean {
         let out = super.emit(event, ...args);
         console.log(`[AbstractManager] Event emited: '${event.toString()}' Args: [${args.map(o => o === undefined ? 'undefined' : o.toString()).join(', ')}] Out: ${out}`);
         return out;
@@ -150,7 +151,7 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
      * Immediatly instanciate if already in a corresponding workspace kind
      */
     protected async createAndDisposeOn(
-        event: string,
+        event: T,
         newValueProvider: () => Promise<boolean>,
         ...newComponents: { new(): vscode.Disposable }[]) {
 
@@ -183,7 +184,7 @@ export abstract class AbstractManager extends EventEmitter implements vscode.Dis
      * @param cb A command handler function.
      * @param thisArg The `this` context used when invoking the handler function.
      */
-    protected createCommand(id: string, cb: (...args: any[]) => any, thisArg: any = this) {
+    protected createCommand(id: Commands, cb: (...args: any[]) => any, thisArg: any = this) {
         this.disposables.createCommand(id, cb, thisArg);
     }
 

@@ -1,7 +1,8 @@
 'use strict';
 import * as vscode from 'vscode';
-import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem } from '../uiUtils';
-import { LEAF_IDS } from '../identifiers';
+import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../uiUtils';
+import { Contexts, Commands } from '../identifiers';
+import { LeafManager } from './core';
 
 // This module is used to declare model/ui mappings using vscode items
 
@@ -30,7 +31,7 @@ export class RemoteTreeItem extends TreeItem2 {
 			alias, // label
 			properties.url, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties.enabled ? LEAF_IDS.VIEW_ITEMS.REMOTES.ENABLED : LEAF_IDS.VIEW_ITEMS.REMOTES.DISABLE, // contextValue
+			properties.enabled ? Contexts.LeafRemoteEnabled : Contexts.LeafRemoteDisabled, // contextValue
 			properties.enabled ? "RemoteEnabled.svg" : "RemoteDisabled.svg"); // iconFileName
 	}
 }
@@ -57,7 +58,7 @@ export class PackagesContainerTreeItem extends TreeItem2 {
 			"Packages", // label
 			"Packages", // tooltip
 			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
-			LEAF_IDS.VIEW_ITEMS.PACKAGES.PACKAGE_CONTAINER, // contextValue
+			Contexts.LeafPackagesContainer, // contextValue
 			"PackageAvailable.svg"); // iconFileName
 	}
 }
@@ -71,7 +72,7 @@ export class PackageTreeItem extends TreeItem2 {
 			id, // label
 			properties.info.description, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties.installed ? LEAF_IDS.VIEW_ITEMS.PACKAGES.INSTALLED : LEAF_IDS.VIEW_ITEMS.PACKAGES.AVAILABLE, // contextValue
+			properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue
 			properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
 	}
 }
@@ -79,6 +80,12 @@ export class PackageTreeItem extends TreeItem2 {
 /***************************
  *        PROFILES         *
  ***************************/
+
+function computeDetails(properties: any): string {
+	let nbPackages = properties.packages ? properties.packages.length : 0;
+	let nbEnv = properties.env ? Object.keys(properties.env).length : 0;
+	return `${nbPackages} packages - ${Object.keys(nbEnv).length} env vars`;
+}
 
 export class ProfileQuickPickItem extends QuickPickItem2 {
 	constructor(
@@ -88,13 +95,7 @@ export class ProfileQuickPickItem extends QuickPickItem2 {
 		super(id, properties,// model data
 			id, // label
 			properties.current ? "[Current]" : undefined, // description
-			ProfileQuickPickItem.computeDetails(properties)); // details
-	}
-
-	private static computeDetails(properties: any): string {
-		let nbPackages = properties.packages ? properties.packages.length : 0;
-		let nbEnv = properties.env ? Object.keys(properties.env).length : 0;
-		return `${nbPackages} packages - ${Object.keys(nbEnv).length} env vars`;
+			computeDetails(properties)); // details
 	}
 
 	public compareTo(other: IUiItems) {
@@ -106,6 +107,32 @@ export class ProfileQuickPickItem extends QuickPickItem2 {
 			return 1;
 		}
 		return super.compareTo(other);
+	}
+}
+
+export class ProfileTreeItem extends TreeItem2 {
+	constructor(
+		public readonly id: any,
+		public readonly properties: any
+	) {
+		super(id, properties, // model data
+			id, // label
+			computeDetails(properties), // tooltip
+			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
+			properties.installed ? Contexts.LeafProfileCurrent : Contexts.LeafProfileOther, // contextValue
+			"Profile.svg"); // iconFileName
+	}
+
+	public async getChildren(): Promise<TreeItem2[]> {
+		// Find package properties
+		let packs = await LeafManager.getInstance().getAllPackages();
+		let model: { [key: string]: any } = {};
+		for (let packId of this.properties.packages) {
+			model[packId] = packs[packId];
+		}
+
+		// Return items
+		return toItems(model, PackageTreeItem, this);
 	}
 }
 
@@ -139,7 +166,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 			"Filters", // label
 			"Filters", // tooltip
 			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
-			LEAF_IDS.VIEW_ITEMS.PACKAGES.FILTER_CONTAINER, // contextValue
+			Contexts.LeafPackagesFilterContainer, // contextValue
 			"Filter.svg"); // iconFileName
 	}
 
@@ -147,7 +174,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 	 * Return filters as tree items children
 	 */
 	public async getChildren(): Promise<FilterTreeItem[]> {
-		let out: FilterTreeItem[] = []
+		let out: FilterTreeItem[] = [];
 		out.push(...this.permanentChildren);
 		out.push(...this.children);
 		return out;
@@ -160,13 +187,13 @@ export class FilterTreeItem extends CheckboxTreeItem {
 	 */
 	constructor(
 		public readonly value: string,
-		contextValue: string = LEAF_IDS.VIEW_ITEMS.PACKAGES.FILTER
+		contextValue: Contexts = Contexts.LeafPackagesFilter
 	) {
 		super(`Filter:${value}`, undefined, // model data
 			value, // label
 			value, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			contextValue, // contextValue
-			LEAF_IDS.COMMANDS.PACKAGES.TOGGLE_FILTER); // commandId
+			Commands.LeafPackagesToggleFilter); // commandId
 	}
 }

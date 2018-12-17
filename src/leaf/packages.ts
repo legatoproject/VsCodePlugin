@@ -1,9 +1,9 @@
 'use strict';
 
-import { LEAF_IDS } from '../identifiers';
+import { Commands, Views, Contexts } from '../identifiers';
 import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../uiUtils';
 import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, PackagesContainerTreeItem } from './uiComponents';
-import { LeafManager, LEAF_EVENT } from './core';
+import { LeafManager, LeafEvent } from './core';
 import * as vscode from 'vscode';
 
 /**
@@ -24,14 +24,14 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * Listen to packages changes
 	 */
 	public constructor() {
-		super(LEAF_IDS.VIEWS.PACKAGES);
+		super(Views.LeafPackages);
 		this.loadFilters();
 		this.packagesContainerItem.getChildren = async () => this.getPackagesItems();
-		LeafManager.getInstance().addListener(LEAF_EVENT.leafPackagesChanged, this.refresh, this);
-		this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.ADD_FILTER, this.addFilter);
-		this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.REMOVE_FILTER, this.removeFilter);
-		this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.ADD_TO_PROFILE, this.addToProfile);
-		this.createCommand(LEAF_IDS.COMMANDS.PACKAGES.TOGGLE_FILTER, this.onFilterClicked);
+		LeafManager.getInstance().addListener(LeafEvent.PackagesChanged, this.refresh, this);
+		this.createCommand(Commands.LeafPackagesAddFilter, this.addFilter);
+		this.createCommand(Commands.LeafPackagesRemoveFilter, this.removeFilter);
+		this.createCommand(Commands.LeafPackagesAddToProfile, this.addToProfile);
+		this.createCommand(Commands.LeafPackagesToggleFilter, this.onFilterClicked);
 	}
 
 	/**
@@ -326,7 +326,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
  * Parent of filters (3 subclasses)
  */
 abstract class Filter extends FilterTreeItem {
-	constructor(value: string, contextValue: string = LEAF_IDS.VIEW_ITEMS.PACKAGES.FILTER) {
+	constructor(value: string, contextValue: Contexts = Contexts.LeafPackagesFilter) {
 		super(value, contextValue);
 	}
 
@@ -338,7 +338,7 @@ abstract class Filter extends FilterTreeItem {
  */
 class PermanentFilter extends Filter {
 	constructor(value: string, private readonly predicate: (packId: string, packProperties: any) => boolean, checked = true) {
-		super(value, LEAF_IDS.VIEW_ITEMS.PACKAGES.PERMANENT_FILTER);
+		super(value, Contexts.LeafPackagesPermanentFilter);
 		this.label = `[${value}]`;
 		this.setChecked(checked);
 	}

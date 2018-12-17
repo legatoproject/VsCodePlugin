@@ -8,23 +8,23 @@ import { PromiseCallbacks } from '../utils';
 /**
  * Available leaf interface commands
  */
-export const LEAF_INTERFACE_COMMANDS = {
-    INFO: "info",
-    REMOTES: "remotes",
-    PACKAGES: "packages",
-    WORKSPACE_INFO: "workspaceInfo",
-    RESOLVE_VAR: "resolveVariables",
-    EXIT: "exit"
-};
+export const enum LeafBridgeCommands {
+    Info = "info",
+    Remotes = "remotes",
+    Packages = "packages",
+    WorkspaceInfo = "workspaceInfo",
+    ResolveVar = "resolveVariables",
+    Exit = "exit"
+}
 
 
 /**
  * LeafInterface read and write to the IDE dedicated python leaf's extension
  */
-export class LeafInterface {
+export class LeafBridge {
 
     private readonly process: ChildProcess; // Python leaf extension process
-    private readonly idGenerator: IterableIterator<number> = LeafInterface.newIdGenerator(); // request id generator
+    private readonly idGenerator: IterableIterator<number> = LeafBridge.newIdGenerator(); // request id generator
     private stdoutBuffer: string = ""; // Buffer for too loog response
     private pendingRequests: PromiseCallbacks = {}; // pending promises callbacks
 
@@ -59,7 +59,7 @@ export class LeafInterface {
     /**
      * Send request to leaf extension interface
      */
-    public async send(cmd: string): Promise<any> {
+    public async send(cmd: LeafBridgeCommands): Promise<any> {
         return new Promise<any>((resolve, reject) => {
             let id = this.idGenerator.next().value;
             this.pendingRequests[id] = {
@@ -126,6 +126,6 @@ export class LeafInterface {
         this.process.stdin.end();
         this.process.stdout.removeAllListeners();
         this.process.stderr.removeAllListeners();
-        this.send(LEAF_INTERFACE_COMMANDS.EXIT);
+        this.send(LeafBridgeCommands.Exit);
     }
 }

@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { join } from 'path';
 import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
-import { LeafManager, LEAF_EVENT } from "../leaf/core";
+import { LeafManager, LeafEvent } from "../leaf/core";
 import { DisposableBag } from "../utils";
-import { LegatoManager, LEGATO_EVENT, LEGATO_ENV } from "./core";
+import { LegatoManager, LegatoEvent, LEGATO_ENV } from "./core";
 
 
 export class LegatoLanguageManager extends DisposableBag {
@@ -13,8 +13,8 @@ export class LegatoLanguageManager extends DisposableBag {
         super();
 
         // Listen to leaf events
-        LeafManager.getInstance().addListener(LEGATO_EVENT.onLegatoRootChange, this.stopAndStartLegatoLanguageServer, this);
-        LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.notifyLeafEnvToLanguageServer, this);
+        LegatoManager.getInstance().addListener(LegatoEvent.OnLegatoRootChange, this.stopAndStartLegatoLanguageServer, this);
+        LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.notifyLeafEnvToLanguageServer, this);
 
         // Launch server
         this.lspClient = this.startLegatoServer();

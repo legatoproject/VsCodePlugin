@@ -17,101 +17,124 @@
         "viewsContainers": {
             "activitybar": [
                 {
-                    "id": "leaf-vc",
+                    "id": "viewcontainer-leaf",
                     "title": "Leaf",
                     "icon": "resources/activity-bar-icon.svg"
                 }
             ]
         },
         "views": {
-            "leaf-vc": [
+            "viewcontainer-leaf": [
                 {
-                    "id": "leaf-v-pkg",
+                    "id": "view-leaf-pkg",
                     "name": "Packages"
                 },
                 {
-                    "id": "leaf-v-rmt",
+                    "id": "view-leaf-rmt",
                     "name": "Remotes"
+                },
+                {
+                    "id": "view-leaf-prf",
+                    "name": "Profiles"
                 }
             ]
         },
         "menus": {
             "explorer/context": [
                 {
-                    "command": "legato.cmd.device.install.on",
+                    "command": "cmd.legato.device.install.on",
                     "group": "z_commands",
                     "when": "resourceExtname == .update"
-
                 }
             ],
             "view/title": [
                 {
-                    "command": "leaf.cmd.pkg.fetch",
-                    "when": "view == leaf-v-pkg",
+                    "command": "cmd.leaf.pkg.fetch",
+                    "when": "view == view-leaf-pkg",
                     "group": "navigation"
                 },
                 {
-                    "command": "leaf.cmd.rmt.add",
-                    "when": "view == leaf-v-rmt",
+                    "command": "cmd.leaf.rmt.add",
+                    "when": "view == view-leaf-rmt",
                     "group": "navigation"
                 }
             ],
             "view/item/context": [
                 {
-                    "command": "_leaf.cmd.pkg.filter.add",
-                    "when": "view == leaf-v-pkg && viewItem == leaf-vi-pkg-filters-container",
+                    "command": "cmd.leaf.pkg.filter.add",
+                    "when": "view == view-leaf-pkg && viewItem == context-leaf-pkg-filters-container",
                     "group": "inline"
                 },
                 {
-                    "command": "_leaf.cmd.pkg.filter.remove",
-                    "when": "view == leaf-v-pkg && viewItem == leaf-vi-pkg-filter-element",
+                    "command": "cmd.leaf.pkg.filter.remove",
+                    "when": "view == view-leaf-pkg && viewItem == context-leaf-pkg-filter-element",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf.cmd.pkg.addtoprofile",
-                    "when": "view == leaf-v-pkg && viewItem =~ /leaf-vi-pkg-(installed|available)/",
+                    "command": "cmd.leaf.pkg.addtoprofile",
+                    "when": "view == view-leaf-pkg && viewItem =~ /context-leaf-pkg-(installed|available)/",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf.cmd.rmt.enable",
-                    "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-disabled",
+                    "command": "cmd.leaf.rmt.enable",
+                    "when": "view == view-leaf-rmt && viewItem == context-leaf-rmt-disabled",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf.cmd.rmt.disable",
-                    "when": "view == leaf-v-rmt && viewItem == leaf-vi-rmt-enabled",
+                    "command": "cmd.leaf.rmt.disable",
+                    "when": "view == view-leaf-rmt && viewItem == context-leaf-rmt-enabled",
                     "group": "inline"
                 },
                 {
-                    "command": "leaf.cmd.rmt.remove",
-                    "when": "view == leaf-v-rmt && viewItem =~ /leaf-vi-rmt-.*/",
+                    "command": "cmd.leaf.rmt.remove",
+                    "when": "view == view-leaf-rmt && viewItem =~ /context-leaf-rmt-.*/",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.leaf.prf.remove",
+                    "when": "view == view-leaf-prf && viewItem =~ /context-leaf-prf-.*/",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.leaf.prf.pkgremove",
+                    "when": "view == view-leaf-prf && viewItem =~ /context-leaf-pkg-(installed|available)/",
                     "group": "inline"
                 }
             ]
         },
         "commands": [
             {
-                "command": "leaf.cmd.trm.openleaf",
+                "command": "cmd.leaf.trm.openleaf",
                 "title": "Open Shell",
                 "category": "Leaf"
             },
             {
-                "command": "leaf.cmd.prf.switch",
+                "command": "cmd.leaf.prf.switch",
                 "title": "Switch to Another Profile",
-                "category": "Leaf"
+                "category": "Leaf/Profiles"
             },
             {
-                "command": "_leaf.cmd.pkg.filter.add",
-                "title": "add...",
+                "command": "cmd.leaf.prf.remove",
+                "title": "Remove",
+                "category": "Leaf/Profiles"
+            },
+            {
+                "command": "cmd.leaf.prf.pkgremove",
+                "title": "Remove",
+                "category": "Leaf/Profiles/Packages"
+            },
+            {
+                "command": "cmd.leaf.pkg.filter.add",
+                "title": "Add...",
                 "category": "Leaf/Packages/Filter"
             },
             {
-                "command": "_leaf.cmd.pkg.filter.remove",
-                "title": "remove",
+                "command": "cmd.leaf.pkg.filter.remove",
+                "title": "Remove",
                 "category": "Leaf/Packages/Filter"
             },
             {
-                "command": "leaf.cmd.pkg.fetch",
+                "command": "cmd.leaf.pkg.fetch",
                 "title": "Fetch remotes",
                 "icon": {
                     "light": "resources/refresh.svg",
@@ -120,52 +143,52 @@
                 "category": "Leaf/Packages"
             },
             {
-                "command": "leaf.cmd.pkg.addtoprofile",
+                "command": "cmd.leaf.pkg.addtoprofile",
                 "title": "Add to profile...",
                 "category": "Leaf/Packages"
             },
             {
-                "command": "leaf.cmd.rmt.enable",
+                "command": "cmd.leaf.rmt.enable",
                 "title": "Enable",
                 "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf.cmd.rmt.disable",
+                "command": "cmd.leaf.rmt.disable",
                 "title": "Disable",
                 "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf.cmd.rmt.add",
+                "command": "cmd.leaf.rmt.add",
                 "title": "Add",
                 "category": "Leaf/Remotes"
             },
             {
-                "command": "leaf.cmd.rmt.remove",
+                "command": "cmd.leaf.rmt.remove",
                 "title": "Remove",
                 "category": "Leaf/Remotes"
             },
             {
-                "command": "legato.cmd.build.pickDefFile",
+                "command": "cmd.legato.build.pickDefFile",
                 "title": "Select active definition file",
                 "category": "Legato"
             },
             {
-                "command": "legato.cmd.device.shell",
+                "command": "cmd.legato.device.shell",
                 "title": "Open Shell",
                 "category": "Legato/Device"
             },
             {
-                "command": "legato.cmd.device.logs",
+                "command": "cmd.legato.device.logs",
                 "title": "Open Logs",
                 "category": "Legato/Device"
             },
             {
-                "command": "legato.cmd.device.ip",
+                "command": "cmd.legato.device.ip",
                 "title": "Set IP address",
                 "category": "Legato/Device"
             },
             {
-                "command": "legato.cmd.device.install.on",
+                "command": "cmd.legato.device.install.on",
                 "title": "Install on device",
                 "category": "Legato/Device"
             }

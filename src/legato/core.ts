@@ -1,6 +1,6 @@
 'use strict';
 import * as vscode from "vscode";
-import { LeafManager, LEAF_ENV_SCOPE, LEAF_EVENT } from "../leaf/core";
+import { LeafManager, LeafEnvScope, LeafEvent } from "../leaf/core";
 import { AbstractManager, EnvVars } from '../utils';
 
 export const LEGATO_ENV = {
@@ -20,12 +20,12 @@ export const LEGATO_MKTOOLS = {
     mksys: "mksys"
 };
 
-export const LEGATO_EVENT = { // Events with theirs parameters
-    onInLegatoWorkspaceChange: "onInLegatoWorkspaceChange", // oldIsLegatoWorkspace: boolean, newIsLegatoWorkspace: boolean
-    onLegatoRootChange: "onLegatoRootChange" // oldLegatoRoot: string | undefined, newLegatoRoot: string | undefined
-};
+export enum LegatoEvent { // Events with theirs parameters
+    OnInLegatoWorkspaceChange = "onInLegatoWorkspaceChange", // oldIsLegatoWorkspace: boolean, newIsLegatoWorkspace: boolean
+    OnLegatoRootChange = "onLegatoRootChange" // oldLegatoRoot: string | undefined, newLegatoRoot: string | undefined
+}
 
-export class LegatoManager extends AbstractManager {
+export class LegatoManager extends AbstractManager<LegatoEvent> {
 
     private static instance: LegatoManager;
 
@@ -37,11 +37,11 @@ export class LegatoManager extends AbstractManager {
     private constructor() {
         super();
         // Subscribe to envars bridge node modification to trig legato workspace event if necessary
-        LeafManager.getInstance().addListener(LEAF_EVENT.leafEnvVarChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
+        LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
     }
 
     public saveActiveDefFile(uri: vscode.Uri) {
-        LeafManager.getInstance().setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}`, LEAF_ENV_SCOPE.workspace);
+        LeafManager.getInstance().setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}`, LeafEnvScope.Workspace);
     }
 
     public async getActiveDefFile(): Promise<vscode.Uri | undefined> {
@@ -62,7 +62,7 @@ export class LegatoManager extends AbstractManager {
      */
     public createAndDisposeOnLegatoWorkspace(...newComponents: { new(): vscode.Disposable }[]) {
         this.createAndDisposeOn(
-            LEGATO_EVENT.onInLegatoWorkspaceChange,
+            LegatoEvent.OnInLegatoWorkspaceChange,
             async () => this.isLegatoWorkspace(await LeafManager.getInstance().getEnvVars()),
             ...newComponents);
     }
@@ -83,17 +83,17 @@ export class LegatoManager extends AbstractManager {
         let oldIsLegatoWorkspace = this.isLegatoWorkspace(oldEnVars);
         let newIsLegatoWorkspace = this.isLegatoWorkspace(newEnvVars);
         if (oldIsLegatoWorkspace !== newIsLegatoWorkspace) {
-            this.emit(LEGATO_EVENT.onInLegatoWorkspaceChange, oldIsLegatoWorkspace, newIsLegatoWorkspace);
+            this.emit(LegatoEvent.OnInLegatoWorkspaceChange, oldIsLegatoWorkspace, newIsLegatoWorkspace);
         }
         let oldLegatoRoot = await this.getLegatoRoot(oldEnVars);
         let newLegatoRoot = await this.getLegatoRoot(newEnvVars);
         if (oldLegatoRoot !== newLegatoRoot) {
-            this.emit(LEGATO_EVENT.onLegatoRootChange, oldLegatoRoot, newLegatoRoot);
+            this.emit(LegatoEvent.OnLegatoRootChange, oldLegatoRoot, newLegatoRoot);
         }
     }
 
     public dispose() {
         super.dispose();
-        this.emit(LEGATO_EVENT.onInLegatoWorkspaceChange, true, false);
+        this.emit(LegatoEvent.OnInLegatoWorkspaceChange, true, false);
     }
 }
