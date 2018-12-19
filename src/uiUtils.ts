@@ -24,7 +24,7 @@ export const ACTION_LABELS = {
 export abstract class IUiItems {
 	constructor(
 		public readonly id: string, // Object identifier
-		public readonly properties: any // Parsed JSON properties from leaf interface)
+		public readonly properties: any | undefined // Parsed JSON properties from leaf interface)
 	) { }
 
 	public compareTo(other: IUiItems) {
@@ -40,7 +40,7 @@ export abstract class IUiItems {
 export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPickItem {
 	constructor(
 		id: string,
-		properties: any,
+		properties: any | undefined,
 		public readonly label: string,
 		public readonly description?: string,
 		public readonly details?: string
@@ -56,8 +56,8 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 	public readonly contextValue: string;
 	public parent: TreeItem2 | undefined;
 	constructor(
-		public readonly id: string,
-		public readonly properties: any,
+		id: string,
+		properties: any | undefined,
 		public label: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
@@ -85,7 +85,7 @@ export class CheckboxTreeItem extends TreeItem2 {
 
 	constructor(
 		public readonly id: string,
-		public readonly properties: any,
+		public readonly properties: any | undefined,
 		public label: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
@@ -217,7 +217,7 @@ export async function showMultiStepQuickPick<T extends QuickPickItem2>(
  */
 export function toItems<T extends IUiItems>(
 	model: any,
-	ItemClass: new (id: string, properties: any) => T,
+	ItemClass: new (id: string, properties: any | undefined) => T,
 	parent?: TreeItem2
 ): T[] {
 	let out: T[] = [];

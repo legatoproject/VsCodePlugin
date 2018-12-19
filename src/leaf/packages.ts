@@ -2,9 +2,10 @@
 
 import { Commands, Views, Contexts } from '../identifiers';
 import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../uiUtils';
-import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, PackagesContainerTreeItem } from './uiComponents';
+import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, AvailablePackagesContainerTreeItem, InstalledPackagesContainerTreeItem } from './uiComponents';
 import { LeafManager, LeafEvent } from './core';
 import * as vscode from 'vscode';
+import { LeafBridgeElement } from './bridge';
 
 /**
  * Packages view and commands
@@ -13,10 +14,11 @@ export class LeafPackagesView extends TreeDataProvider2 {
 
 	private static readonly FILTERS_MEMENTO_ID = "leaf.packages.filters";
 	private static readonly PERMANENT_FILTERS_MEMENTO_ID = "leaf.packages.filters";
-	public readonly permanentFilters: Filter[] = [PERMANENT_FILTERS.MASTER, PERMANENT_FILTERS.AVAILABLE, PERMANENT_FILTERS.INSTALLED];
+	public readonly permanentFilters: Filter[] = [PERMANENT_FILTERS.MASTER];
 	public readonly filters: Filter[] = [];
 	private readonly filterContainerItem = new FilterContainerTreeItem(this.permanentFilters, this.filters);
-	private readonly packagesContainerItem = new PackagesContainerTreeItem();
+	private readonly availPkgContainerItem = new AvailablePackagesContainerTreeItem(packs => this.filterPackages(packs));
+	private readonly instPkgContainerItem = new InstalledPackagesContainerTreeItem(packs => this.filterPackages(packs));
 
 	/**
 	 * Register TreeDataProvider
@@ -26,7 +28,6 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	public constructor() {
 		super(Views.LeafPackages);
 		this.loadFilters();
-		this.packagesContainerItem.getChildren = async () => this.getPackagesItems();
 		LeafManager.getInstance().addListener(LeafEvent.PackagesChanged, this.refresh, this);
 		this.createCommand(Commands.LeafPackagesAddFilter, this.addFilter);
 		this.createCommand(Commands.LeafPackagesRemoveFilter, this.removeFilter);
@@ -103,7 +104,8 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		let tagItems = Object.keys(tags).map(tag => new TagQuickPickItem(tag, tags[tag]));
 
 		// Get packages
-		let packs = await LeafManager.getInstance().getAllPackages();
+		let availPacks = await LeafManager.getInstance().getAvailablePackages();
+		let instPacks = await LeafManager.getInstance().getInstalledPackages();
 
 		// Update items and title on value change
 		let boxValueChangedListener = async (value: string) => {
@@ -113,8 +115,9 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			} else if (value.length > 0) {
 				box.items = [];
 			}
-			let count = this.countMatchingPackages(packs, newFilter);
-			box.title = `Add filter (regex or @tag): ${count} package${count > 1 ? 's' : ''} remaining`;
+			let availCount = this.countMatchingPackages(availPacks, newFilter);
+			let instCount = this.countMatchingPackages(instPacks, newFilter);
+			box.title = `Add filter (regex or @tag): ${availCount} available${availCount > 1 ? 's' : ''} and ${instCount} installed`;
 		};
 		box.onDidChangeValue(boxValueChangedListener);
 		boxValueChangedListener(box.value); // Set initial title
@@ -216,12 +219,12 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	}
 
 	/**
-	 * Ask user to seelect a package in combo
+	 * Ask user to select a package in combo
 	 */
 	private async askForPackage(title: string): Promise<PackageQuickPickItem | undefined> {
 		// Do not await. We want showMultiStepQuickPick to handle this long running operation while showing a busy box.
 		let itemsPromise = LeafManager.getInstance()
-			.getAllPackages()
+			.getMergedPackages()
 			.then(packs => toItems(packs, PackageQuickPickItem));
 		return showMultiStepQuickPick(title, 1, 2, "Please select the package to add", itemsPromise);
 	}
@@ -296,19 +299,20 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * Return roots elements in package view
 	 */
 	protected async getRootElements(): Promise<TreeItem2[]> {
-		return [this.filterContainerItem, this.packagesContainerItem] as TreeItem2[];
+		await this.availPkgContainerItem.refresh();
+		await this.instPkgContainerItem.refresh();
+		return [this.filterContainerItem, this.availPkgContainerItem, this.instPkgContainerItem] as TreeItem2[];
 	}
 
 	/**
-	 * @return filtered packages as treeitems
+	 * @return filter packages
 	 */
-	private async getPackagesItems(): Promise<TreeItem2[]> {
-		let packs = await LeafManager.getInstance().getAllPackages();
+	public filterPackages(packs: LeafBridgeElement): LeafBridgeElement {
 		let filteredPacks: any = {};
 		Object.keys(packs) // For all packages
 			.filter(packId => this.matchCheckedFilters(packId, packs[packId]))
 			.forEach(packId => filteredPacks[packId] = packs[packId]);
-		return toItems(filteredPacks, PackageTreeItem);
+		return filteredPacks;
 	}
 
 	/**
@@ -351,9 +355,7 @@ class PermanentFilter extends Filter {
  * Static list of all permanent filters
  */
 export const PERMANENT_FILTERS: { [key: string]: PermanentFilter } = {
-	MASTER: new PermanentFilter("master", (_packId, packProperties) => packProperties.info.master),
-	INSTALLED: new PermanentFilter("installed", (_packId, packProperties) => packProperties.installed, false),
-	AVAILABLE: new PermanentFilter("available", (_packId, packProperties) => !packProperties.installed, false)
+	MASTER: new PermanentFilter("master", (_packId, packProperties) => packProperties.info.master)
 };
 
 /**

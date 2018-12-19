@@ -17,6 +17,12 @@ export const enum LeafBridgeCommands {
     Exit = "exit"
 }
 
+/**
+ * Interface for result returned by leaf bridge
+ */
+export interface LeafBridgeElement {
+    [key: string]: any;
+}
 
 /**
  * LeafInterface read and write to the IDE dedicated python leaf's extension
@@ -26,7 +32,7 @@ export class LeafBridge {
     private readonly process: ChildProcess; // Python leaf extension process
     private readonly idGenerator: IterableIterator<number> = LeafBridge.newIdGenerator(); // request id generator
     private stdoutBuffer: string = ""; // Buffer for too loog response
-    private pendingRequests: PromiseCallbacks = {}; // pending promises callbacks
+    private pendingRequests: PromiseCallbacks<LeafBridgeElement | undefined> = {}; // pending promises callbacks
 
     public constructor() {
         // Launch interface
@@ -59,8 +65,8 @@ export class LeafBridge {
     /**
      * Send request to leaf extension interface
      */
-    public async send(cmd: LeafBridgeCommands): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
+    public async send(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
+        return new Promise<LeafBridgeElement | undefined>((resolve, reject) => {
             let id = this.idGenerator.next().value;
             this.pendingRequests[id] = {
                 resolve: resolve,

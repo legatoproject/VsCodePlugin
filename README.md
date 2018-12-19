@@ -17,8 +17,6 @@ This extension integrates the `leaf` command-line package/workspace management t
   - **Filters** node, allowing to handle packages list filtering:
     - Built-in filters:
       - **\[master\]**: only "master" (top-level) packages are displayed
-      - **\[available\]**: only available packages (not installed) are displayed
-      - **\[installed\]**: only installed packages are displayed
     - Custom filters:
       - Using a regular expression, matching the package identifier or description
       - Based on one of the package tags

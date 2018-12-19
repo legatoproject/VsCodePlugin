@@ -2,7 +2,7 @@
 
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { LeafBridge, LeafBridgeCommands } from './bridge';
+import { LeafBridge, LeafBridgeCommands, LeafBridgeElement } from './bridge';
 import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './taskManager';
 import { ACTION_LABELS } from '../uiUtils';
 import { executeInShell, EnvVars, AbstractManager, debounce, removeDuplicates } from '../utils';
@@ -49,13 +49,13 @@ export class LeafManager extends AbstractManager<LeafEvent> {
 
   // Read-only leaf data
   private readonly leafPath: string;
-  private readonly leafInfo: Promise<any>;
+  private readonly leafInfo: Promise<LeafBridgeElement>;
 
   // Cache data from leaf bridge
-  private leafWorkspaceInfo: Promise<any | undefined> = Promise.resolve(undefined);
-  private leafRemotes: Promise<any | undefined> = Promise.resolve(undefined);
+  private leafWorkspaceInfo: Promise<LeafBridgeElement | undefined> = Promise.resolve(undefined);
+  private leafRemotes: Promise<LeafBridgeElement | undefined> = Promise.resolve(undefined);
   private leafEnvVar: Promise<EnvVars | undefined> = Promise.resolve(undefined);
-  private leafPackages: Promise<any | undefined> = Promise.resolve(undefined);
+  private leafPackages: Promise<{ installedPackages: LeafBridgeElement, availablePackages: LeafBridgeElement } | undefined> = Promise.resolve(undefined);
 
   /**
    * Initialize model infos and start watching leaf files
@@ -122,8 +122,11 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * Get info node from leaf bridge. Show notification if any.
    */
-  private async requestBridgeInfo() {
+  private async requestBridgeInfo(): Promise<LeafBridgeElement> {
     let info = await this.leafInterface.send(LeafBridgeCommands.Info);
+    if (!info) {
+      throw new Error("Communication issue with leaf bridge");
+    }
     console.log(`Found Leaf version ${info.version}`);
     return info;
   }
@@ -268,13 +271,49 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
+   * Get packages from bridge
+   * Fill installed property
+   * Merge custom tags and tags
+   */
+  private async requestPackages(): Promise<any | undefined> {
+    let packs = await this.leafInterface.send(LeafBridgeCommands.Packages);
+    if (packs) {
+      // Mark installed or available
+      let instPacks = packs.installedPackages;
+      for (let packId in instPacks) {
+        instPacks[packId].installed = true;
+      }
+      let availPacks = packs.availablePackages;
+      for (let packId in availPacks) {
+        availPacks[packId].installed = false;
+      }
+
+      // Merge tags and customTags into Tags
+      for (let packList of [packs.installedPackages, packs.availablePackages]) {
+        for (let packId in packList) {
+          let tags: string[] = packList[packId].info.tags;
+          if (!tags) {
+            tags = [];
+          }
+          let customTags = packList[packId].info.customTags;
+          if (customTags) {
+            tags.push(...customTags);
+          }
+          packList[packId].info.tags = removeDuplicates(tags); // Avoid duplicates
+        }
+      }
+    }
+    return packs;
+  }
+
+  /**
    * Called when something change in remote.json in leaf cache folder
    * Check packages change and emit event if necessary
    */
   @debounce(100) // This method call is debounced (100ms)
   private refreshPackagesFromBridge() {
     console.log("[LeafManager] Refresh packages from leaf bridge");
-    this.leafPackages = this.compareAndTrigEvent(LeafEvent.PackagesChanged, this.leafPackages, this.requestMasterPackages());
+    this.leafPackages = this.compareAndTrigEvent(LeafEvent.PackagesChanged, this.leafPackages, this.requestPackages());
   }
 
   /**
@@ -360,74 +399,6 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
-   * Return master packages (available and installed)
-   * Set installed property on returned object
-   */
-  private async requestMasterPackages(): Promise<any> {
-
-    // Get all packages available.
-    let out: { [key: string]: any } = {};
-    let packs = await this.leafInterface.send(LeafBridgeCommands.Packages);
-    let ap = packs.availablePackages;
-    for (let packId in ap) {
-      // Get available package
-      let pack = ap[packId];
-      // Add to out
-      out[packId] = pack;
-      // Mark as not installed (available)
-      out[packId].installed = false;
-    }
-
-    // Get installed packages to override available packages with.
-    let ip = packs.installedPackages;
-    for (let packId in ip) {
-      // Get installed package
-      let pack = ip[packId];
-      // Get available package with the same id
-      let overiddenPack = out[packId];
-      if (overiddenPack) {
-        // Copy tags from overridden one
-        this.mergeAvailableAndInstalledInfoField("tags", overiddenPack, pack);
-        this.mergeAvailableAndInstalledInfoField("customTags", overiddenPack, pack);
-      }
-
-      // Mark as installed
-      pack.installed = true;
-
-      // Add to out (and maybe override an available)
-      out[packId] = pack;
-    }
-
-    // Merge tags and customTags into Tags
-    for (let packId in out) {
-      let tags: string[] = out[packId].info.tags;
-      if (!tags) {
-        tags = [];
-      }
-      let customTags = out[packId].info.customTags;
-      if (customTags) {
-        tags.push(...customTags);
-      }
-      out[packId].info.tags = removeDuplicates(tags); // Avoid duplicates
-    }
-
-    return out;
-  }
-
-  /**
-   * Populate tags from available to corresponding install package
-   */
-  private mergeAvailableAndInstalledInfoField(infoField: string, fromPack: any, toPack: any) {
-    if (fromPack.info[infoField]) {
-      if (toPack.info[infoField]) {
-        toPack.info[infoField].push(...fromPack.info[infoField]);
-      } else {
-        toPack.info[infoField] = fromPack.info[infoField];
-      }
-    }
-  }
-
-  /**
    * @return current remotes node from leaf bridge
    */
   public async getRemotes(): Promise<any> {
@@ -443,22 +414,83 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
-   * @return master available and installed packages as a object
+   * @return available packages as a object
    */
-  public async getAllPackages(): Promise<any> {
-    return this.leafPackages;
+  public async getAvailablePackages(): Promise<LeafBridgeElement | undefined> {
+    let packs = await this.leafPackages;
+    return packs ? packs.availablePackages : undefined;
+  }
+
+  /**
+   * @return installed packages as a object
+   */
+  public async getInstalledPackages(): Promise<LeafBridgeElement | undefined> {
+    let packs = await this.leafPackages;
+    return packs ? packs.installedPackages : undefined;
+  }
+
+  /**
+   * Return installed and available merged in a unique LeafBridgeElement
+   */
+  public async getMergedPackages(): Promise<LeafBridgeElement> {
+    // Get all packages available.
+    let out: { [key: string]: any } = {};
+    let packs = await this.leafPackages;
+    if (!packs) {
+      return out;
+    }
+    let ap = packs.availablePackages;
+    for (let packId in ap) {
+      // Get available package
+      let pack = ap[packId];
+      // Add to out
+      out[packId] = pack;
+    }
+
+    // Get installed packages to override available packages with.
+    let ip = packs.installedPackages;
+    for (let packId in ip) {
+      // Get installed package
+      let pack = ip[packId];
+      // Get available package with the same id
+      let overiddenPack = out[packId];
+      if (overiddenPack) {
+        // Copy tags from overridden one
+        this.mergeAvailableAndInstalledTags(overiddenPack, pack);
+      }
+
+      // Add to out (and maybe override an available)
+      out[packId] = pack;
+    }
+
+    return out;
+  }
+
+  /**
+   * Populate tags from available to corresponding install package
+   */
+  private mergeAvailableAndInstalledTags(fromPack: any, toPack: any) {
+    if (fromPack.info.tags) {
+      if (toPack.info.tags) {
+        toPack.info.tags.push(...fromPack.info.tags);
+        toPack.info.tags = removeDuplicates(toPack.info.tags);
+      } else {
+        toPack.info.tags = fromPack.info.tags;
+      }
+    }
   }
 
   /**
    * Return tags with package count
    */
   public async getTags(): Promise<{ [key: string]: number }> {
-    let packs = await this.leafPackages;
     let out: { [key: string]: number } = {};
-    if (packs) {
-      for (let packId in packs) {
-        for (let tag of packs[packId].info.tags) {
-          tag in out ? out[tag]++ : out[tag] = 1;
+    for (let packs of [await this.getAvailablePackages(), await this.getInstalledPackages()]) {
+      if (packs) {
+        for (let packId in packs) {
+          for (let tag of packs[packId].info.tags) {
+            tag in out ? out[tag]++ : out[tag] = 1;
+          }
         }
       }
     }

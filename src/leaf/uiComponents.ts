@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../uiUtils';
 import { Contexts, Commands } from '../identifiers';
 import { LeafManager } from './core';
+import { LeafBridgeElement } from './bridge';
 
 // This module is used to declare model/ui mappings using vscode items
 
@@ -24,8 +25,8 @@ export class RemoteQuickPickItem extends QuickPickItem2 {
 
 export class RemoteTreeItem extends TreeItem2 {
 	constructor(
-		public readonly alias: string,
-		public readonly properties: any
+		alias: string,
+		properties: any
 	) {
 		super(alias, properties, // model data
 			alias, // label
@@ -52,28 +53,94 @@ export class PackageQuickPickItem extends QuickPickItem2 {
 	}
 }
 
-export class PackagesContainerTreeItem extends TreeItem2 {
-	constructor() {
-		super("PackageContainer", undefined, // model data
-			"Packages", // label
-			"Packages", // tooltip
-			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
+abstract class PackagesContainerTreeItem extends TreeItem2 {
+	private children: TreeItem2[] = [];
+	constructor(id: string, private readonly baseLabel: string, icon: string,
+		collapsibleState: vscode.TreeItemCollapsibleState,
+		public readonly filter: (packs: LeafBridgeElement) => LeafBridgeElement = (packs: LeafBridgeElement) => packs) {
+		super(id, undefined, // model data
+			baseLabel, // label
+			baseLabel, // tooltip
+			collapsibleState, // collapsibleState
 			Contexts.LeafPackagesContainer, // contextValue
-			"PackageAvailable.svg"); // iconFileName
+			icon // iconFileName
+		);
+	}
+	public abstract async getPackages(): Promise<LeafBridgeElement | undefined>;
+
+	public async refresh() {
+		this.children = await this.createChildrenItems();
+		this.label = `${this.baseLabel} (${this.children.length})`;
+		this.tooltip = this.label;
+	}
+
+	private async createChildrenItems(): Promise<TreeItem2[]> {
+		let packs = await this.getPackages();
+		if (packs) {
+			packs = this.filter(packs);
+			return toItems(packs, PackageTreeItem);
+		}
+		return [];
+	}
+
+	public async getChildren(): Promise<TreeItem2[]> {
+		return this.children;
+	}
+}
+
+export class AvailablePackagesContainerTreeItem extends PackagesContainerTreeItem {
+	constructor(filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
+		super("AvailablePackageContainer", // id
+			`Available`, // label
+			"PackageAvailable.svg", // iconFileName
+			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
+			filter);
+	}
+
+	public async getPackages(): Promise<LeafBridgeElement | undefined> {
+		return LeafManager.getInstance().getAvailablePackages();
+	}
+}
+
+export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeItem {
+	constructor(filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
+		super("InstalledPackageContainer", // id
+			"Installed", // label
+			"PackageInstalled.svg", // iconFileName
+			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
+			filter);
+	}
+
+	public async getPackages(): Promise<LeafBridgeElement | undefined> {
+		return LeafManager.getInstance().getInstalledPackages();
 	}
 }
 
 export class PackageTreeItem extends TreeItem2 {
 	constructor(
-		public readonly id: any,
-		public readonly properties: any
+		id: string,
+		properties: any | undefined
 	) {
-		super(id, properties, // model data
+		super(PackageTreeItem.getId(id, properties), properties, // model data
 			id, // label
 			properties.info.description, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue
 			properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
+	}
+
+	private static getId(id: string, properties: any | undefined): string {
+		let out = id;
+		if (properties) {
+			if (properties.installed) {
+				out += "-installed";
+			} else {
+				out += "-available";
+			}
+		} else {
+			out += "-unknown";
+		}
+		return out;
 	}
 }
 
@@ -112,8 +179,8 @@ export class ProfileQuickPickItem extends QuickPickItem2 {
 
 export class ProfileTreeItem extends TreeItem2 {
 	constructor(
-		public readonly id: any,
-		public readonly properties: any
+		id: any,
+		properties: any
 	) {
 		super(id, properties, // model data
 			id, // label
@@ -125,10 +192,12 @@ export class ProfileTreeItem extends TreeItem2 {
 
 	public async getChildren(): Promise<TreeItem2[]> {
 		// Find package properties
-		let packs = await LeafManager.getInstance().getAllPackages();
+		let packs = await LeafManager.getInstance().getMergedPackages();
 		let model: { [key: string]: any } = {};
-		for (let packId of this.properties.packages) {
-			model[packId] = packs[packId];
+		if (packs) {
+			for (let packId of this.properties.packages) {
+				model[packId] = packs[packId];
+			}
 		}
 
 		// Return items

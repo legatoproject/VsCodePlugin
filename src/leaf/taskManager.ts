@@ -11,7 +11,7 @@ import { EnvVars, PromiseCallbacks } from '../utils';
 export abstract class AbstractLeafTaskManager {
     private readonly listener: vscode.Disposable; // Task ending listener
     private readonly idGenerator: IterableIterator<number> = AbstractLeafTaskManager.newIdGenerator(); // task id generator
-    private pendingRequests: PromiseCallbacks = {}; // Pending promise callbacks
+    private pendingRequests: PromiseCallbacks<void> = {}; // Pending promise callbacks
 
     public constructor() {
         // Listen to task ending

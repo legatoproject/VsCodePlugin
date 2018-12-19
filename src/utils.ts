@@ -8,9 +8,9 @@ import { Commands } from './identifiers';
 /**
  * This object can store resolve and reject callbacks of a promise
  */
-export interface PromiseCallbacks {
+export interface PromiseCallbacks<T> {
     [key: string]: {
-        resolve: (value?: void | PromiseLike<void>) => void,
+        resolve: (value?: T | PromiseLike<T>) => void,
         reject: (reason?: any) => void
     };
 }
