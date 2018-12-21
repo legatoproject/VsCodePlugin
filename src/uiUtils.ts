@@ -59,6 +59,7 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 		id: string,
 		properties: any | undefined,
 		public label: string,
+		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		contextValue: Contexts,
@@ -84,15 +85,16 @@ export class CheckboxTreeItem extends TreeItem2 {
 	private checked: boolean = true;
 
 	constructor(
-		public readonly id: string,
-		public readonly properties: any | undefined,
+		id: string,
+		properties: any | undefined,
 		public label: string,
+		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly contextValue: Contexts,
 		commandId: Commands
 	) {
-		super(id, properties, label, tooltip, collapsibleState, contextValue);
+		super(id, properties, label, description, tooltip, collapsibleState, contextValue);
 		this.command = {
 			title: "Toggle checkbox",
 			command: commandId,

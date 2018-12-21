@@ -30,6 +30,7 @@ export class RemoteTreeItem extends TreeItem2 {
 	) {
 		super(alias, properties, // model data
 			alias, // label
+			properties.url, // description
 			properties.url, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			properties.enabled ? Contexts.LeafRemoteEnabled : Contexts.LeafRemoteDisabled, // contextValue
@@ -55,12 +56,13 @@ export class PackageQuickPickItem extends QuickPickItem2 {
 
 abstract class PackagesContainerTreeItem extends TreeItem2 {
 	private children: TreeItem2[] = [];
-	constructor(id: string, private readonly baseLabel: string, icon: string,
+	constructor(id: string, label: string, icon: string,
 		collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly filter: (packs: LeafBridgeElement) => LeafBridgeElement = (packs: LeafBridgeElement) => packs) {
 		super(id, undefined, // model data
-			baseLabel, // label
-			baseLabel, // tooltip
+			label, // label
+			'', // description (will be filled on refresh)
+			'', // tooltip (will be filled on refresh)
 			collapsibleState, // collapsibleState
 			Contexts.LeafPackagesContainer, // contextValue
 			icon // iconFileName
@@ -70,8 +72,8 @@ abstract class PackagesContainerTreeItem extends TreeItem2 {
 
 	public async refresh() {
 		this.children = await this.createChildrenItems();
-		this.label = `${this.baseLabel} (${this.children.length})`;
-		this.tooltip = this.label;
+		this.description = `(${this.children.length})`;
+		this.tooltip = `${this.label} ${this.description}`;
 	}
 
 	private async createChildrenItems(): Promise<TreeItem2[]> {
@@ -123,6 +125,7 @@ export class PackageTreeItem extends TreeItem2 {
 	) {
 		super(PackageTreeItem.getId(packId, properties), properties, // model data
 			packId, // label
+			(properties && properties.info && properties.info.tags) ? properties.info.tags.sort().join(', ') : '', // description
 			properties.info.description, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue
@@ -184,6 +187,7 @@ export class ProfileTreeItem extends TreeItem2 {
 	) {
 		super(id, properties, // model data
 			id, // label
+			(properties && properties.current) ? '[current]' : '', // description
 			computeDetails(properties), // tooltip
 			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
 			properties.installed ? Contexts.LeafProfileCurrent : Contexts.LeafProfileOther, // contextValue
@@ -216,8 +220,18 @@ export class TagQuickPickItem extends QuickPickItem2 {
 	) {
 		super(tag, packCount,// model data
 			`@${tag}`, // label
-			`${packCount} package(s)`, // description
+			TagQuickPickItem.createDescription(packCount), // description
 			undefined); // details
+	}
+
+	private static createDescription(packCount: number) {
+		if (packCount === 0) {
+			return `No packages`;
+		}
+		if (packCount === 1) {
+			return `One package`;
+		}
+		return `${packCount} packages`;
 	}
 }
 
@@ -233,6 +247,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 	constructor(public permanentChildren: FilterTreeItem[], public children: FilterTreeItem[]) {
 		super("FilterContainer", undefined, // model data
 			"Filters", // label
+			"", // description
 			"Filters", // tooltip
 			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
 			Contexts.LeafPackagesFilterContainer, // contextValue
@@ -258,8 +273,9 @@ export class FilterTreeItem extends CheckboxTreeItem {
 		public readonly value: string,
 		contextValue: Contexts = Contexts.LeafPackagesFilter
 	) {
-		super(`Filter:${value}`, undefined, // model data
+		super(`Filter: ${value} `, undefined, // model data
 			value, // label
+			'', // description
 			value, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			contextValue, // contextValue

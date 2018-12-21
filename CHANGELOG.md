@@ -8,6 +8,7 @@
 - New build task to build and install in one action
 - Add filters to the package view
 - Add Leaf Profiles view + commands to remove packages from profiles, and to remove profiles
+- Add description text in views for packages (tags), remotes (URL), profiles (current)
 
 ## 0.3.0
 - All commands reworked to be functional from the command palette
