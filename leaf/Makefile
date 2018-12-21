@@ -41,6 +41,7 @@ $(OUTPUT)/$(LEAF_PACK_NAME)/manifest.json: $(LEAF_PACK_NAME)/template.json Makef
 		--description "Legato extension for VS Code" \
 		--date "$(DATE)" \
 		--master true \
+		--upgradable true \
 		--depends '$(LEAF_PACK_SRC_NAME)_$(VERSION)(LEGATO_VSCODE_SRC)' \
 		--append $(LEAF_PACK_NAME)/template.json
 

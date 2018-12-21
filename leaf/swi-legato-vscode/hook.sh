@@ -32,11 +32,16 @@ fi
 # Check action
 if test "$action" = "install"; then
     # Just trigger install
-    exec "$codePath" --install-extension "$vsixPath"
+    exec "$codePath" --install-extension "$vsixPath" --force
 elif test "$action" = "uninstall"; then
     # Just trigger uninstall
-    # This may fail if the extension was already uninstalled by another way; let it fail silently in this case
-    "$codePath" --uninstall-extension "$vsixPath" || true
+
+    # Look for installed version
+    installedExt="$("$codePath" --list-extensions --show-versions | grep SWIR.legato-plugin || true)"
+    if test -n "$installedExt" -a "${installedExt#*@}" = "$(basename -s .vsix "$vsixPath" | sed -e "s/legato-plugin-//")"; then
+        # Trigger uninstall only if there is an exact match with current package
+        "$codePath" --uninstall-extension "$vsixPath"
+    fi
 else
     echo "Unknown action: $action"
     exit 3
