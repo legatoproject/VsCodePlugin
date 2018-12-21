@@ -43,11 +43,11 @@ export class RemoteTreeItem extends TreeItem2 {
 
 export class PackageQuickPickItem extends QuickPickItem2 {
 	constructor(
-		public readonly id: string,
+		public readonly packId: string,
 		public readonly properties: any
 	) {
-		super(id, properties,// model data
-			id, // label
+		super(packId, properties,// model data
+			packId, // label
 			properties.installed ? "[installed]" : "[available]", // description
 			properties.info.description); // details
 	}
@@ -118,11 +118,11 @@ export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeIte
 
 export class PackageTreeItem extends TreeItem2 {
 	constructor(
-		id: string,
+		public readonly packId: string,
 		properties: any | undefined
 	) {
-		super(PackageTreeItem.getId(id, properties), properties, // model data
-			id, // label
+		super(PackageTreeItem.getId(packId, properties), properties, // model data
+			packId, // label
 			properties.info.description, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue

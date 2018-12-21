@@ -94,8 +94,8 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     }
     if (packageItem) {
       let profileItem = packageItem.parent;
-      console.log(`Remove package ${packageItem.id} from profile: ${profileItem.id}`);
-      return LeafManager.getInstance().configProfile(profileItem.id, undefined, packageItem.id);
+      console.log(`Remove package ${packageItem.packId} from profile: ${profileItem.id}`);
+      return LeafManager.getInstance().configProfile(profileItem.id, undefined, packageItem.packId);
     }
   }
 

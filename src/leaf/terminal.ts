@@ -47,7 +47,7 @@ export class LeafTerminalManager extends CommandRegister {
    * EnVars have been modified
    */
   private async onEnvVarsChange(oldEnvVars: any | undefined, _newEnvVars: any | undefined) {
-    if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
+    if (this.leafTerminal && ACTION_LABELS.APPLY === await window.showWarningMessage(
       "Leaf environment has changed; Click to update the Leaf shell terminal.",
       ACTION_LABELS.CANCEL,
       ACTION_LABELS.APPLY)) {

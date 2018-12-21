@@ -211,10 +211,10 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			if (newProfileName.length === 0) {
 				newProfileName = undefined; // "" is a valid return for default profile name
 			}
-			await LeafManager.getInstance().createProfile(newProfileName, selectedPackage.id);
+			await LeafManager.getInstance().createProfile(newProfileName, selectedPackage.packId);
 		} else if (result.id in profiles) {
 			// Existing profile
-			await LeafManager.getInstance().addPackagesToProfile([selectedPackage.id], result.id, result.properties);
+			await LeafManager.getInstance().addPackagesToProfile([selectedPackage.packId], result.id, result.properties);
 		}
 	}
 

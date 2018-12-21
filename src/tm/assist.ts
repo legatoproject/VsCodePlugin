@@ -59,6 +59,7 @@ export class TargetUiManager extends CommandRegister {
       ],
       'Select the command to apply on device...');
     this.paletteOnDeviceIP.register();
+    this.toDispose(this.paletteOnDeviceIP);
 
     // Listen to env changes
     LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarsChange, this);
