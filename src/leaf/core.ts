@@ -244,7 +244,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     this.disposables.onDispose(() => watcher.close());
     watcher.addListener("change", (eventType: string, filename: string | Buffer) => {
       console.log(`[FileWatcher] File watcher from fs fire an event: type=${eventType} filename=${filename.toString()}`);
-      callback.call(this, filename);
+      callback.call(this, filename.toString());
     });
     return watcher;
   }

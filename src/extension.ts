@@ -9,10 +9,13 @@ import { LeafPackagesView } from './leaf/packages';
 import { LeafRemotesView } from './leaf/remotes';
 import { TargetUiManager } from './tm/assist';
 import { LegatoLanguageManager } from './legato/language';
+import { ConfigurationManager } from './configuration';
 
 
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+/**
+ * this method is called when your extension is activated
+ * your extension is activated the very first time the command is executed
+ */
 export async function activate(context: vscode.ExtensionContext) {
     // This line of code will only be executed once when your extension is activated
     console.log('Extension "Legato Plugin" is now active!');
@@ -20,13 +23,13 @@ export async function activate(context: vscode.ExtensionContext) {
     // Check Leaf installation
     await LeafManager.checkLeafInstalled(context);
 
-    // Exclude leaf-data from file watcher
-    let config = vscode.workspace.getConfiguration(undefined, null);
-    config.update("files.watcherExclude", { "**/leaf-data/**": true }, vscode.ConfigurationTarget.Global);
+    // Check vscode configuration
+    ConfigurationManager.getInstance().checkConfiguration();
 
     // Register manager to dispose it on deactivate
     context.subscriptions.push(LeafManager.getInstance());
     context.subscriptions.push(LegatoManager.getInstance());
+    context.subscriptions.push(ConfigurationManager.getInstance());
 
     // Launch data providers for packages and remotes view
     context.subscriptions.push(new LeafPackagesView());
