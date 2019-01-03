@@ -15,13 +15,13 @@ export const enum LeafEnvScope {
   Profile = "profile",
   User = "user"
 }
-export const enum LeafEvent { // Events with theirs parameters
+export enum LeafEvent { // Events with theirs parameters
   CurrentProfileChanged = "currentProfileChanged", // oldProfileName: string | undefined, newProfileName: string | undefined
   ProfilesChanged = "leafProfilesChanged", // oldProfiles: any | undefined, newProfiles: any | undefined
   RemotesChanged = "leafRemotesChanged", // oldRemotes: any | undefined, newRemotes: any | undefined
-  EnvVarChanged = "leafEnvVarChanged", // oldEnvVar: any | undefined, newEnvVar: any | undefined
+  EnvVarsChanged = "leafEnvVarsChanged", // oldEnvVar: any | undefined, newEnvVar: any | undefined
   PackagesChanged = "leafPackagesChanged", // oldPackages: any | undefined, newPackages: any | undefined
-  WorkspaceInfoChanged = "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
+  WorkspaceInfosChanged = "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
   onInLeafWorkspaceChange = "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
 }
 export const LEAF_TASKS = {
@@ -45,7 +45,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   public readonly taskManager: AbstractLeafTaskManager = this.disposables.toDispose(new SequencialLeafTaskManager());
 
   // Leaf Bridge
-  private readonly leafInterface: LeafBridge = new LeafBridge();
+  private readonly leafBridge: LeafBridge = new LeafBridge();
 
   // Read-only leaf data
   private readonly leafPath: string;
@@ -56,6 +56,9 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   private leafRemotes: Promise<LeafBridgeElement | undefined> = Promise.resolve(undefined);
   private leafEnvVar: Promise<EnvVars | undefined> = Promise.resolve(undefined);
   private leafPackages: Promise<{ installedPackages: LeafBridgeElement, availablePackages: LeafBridgeElement } | undefined> = Promise.resolve(undefined);
+
+  // leaf-data folder content watcher
+  private leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
 
   /**
    * Initialize model infos and start watching leaf files
@@ -70,9 +73,9 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     this.leafInfo = this.requestBridgeInfo();
 
     // Subscribe to workspaceInfo bridge node modification to trig leaf workspace event and profiles event if necessary
-    this.addListener(LeafEvent.WorkspaceInfoChanged, this.checkCurrentProfileChangeAndEmit, this, this.disposables);
-    this.addListener(LeafEvent.WorkspaceInfoChanged, this.checkProfilesChangeAndEmit, this, this.disposables);
-    this.addListener(LeafEvent.WorkspaceInfoChanged, this.checkIsLeafWorkspaceChangeAndEmit, this, this.disposables);
+    this.addListener(LeafEvent.WorkspaceInfosChanged, this.checkCurrentProfileChangeAndEmit, this, this.disposables);
+    this.addListener(LeafEvent.WorkspaceInfosChanged, this.checkProfilesChangeAndEmit, this, this.disposables);
+    this.addListener(LeafEvent.WorkspaceInfosChanged, this.checkIsLeafWorkspaceChangeAndEmit, this, this.disposables);
 
     // Create fetch command
     this.createCommand(Commands.LeafPackagesFetch, this.fetchRemote);
@@ -123,11 +126,11 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Get info node from leaf bridge. Show notification if any.
    */
   private async requestBridgeInfo(): Promise<LeafBridgeElement> {
-    let info = await this.leafInterface.send(LeafBridgeCommands.Info);
+    let info = await this.leafBridge.send(LeafBridgeCommands.Info);
     if (!info) {
       throw new Error("Communication issue with leaf bridge");
     }
-    console.log(`Found Leaf version ${info.version}`);
+    console.log(`[LeafManager] Found Leaf version ${info.version}`);
     return info;
   }
 
@@ -171,20 +174,20 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   private async watchLeafFiles() {
     // Listen to leaf-data folder creation/deletion
-    let leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
     this.watchLeafFileByVsCodeWatcher(
       new vscode.RelativePattern(this.getLeafWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER),
-      // On leaf-data creation, create watcher for content
-      () => leafDataContentWatcher = this.watchLeafFolderByFsWatch(join(this.getLeafWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER), this.refreshInfosFromBridge),
-      // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
-      undefined,
-      // On leaf-data deletion, close watcher for content
-      () => leafDataContentWatcher ? leafDataContentWatcher.close() : undefined
+      this.startWatchingLeafDataFolder, // File creation callback
+      undefined, // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
+      this.stopWatchingLeafDataFolder // File deletion callback
     );
+    // If leaf-data already exist, listen to it
+    if (fs.existsSync(this.getLeafWorkspaceDirectory(LEAF_FILES.DATA_FOLDER))) {
+      this.startWatchingLeafDataFolder();
+    }
 
     // Listen leaf-workspace.json (creation/deletion/change)
     this.watchLeafFileByVsCodeWatcher(
-      join(this.getLeafWorkspaceDirectory(), LEAF_FILES.WORKSPACE_FILE),
+      this.getLeafWorkspaceDirectory(LEAF_FILES.WORKSPACE_FILE),
       this.refreshInfosFromBridge, this.refreshInfosFromBridge, this.refreshInfosFromBridge);
 
     // Listen config folder
@@ -195,6 +198,25 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     this.watchLeafFolderByFsWatch(
       info.cacheFolder,
       filename => filename === LEAF_FILES.REMOTE_CACHE_FILE ? this.refreshPackagesFromBridge() : undefined);
+  }
+
+  /**
+   * Create fs folder watcher on leaf-data
+   */
+  private startWatchingLeafDataFolder() {
+    this.stopWatchingLeafDataFolder(); // Close previous listener if any (should not)
+    let leafDataFolderPath = this.getLeafWorkspaceDirectory(LEAF_FILES.DATA_FOLDER);
+    this.leafDataContentWatcher = this.watchLeafFolderByFsWatch(leafDataFolderPath, this.refreshInfosFromBridge);
+  }
+
+  /**
+   * Close fs folder watcher on leaf-data
+   */
+  private stopWatchingLeafDataFolder() {
+    if (this.leafDataContentWatcher) {
+      this.leafDataContentWatcher.close();
+      this.leafDataContentWatcher = undefined;
+    }
   }
 
   /**
@@ -243,7 +265,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     let watcher = fs.watch(folder);
     this.disposables.onDispose(() => watcher.close());
     watcher.addListener("change", (eventType: string, filename: string | Buffer) => {
-      console.log(`[FileWatcher] File watcher from fs fire an event: type=${eventType} filename=${filename.toString()}`);
+      console.log(`[FileWatcher] fs fire an event: type=${eventType} filename=${filename.toString()}`);
       callback.call(this, filename.toString());
     });
     return watcher;
@@ -257,17 +279,17 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   private refreshInfosFromBridge() {
     console.log("[LeafManager] Refresh workspaceInfo, envars and remotes from leaf bridge");
     this.leafWorkspaceInfo = this.compareAndTrigEvent(
-      LeafEvent.WorkspaceInfoChanged,
+      LeafEvent.WorkspaceInfosChanged,
       this.leafWorkspaceInfo,
-      this.leafInterface.send(LeafBridgeCommands.WorkspaceInfo));
+      this.leafBridge.send(LeafBridgeCommands.WorkspaceInfo));
     this.leafEnvVar = this.compareAndTrigEvent(
-      LeafEvent.EnvVarChanged,
+      LeafEvent.EnvVarsChanged,
       this.leafEnvVar,
-      this.leafInterface.send(LeafBridgeCommands.ResolveVar));
+      this.leafBridge.send(LeafBridgeCommands.ResolveVar));
     this.leafRemotes = this.compareAndTrigEvent(
       LeafEvent.RemotesChanged,
       this.leafRemotes,
-      this.leafInterface.send(LeafBridgeCommands.Remotes));
+      this.leafBridge.send(LeafBridgeCommands.Remotes));
   }
 
   /**
@@ -276,7 +298,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Merge custom tags and tags
    */
   private async requestPackages(): Promise<any | undefined> {
-    let packs = await this.leafInterface.send(LeafBridgeCommands.Packages);
+    let packs = await this.leafBridge.send(LeafBridgeCommands.Packages);
     if (packs) {
       // Mark installed or available
       let instPacks = packs.installedPackages;
@@ -323,14 +345,14 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     event: LeafEvent,
     oldValue: Promise<any | undefined> | any | undefined,
     newValue: Promise<any | undefined> | any | undefined
-  ): Promise<any> {
+  ): Promise<any | undefined> {
     if (oldValue instanceof Promise) {
       oldValue = await oldValue;
     }
     if (newValue instanceof Promise) {
       newValue = await newValue;
     }
-    if (!oldValue || JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
+    if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
       this.emit(event, oldValue, newValue);
     }
     return newValue;
@@ -365,10 +387,14 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
+   * filename an optional argument which will be appened to the workspace directory
    * @return current leaf workpace path
    */
-  public getLeafWorkspaceDirectory(): string {
+  public getLeafWorkspaceDirectory(filename?: string): string {
     if (vscode.workspace.rootPath) {
+      if (filename) {
+        return join(vscode.workspace.rootPath, filename);
+      }
       return vscode.workspace.rootPath;
     }
     throw new Error('workspace.rootPath is undefined');
@@ -401,14 +427,14 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * @return current remotes node from leaf bridge
    */
-  public async getRemotes(): Promise<any> {
+  public async getRemotes(): Promise<LeafBridgeElement | undefined> {
     return this.leafRemotes;
   }
 
   /**
    * @return an array of profiles
    */
-  public async getProfiles(): Promise<any> {
+  public async getProfiles(): Promise<LeafBridgeElement | undefined> {
     let wsInfo = await this.leafWorkspaceInfo;
     return wsInfo ? wsInfo.profiles : undefined;
   }
@@ -514,31 +540,6 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
-   * Delete profile(s)
-   * profile: profile(s) name(s) to delete
-   */
-  public async configProfile(profile: string, packToAdd: string | undefined, packToRemove: string | undefined): Promise<void> {
-    let taskName = `Configure profile ${profile}:`;
-    let leafCmd = `leaf profile config `;
-    if (!packToAdd && !packToRemove) {
-      throw new Error('No package to add nor remove');
-    }
-    if (packToAdd) {
-      taskName += ` add package ${packToAdd}`;
-      leafCmd += ` --add-package ${packToAdd}`;
-    }
-    if (packToRemove) {
-      if (packToAdd) {
-        taskName += " and";
-      }
-      taskName += ` remove package ${packToRemove}`;
-      leafCmd += ` --rm-package ${packToRemove}`;
-    }
-    leafCmd += ` ${profile}`;
-    return this.taskManager.executeAsTask(taskName, leafCmd);
-  }
-
-  /**
    * Create a new profile
    * profile: the new profile name (can be undefined for default name)
    * packs: the list of packages id to add to the created profile
@@ -557,19 +558,39 @@ export class LeafManager extends AbstractManager<LeafEvent> {
 
   /**
    * Add packages to an existing profile
-   * packs: the list of packages id to add to the created profile
-   * profileId: the target profile name
-   * profileProperties: the target profile properties (from leaf bridge)
+   * profileName: the profile to modify
+   * packIds: the list of packages id to add to the profile
+   * @return a void promise that can be wait until the operation is terminated
    */
-  public async addPackagesToProfile(packs: string[], profileId: string, profileProperties?: any): Promise<void> {
-    let cmd: string;
-    let packageArgs = packs.map(id => `-p ${id}`).join(' ');
-    if (profileProperties && profileProperties.current) {
-      cmd = `leaf update ${packageArgs}`;
-    } else {
-      cmd = `leaf profile config ${packageArgs} ${profileId} && leaf profile sync ${profileId}`;
+  public async addPackagesToProfile(profileName: string, ...packIds: string[]): Promise<void> {
+    if (packIds.length === 0) {
+      throw new Error('No package to add');
     }
-    return this.taskManager.executeAsTask(`Add [${packs.join(' ')}] to profile ${profileId}`, cmd);
+    let cmd: string;
+    let packagesArgs = packIds.map(packId => `--add-package ${packId}`).join(' ');
+    if (profileName === await this.getCurrentProfileName()) {
+      // Is current profile -> leaf update
+      cmd = `leaf update ${packagesArgs}`;
+    } else {
+      // Is another profile -> leaf profile config then leaf profile sync
+      cmd = `leaf profile config ${packagesArgs} ${profileName} && leaf profile sync ${profileName}`;
+    }
+    return this.taskManager.executeAsTask(`Add [${packIds.join(' ')}] to profile ${profileName}`, cmd);
+  }
+
+  /**
+   * Remove packages from an existing profile
+   * profileName: the profile to modify
+   * packIds: the list of packages id to remove from the profile
+   * @return a void promise that can be wait until the operation is terminated
+   */
+  public async removePackagesFromProfile(profileName: string, ...packIds: string[]): Promise<void> {
+    if (packIds.length === 0) {
+      throw new Error('No package to remove');
+    }
+    let packagesArgs = packIds.map(packId => `--rm-package ${packId}`).join(' ');
+    let cmd = `leaf profile config ${packagesArgs} ${profileName} && leaf profile sync ${profileName}`;
+    return this.taskManager.executeAsTask(`Remove [${packIds.join(' ')}] from profile ${profileName}`, cmd);
   }
 
   /**
@@ -632,6 +653,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   public async dispose() {
     super.dispose();
     this.emit(LeafEvent.onInLeafWorkspaceChange, true, false);
+    this.stopWatchingLeafDataFolder();
   }
 }
 

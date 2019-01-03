@@ -37,7 +37,7 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
     private constructor() {
         super();
         // Subscribe to envars bridge node modification to trig legato workspace event if necessary
-        LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
+        LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
     }
 
     public saveActiveDefFile(uri: vscode.Uri) {

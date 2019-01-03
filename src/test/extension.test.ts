@@ -29,7 +29,7 @@ suite("Leaf Tests", function () {
     test(`List profiles`, function (done) {
         this.timeout(LEAF_TIMEOUT);
         leafManager.getProfiles().then(profiles => {
-            profiles = Object.keys(profiles);
+            profiles = profiles ? Object.keys(profiles) : undefined;
             console.log(`Found profiles: ${profiles}`);
             assert.notEqual(profiles, undefined, `No profile found`);
             done();

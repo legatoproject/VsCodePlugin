@@ -62,7 +62,7 @@ export class TargetUiManager extends CommandRegister {
     this.toDispose(this.paletteOnDeviceIP);
 
     // Listen to env changes
-    LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarsChange, this);
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
 
     // Show DEST_IP on start
     this.setInitialState();

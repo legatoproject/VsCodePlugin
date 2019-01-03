@@ -35,7 +35,7 @@ export class LegatoUiManager extends CommandRegister {
    */
   private async setInitialState() {
     // Update status bar on env var change
-    LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarChanged, this);
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarChanged, this);
 
     // Set initial value of status bar
     this.onEnvVarChanged(undefined, await LeafManager.getInstance().getEnvVars());

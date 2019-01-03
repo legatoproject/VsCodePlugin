@@ -24,7 +24,7 @@ export async function chooseFile(legatoFiles: vscode.Uri[], messages: FileChoose
     vscode.window.showErrorMessage(messages.noFileFoundMessage);
     return undefined;
   } else if (legatoFiles.length === 1) {
-    console.log(`File set to the only one - ${legatoFiles[0].path}`);
+    console.log(`[Files] File set to the only one - ${legatoFiles[0].path}`);
     return legatoFiles[0];
   } else {
     let filePath: string | undefined = await vscode.window.showQuickPick(

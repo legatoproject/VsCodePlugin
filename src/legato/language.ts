@@ -14,7 +14,7 @@ export class LegatoLanguageManager extends DisposableBag {
 
         // Listen to leaf events
         LegatoManager.getInstance().addListener(LegatoEvent.OnLegatoRootChange, this.stopAndStartLegatoLanguageServer, this);
-        LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.notifyLeafEnvToLanguageServer, this);
+        LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.notifyLeafEnvToLanguageServer, this);
 
         // Launch server
         this.lspClient = this.startLegatoServer();
@@ -33,8 +33,7 @@ export class LegatoLanguageManager extends DisposableBag {
     }
 
     private async notifyLeafEnvToLanguageServer(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
-        console.log(`LEAF ENV CHANGED triggered to LSP`);
-        console.log(newEnvVar ? JSON.stringify(newEnvVar) : "undefined");
+        console.log(`[LegatoLanguageManager] LEAF ENV CHANGED triggered to LSP: ${JSON.stringify(newEnvVar)}`);
         let languageClient = await this.lspClient;
         if (languageClient) {
             languageClient.sendNotification(DidChangeConfigurationNotification.type, newEnvVar);

@@ -57,7 +57,6 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       items
     );
     if (result) {
-      console.log(`Switch to profile: ${result.id}`);
       return LeafManager.getInstance().switchProfile(result.id);
     }
   }
@@ -83,7 +82,6 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       }
     }
     if (profileId) {
-      console.log(`Delete profile: ${profileId}`);
       return LeafManager.getInstance().deleteProfile(profileId);
     }
   }
@@ -92,11 +90,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     if (!packageItem || !packageItem.parent) {
       throw new Error('Command not available from the palette; try the Leaf Profiles view');
     }
-    if (packageItem) {
-      let profileItem = packageItem.parent;
-      console.log(`Remove package ${packageItem.packId} from profile: ${profileItem.id}`);
-      return LeafManager.getInstance().configProfile(profileItem.id, undefined, packageItem.packId);
-    }
+    return LeafManager.getInstance().removePackagesFromProfile(packageItem.parent.id, packageItem.packId);
   }
 
   /**

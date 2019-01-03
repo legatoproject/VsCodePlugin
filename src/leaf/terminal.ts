@@ -20,11 +20,12 @@ export class LeafTerminalManager extends CommandRegister {
   public constructor() {
     super();
 
-    // On profile change, 
-    LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onProfileChanged, this);
+    // On profile change
+    LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onEnvVarsOrCurrentProfileChanged, this);
 
-    // On env change, update leaf terminal
-    LeafManager.getInstance().addListener(LeafEvent.EnvVarChanged, this.onEnvVarsChange, this);
+    // On env change
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
+    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsOrCurrentProfileChanged, this);
 
     // Also, let's add leaf commands
     this.createCommand(Commands.LeafTerminalOpenLeaf, this.showTerminal);
@@ -33,21 +34,47 @@ export class LeafTerminalManager extends CommandRegister {
     this.toDispose(window.onDidCloseTerminal(this.onCloseTerminal, this));
 
     // Set current profile
-    this.setInitialState();
+    this.onEnvVarsOrCurrentProfileChanged();
   }
 
   /**
-   * Async initialisation
+   * Profile or EnvVars changed, show terminal if necessary
    */
-  private async setInitialState() {
-    this.onProfileChanged(undefined, await LeafManager.getInstance().getCurrentProfileName());
+  private async onEnvVarsOrCurrentProfileChanged() {
+    if (this.terminalCreated) {
+      return; // Already created
+    }
+
+    let currentProfileName = await LeafManager.getInstance().getCurrentProfileName();
+    if (!currentProfileName) {
+      return; // No current profile, do nothing
+    }
+
+    let enVars = await LeafManager.getInstance().getEnvVars();
+    if (!enVars) {
+      return; // No envars, profile out of sync, do nothing
+    }
+
+    let profiles = await LeafManager.getInstance().getProfiles();
+    if (!profiles) {
+      return; // No profiles, do nothing
+    }
+
+    let currentProfilePackagesList = profiles[currentProfileName].packages;
+    if (!currentProfilePackagesList || currentProfilePackagesList.lenght === 0) {
+      return; // No packages in current profile, do nothing
+    }
+
+    // Everything is ready, let's show terminal
+    console.log(`[LeafTerminal] Profile and Env ready, show shell based on ${currentProfileName}`);
+    this.showTerminal();
   }
 
   /**
    * EnVars have been modified
    */
   private async onEnvVarsChange(oldEnvVars: any | undefined, _newEnvVars: any | undefined) {
-    if (this.leafTerminal && ACTION_LABELS.APPLY === await window.showWarningMessage(
+    if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
       "Leaf environment has changed; Click to update the Leaf shell terminal.",
       ACTION_LABELS.CANCEL,
       ACTION_LABELS.APPLY)) {
@@ -62,7 +89,9 @@ export class LeafTerminalManager extends CommandRegister {
   private async showTerminal() {
     this.terminalCreated = true;
     if (!this.leafTerminal) {
-      this.leafTerminal = await this.newLeafShellTerminal();
+      console.log(`[LeafTerminal] Create Leaf shell named \'${LEAF_SHELL_LABEL}\'`);
+      let leafBinPath = await LeafManager.getInstance().getLeafPath();
+      this.leafTerminal = window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, ["shell"]);
     }
     this.leafTerminal.show();
   }
@@ -74,25 +103,6 @@ export class LeafTerminalManager extends CommandRegister {
     if (closedTerminal.name === LEAF_SHELL_LABEL) {
       closedTerminal.dispose();
       this.leafTerminal = undefined;
-    }
-  }
-
-  /**
-   * Create new terminal
-   */
-  private async newLeafShellTerminal(args?: string[]) {
-    console.log(`Create Leaf shell named \'${LEAF_SHELL_LABEL}\'`);
-    let leafBinPath = await LeafManager.getInstance().getLeafPath();
-    return window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, ["shell"]);
-  }
-
-  /**
-   * Profile changed, show terminal if exist
-   */
-  private onProfileChanged(_oldProfileName: string | undefined, newProfileName: string | undefined) {
-    if (newProfileName && !this.terminalCreated) {
-      console.log(`Preparing Leaf shell based on ${newProfileName}`);
-      this.showTerminal();
     }
   }
 

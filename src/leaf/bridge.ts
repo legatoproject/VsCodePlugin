@@ -56,7 +56,7 @@ export class LeafBridge {
         this.process.stdout.addListener("data", (chunk: Buffer | string) => this.onInterfaceResponse(chunk));
 
         // Listen from stderr
-        this.process.stderr.addListener("data", (chunk: Buffer | string) => console.log(`Error from leaf interface: ${chunk.toString()}`));
+        this.process.stderr.addListener("data", (chunk: Buffer | string) => console.log(`[Leaf Bridge] Error from leaf interface: ${chunk.toString()}`));
 
         // Configure stdin
         this.process.stdin.setDefaultEncoding('utf-8');
@@ -112,7 +112,7 @@ export class LeafBridge {
                         throw new Error(`Unknown response id ${anyResponse.id}`);
                     }
                 } catch (e) {
-                    console.log(`${e}: ${chunk}`);
+                    console.log(`[Leaf Bridge] ${e}: ${chunk}`);
                 }
             }
         }

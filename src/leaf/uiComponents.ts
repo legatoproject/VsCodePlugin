@@ -126,10 +126,10 @@ export class PackageTreeItem extends TreeItem2 {
 		super(PackageTreeItem.getId(packId, properties), properties, // model data
 			packId, // label
 			(properties && properties.info && properties.info.tags) ? properties.info.tags.sort().join(', ') : '', // description
-			properties.info.description, // tooltip
+			(properties && properties.info) ? properties.info.description : '', // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue
-			properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
+			properties && properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue
+			properties && properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
 	}
 
 	private static getId(id: string, properties: any | undefined): string {

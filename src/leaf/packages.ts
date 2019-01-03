@@ -169,7 +169,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	private async removeFilter(item: Filter | undefined) {
 		if (!item) {
 			// No selection, lo and exit
-			console.log("Remove filter command called without item");
+			console.log("[LeafPackagesView] Remove filter command called without item");
 			return;
 		}
 		this.filters.splice(this.filters.indexOf(item), 1);
@@ -212,9 +212,9 @@ export class LeafPackagesView extends TreeDataProvider2 {
 				newProfileName = undefined; // "" is a valid return for default profile name
 			}
 			await LeafManager.getInstance().createProfile(newProfileName, selectedPackage.packId);
-		} else if (result.id in profiles) {
+		} else if (profiles && result.id in profiles) {
 			// Existing profile
-			await LeafManager.getInstance().addPackagesToProfile([selectedPackage.packId], result.id, result.properties);
+			await LeafManager.getInstance().addPackagesToProfile(result.id, selectedPackage.packId);
 		}
 	}
 
