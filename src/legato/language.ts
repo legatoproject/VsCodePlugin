@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { join } from 'path';
 import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import { LeafManager, LeafEvent } from "../leaf/core";
-import { DisposableBag } from "../utils";
+import { DisposableBag } from "../commons/utils";
 import { LegatoManager, LegatoEvent, LEGATO_ENV } from "./core";
 
 

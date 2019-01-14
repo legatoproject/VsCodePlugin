@@ -1,7 +1,7 @@
 'use strict';
 import * as vscode from "vscode";
 import { LeafManager, LeafEnvScope, LeafEvent } from "../leaf/core";
-import { AbstractManager, EnvVars } from '../utils';
+import { AbstractManager, EnvVars } from '../commons/utils';
 
 export const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
@@ -40,8 +40,9 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
         LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
     }
 
-    public saveActiveDefFile(uri: vscode.Uri) {
-        LeafManager.getInstance().setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}`, LeafEnvScope.Workspace);
+    public saveActiveDefFile(uri: vscode.Uri | undefined) {
+        let value = uri ? `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}` : undefined;
+        LeafManager.getInstance().setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, value, LeafEnvScope.Workspace);
     }
 
     public async getActiveDefFile(): Promise<vscode.Uri | undefined> {

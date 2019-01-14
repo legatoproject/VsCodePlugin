@@ -2,9 +2,9 @@
 
 import { window, StatusBarItem, StatusBarAlignment } from "vscode";
 import { LeafManager, LeafEvent } from './core';
-import { Commands, Views } from '../identifiers';
+import { Command, View } from '../commons/identifiers';
 import { ProfileQuickPickItem, ProfileTreeItem, PackageTreeItem } from './uiComponents';
-import { showMultiStepQuickPick, toItems, TreeDataProvider2 } from '../uiUtils';
+import { showMultiStepQuickPick, toItems, TreeDataProvider2 } from '../commons/uiUtils';
 
 /**
  * Leaf manager.
@@ -16,7 +16,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
   private leafStatusbar: StatusBarItem;
 
   public constructor() {
-    super(Views.LeafProfiles);
+    super(View.LeafProfiles);
     // So lets add status bar
     this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
     this.toDispose(this.leafStatusbar);
@@ -25,10 +25,10 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     this.leafStatusbar.show();
 
     // Also, let's register leaf command
-    this.createCommand(Commands.LeafProfileRemove, this.deleteProfile);
-    this.createCommand(Commands.LeafProfilePackageRemove, this.removePackage);
-    this.createCommand(Commands.LeafProfileSwitch, this.switchProfile);
-    this.leafStatusbar.command = Commands.LeafProfileSwitch;
+    this.createCommand(Command.LeafProfileRemove, this.deleteProfile);
+    this.createCommand(Command.LeafProfilePackageRemove, this.removePackage);
+    this.createCommand(Command.LeafProfileSwitch, this.switchProfile);
+    this.leafStatusbar.command = Command.LeafProfileSwitch;
 
     // Subscribe to leaf events
     LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onProfileChanged, this);

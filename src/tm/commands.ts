@@ -1,12 +1,16 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { CommandRegister } from "../utils";
-import { Commands } from '../identifiers';
+import { CommandRegister } from "../commons/utils";
+import { Command } from '../commons/identifiers';
 
 interface CommandDeclaration extends vscode.QuickPickItem {
-    id: Commands;
-    callback: Function;
+    id: Command;
+    callback: (...args: any[]) => any;
+    /**
+     * thisArgs The `this`-argument which will be used when calling the callback.
+     */
+    thisArg?: any;
 }
 /**
  * Define a contextual command palette triggered on an item click
@@ -16,7 +20,7 @@ export class ContextualCommandPalette extends CommandRegister {
     private commands: CommandDeclaration[];
     private placeHolder?: string;
 
-    constructor(itemListener: vscode.StatusBarItem, paletteId: Commands, commands: CommandDeclaration[], placeHolder?: string) {
+    constructor(itemListener: vscode.StatusBarItem, paletteId: Command, commands: CommandDeclaration[], placeHolder?: string) {
         super();
         this.itemListener = itemListener;
         this.itemListener.command = paletteId;
@@ -25,9 +29,9 @@ export class ContextualCommandPalette extends CommandRegister {
     }
 
     public register() {
-        this.createCommand(Commands.LegatoTmCommandPalette, () => this.onItemClick());
+        this.createCommand(Command.LegatoTmCommandPalette, () => this.onItemClick());
         // contextual commands registering
-        this.commands.forEach((cmdDef: CommandDeclaration) => this.createCommand(cmdDef.id, (args: any[]) => cmdDef.callback(args)));
+        this.commands.forEach(cmdDef => this.createCommand(cmdDef.id, cmdDef.callback, cmdDef.thisArg));
     }
 
     private onItemClick(): any {
@@ -47,7 +51,7 @@ class CommandQuickPickItem implements vscode.QuickPickItem {
     label!: string;
     description!: string;
     detail?: string | undefined;
-    protected command: Commands | undefined;
+    protected command: Command | undefined;
     protected args: any[] | undefined;
 
     constructor(item: CommandDeclaration) {

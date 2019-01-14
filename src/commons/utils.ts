@@ -3,17 +3,29 @@
 import { exec } from 'child_process';
 import * as vscode from 'vscode';
 import { EventEmitter } from "events";
-import { Commands } from './identifiers';
+import { Command } from './identifiers';
 
 /**
  * This object can store resolve and reject callbacks of a promise
  */
-export interface PromiseCallbacks<T> {
-    [key: string]: {
-        resolve: (value?: T | PromiseLike<T>) => void,
-        reject: (reason?: any) => void
-    };
+export class PromiseCallback<T> {
+    constructor(
+        public readonly resolve: (value?: T | PromiseLike<T>) => void,
+        public readonly reject: (reason?: any) => void
+    ) { }
 }
+
+/**
+ * This object can store resolve and reject callbacks of identified promises
+ */
+export interface PromiseCallbacks<T> {
+    [key: string]: PromiseCallback<T>;
+}
+
+/**
+ * This type is used for the unique parameter in Promise constructor
+ */
+export type PromiseExecutor<T> = (resolve: (value?: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void;
 
 /**
  * This index signature for EnvVars qualify keys and values as string
@@ -184,7 +196,7 @@ export abstract class AbstractManager<T extends string> extends EventEmitter imp
      * @param cb A command handler function.
      * @param thisArg The `this` context used when invoking the handler function.
      */
-    protected createCommand(id: Commands, cb: (...args: any[]) => any, thisArg: any = this) {
+    protected createCommand(id: Command, cb: (...args: any[]) => any, thisArg: any = this) {
         this.disposables.createCommand(id, cb, thisArg);
     }
 
@@ -214,4 +226,14 @@ export class CommandRegister extends DisposableBag {
  */
 export function removeDuplicates<T>(arr: Array<T>): Array<T> {
     return arr.filter((value: T, index: number, array: T[]) => index === array.indexOf(value));
+}
+
+/**
+ * Generate unique task id used to resolve promises
+ */
+export function* newIdGenerator(): IterableIterator<number> {
+    var id = 0;
+    while (true) {
+        yield id++;
+    }
 }

@@ -3,7 +3,7 @@
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
-import { PromiseCallbacks } from '../utils';
+import { PromiseCallbacks } from '../commons/utils';
 
 /**
  * Available leaf interface commands
@@ -65,7 +65,7 @@ export class LeafBridge {
     /**
      * Send request to leaf extension interface
      */
-    public async send(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
+    public send(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
         return new Promise<LeafBridgeElement | undefined>((resolve, reject) => {
             let id = this.idGenerator.next().value;
             this.pendingRequests[id] = {

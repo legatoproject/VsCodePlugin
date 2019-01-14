@@ -1,7 +1,7 @@
 'use strict';
 
 // This module centralize all ids used in package.json
-export const enum Commands { // (cmd)
+export const enum Command { // (cmd)
     // #### LEAF (.leaf) ####
     // TERMINAL (.trm)
     LeafTerminalOpenLeaf = "cmd.leaf.trm.openleaf",
@@ -35,7 +35,7 @@ export const enum Commands { // (cmd)
     LegatoTmResetUserPartition = "cmd.legato.tm.reset.partition.user"
 }
 
-export const enum Contexts { // (context)
+export const enum Context { // (context)
     // #### LEAF (-leaf) ####
     // PACKAGES (-pkg)
     LeafPackagesContainer = "context-leaf-pkg-container",
@@ -52,23 +52,24 @@ export const enum Contexts { // (context)
     LeafProfileOther = "context-leaf-prf-other"
 }
 
-export const enum Views { // (view)
+export const enum View { // (view)
     // #### LEAF (-leaf) ####
     LeafPackages = "view-leaf-pkg",
     LeafRemotes = "view-leaf-rmt",
     LeafProfiles = "view-leaf-prf"
 }
 
-export const enum ViewsContainers { // (viewcontainer)
+export const enum ViewsContainer { // (viewcontainer)
     // #### LEAF #### (-leaf)
     Leaf = "viewcontainer-leaf"
 }
 
-export const enum TaskDefinitions { //
+export const enum TaskDefinitionType { //
     // #### LEAF ####
     Leaf = "Leaf",
 
     // #### LEGATO ####
     LegatoBuild = "Legato Build",
-    LegatoInstall = "Legato Install"
+    LegatoInstall = "Legato Install",
+    LegatoTm = "Legato TM"
 }

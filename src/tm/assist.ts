@@ -5,10 +5,11 @@ import * as vscode from "vscode";
 import { ContextualCommandPalette } from "./commands";
 import { LeafManager, LeafEvent } from "../leaf/core";
 import { LEGATO_ENV } from "../legato/core";
-import { chooseFile, listUpdateFiles, listImageFiles } from "../legato/files";
-import { CommandRegister } from '../utils';
-import { Commands } from '../identifiers';
-import { ACTION_LABELS } from '../uiUtils';
+import { chooseFile, listUpdateFiles, listImageFiles, FileChooserMessage } from "../legato/files";
+import { CommandRegister } from '../commons/utils';
+import { ACTION_LABELS } from '../commons/uiUtils';
+import { Command, TaskDefinitionType } from '../commons/identifiers';
+import { TaskProcessLauncher } from '../commons/process';
 
 const TARGET_SHELL_LABEL = 'Device shell';
 const LOG_SHELL_LABEL = 'Device logs';
@@ -19,6 +20,12 @@ export class TargetUiManager extends CommandRegister {
   private remoteTerminal = new RemoteTerminal(TARGET_SHELL_LABEL, "/bin/sh", ["-c", "ssh root@$DEST_IP"]);
   private logTerminal = new RemoteTerminal(LOG_SHELL_LABEL, "/bin/sh", ["-c", "ssh root@$DEST_IP \"/sbin/logread -f\""]);
   private paletteOnDeviceIP: ContextualCommandPalette;
+  private legatoTaskProcessLauncher: TaskProcessLauncher = this.toDispose(new TaskProcessLauncher(
+    TaskDefinitionType.LegatoTm,
+    LeafManager.getInstance().getLeafWorkspaceDirectory(),
+    undefined, // No scheduler
+    LeafManager.getInstance().getEnvVars,
+    LeafManager.getInstance()));
 
   public constructor() {
     super();
@@ -33,42 +40,49 @@ export class TargetUiManager extends CommandRegister {
     // Commands declaration to be used as QuickPickItem
     this.paletteOnDeviceIP = new ContextualCommandPalette(
       this.targetStatusbar,
-      Commands.LegatoTmCommandPalette,
+      Command.LegatoTmCommandPalette,
       [
         {
-          id: Commands.LegatoTmSetIp,
+          id: Command.LegatoTmSetIp,
           label: "Set Device IP address...",
-          callback: () => this.askForNewIP()
+          callback: this.askForNewIP,
+          thisArg: this
         },
         {
-          id: Commands.LegatoTmShell,
+          id: Command.LegatoTmShell,
           label: 'Open Device shell',
-          callback: () => this.remoteTerminal.show()
+          callback: this.remoteTerminal.show,
+          thisArg: this.remoteTerminal
         },
         {
-          id: Commands.LegatoTmLogs,
+          id: Command.LegatoTmLogs,
           label: "Open Device logs",
-          callback: () => this.logTerminal.show()
+          callback: this.logTerminal.show,
+          thisArg: this.logTerminal
         },
         {
-          id: Commands.LegatoTmInstallOn,
+          id: Command.LegatoTmInstallOn,
           label: "Install app/system on device...",
-          callback: (args: any[]) => this.installOnDevice(args)
+          callback: this.installOnDevice,
+          thisArg: this
         },
         {
-          id: Commands.LegatoTmDeviceFlashImage,
+          id: Command.LegatoTmDeviceFlashImage,
           label: "Flash image to device...",
-          callback: (args: any[]) => this.flashImage(false, args)
+          callback: this.flashImage,
+          thisArg: this
         },
         {
-          id: Commands.LegatoTmFlashImageRecovery,
+          id: Command.LegatoTmFlashImageRecovery,
           label: "Flash image to device (recovery mode)...",
-          callback: (args: any[]) => this.flashImage(true, args)
+          callback: this.flashImageRecovery,
+          thisArg: this
         },
         {
-          id: Commands.LegatoTmResetUserPartition,
+          id: Command.LegatoTmResetUserPartition,
           label: "Reset user partition (recovery mode)",
-          callback: () => this.resetUserPartition()
+          callback: this.resetUserPartition,
+          thisArg: this
         }
       ],
       'Select the command to apply on device...');
@@ -108,48 +122,75 @@ export class TargetUiManager extends CommandRegister {
     }
   }
 
-  private async installOnDevice(...selectedFile: any[]) {
-    let updateFiles: vscode.Uri[] = await listUpdateFiles();
-    let selectedUpdateFile = selectedFile && selectedFile[0] ? selectedFile[0] : await chooseFile(updateFiles,
-      {
-        noFileFoundMessage: "No *.update files found in workspace.",
-        quickPickPlaceHolder: "Please select an update file among ones available in the workspace..."
-      });
-
+  private async installOnDevice(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]) {
+    let selectedUpdateFile = await this.getSelectedFiles(selectedFile, selectedFiles, listUpdateFiles, {
+      noFileFoundMessage: "No *.update files found in workspace.",
+      quickPickPlaceHolder: "Please select an update file among ones available in the workspace..."
+    });
     if (selectedUpdateFile) {
-      let command = `update ${selectedUpdateFile.path}`;
-      LeafManager.getInstance().taskManager.executeAsTask(`Install ${basename(selectedUpdateFile.path)}`, command, await LeafManager.getInstance().getEnvVars());
+      this.legatoTaskProcessLauncher.executeProcess(
+        `Install ${basename(selectedUpdateFile.path)}`,
+        'update', selectedUpdateFile.path);
     }
   }
 
-  private async flashImage(recovery: boolean, ...selectedFile: any[]) {
-    let imageFiles: vscode.Uri[] = await listImageFiles();
-    let selectedUpdateFile = selectedFile && selectedFile[0] ? selectedFile[0] : await chooseFile(imageFiles,
-      {
-        noFileFoundMessage: "Neither *.cwe nor .spk files found in workspace.",
-        quickPickPlaceHolder: "Please select either .cwe or .spk file among ones available in the workspace..."
-      });
-
+  private async flashImage(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]) {
+    let selectedUpdateFile = await this.getSelectedDefFiles(selectedFile, selectedFiles);
     if (selectedUpdateFile) {
-      let command = recovery ? `swiflash -m $LEGATO_TARGET -i ${selectedUpdateFile.path}` : `fwupdate download ${selectedUpdateFile.path}`;
-      LeafManager.getInstance().taskManager.executeAsTask(`${recovery ? "[Recovery]" : ""} Flash ${basename(selectedUpdateFile.path)}`, command, await LeafManager.getInstance().getEnvVars());
+      let name = `Flash ${basename(selectedUpdateFile.path)}`;
+      this.legatoTaskProcessLauncher.executeProcess(name, 'fwupdate', 'download', selectedUpdateFile.path);
     }
   }
 
-  private resetUserPartition() {
-    this.askUserToEraseUserPartition().then(async (confirmed: any) => {
-      if (confirmed) {
-        let command = "swiflash -m $LEGATO_TARGET -r";
-        LeafManager.getInstance().taskManager.executeAsTask(`[Recovery] Reset the user partition`, command, await LeafManager.getInstance().getEnvVars());
-      }
+  private async flashImageRecovery(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]) {
+    let selectedUpdateFile = await this.getSelectedDefFiles(selectedFile, selectedFiles);
+    if (selectedUpdateFile) {
+      let name = `[Recovery] Flash ${basename(selectedUpdateFile.path)}`;
+      this.legatoTaskProcessLauncher.executeInShell(name, `swiflash -m $LEGATO_TARGET -i '${selectedUpdateFile.path}'`);
+    }
+  }
+
+  /**
+   * Check current def file selection and use it if valid
+   * Ask user to pick one if not
+   */
+  private async getSelectedDefFiles(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]): Promise<vscode.Uri | undefined> {
+    return this.getSelectedFiles(selectedFile, selectedFiles, listImageFiles, {
+      noFileFoundMessage: "Neither *.cwe nor .spk files found in workspace.",
+      quickPickPlaceHolder: "Please select either .cwe or .spk file among ones available in the workspace..."
     });
   }
 
-  private async askUserToEraseUserPartition(): Promise<boolean> {
-    return ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+  /**
+   * Check current selection and use it if valid
+   * Ask user to pick one if not
+   */
+  private async getSelectedFiles(
+    selectedFile: vscode.Uri | undefined,
+    selectedFiles: vscode.Uri[] | undefined,
+    fileProvider: () => Thenable<vscode.Uri[]>,
+    messages: FileChooserMessage): Promise<vscode.Uri | undefined> {
+    let possibleFiles: vscode.Uri[] = await fileProvider();
+
+    // If one file is selected and is selectable, return it
+    if (selectedFile && selectedFiles && selectedFiles.length === 1
+      && possibleFiles.map(uri => uri.toString()).indexOf(selectedFile.toString()) >= 0) {
+      return selectedFile;
+    }
+
+    // If not, ask user to pick one
+    let userSelection = await chooseFile(possibleFiles, messages);
+    return userSelection;
+  }
+
+  private async resetUserPartition() {
+    let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
       "This will restore the device file system by erasing all user files.",
       ACTION_LABELS.CANCEL,
       ACTION_LABELS.OK);
+    if (confirmed) {
+      this.legatoTaskProcessLauncher.executeInShell(`[Recovery] Reset the user partition`, 'swiflash -m $LEGATO_TARGET -r');
+    }
   }
 }
 

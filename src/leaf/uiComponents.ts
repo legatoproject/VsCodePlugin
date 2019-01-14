@@ -1,7 +1,7 @@
 'use strict';
 import * as vscode from 'vscode';
-import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../uiUtils';
-import { Contexts, Commands } from '../identifiers';
+import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../commons/uiUtils';
+import { Context, Command } from '../commons/identifiers';
 import { LeafManager } from './core';
 import { LeafBridgeElement } from './bridge';
 
@@ -33,7 +33,7 @@ export class RemoteTreeItem extends TreeItem2 {
 			properties.url, // description
 			properties.url, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties.enabled ? Contexts.LeafRemoteEnabled : Contexts.LeafRemoteDisabled, // contextValue
+			properties.enabled ? Context.LeafRemoteEnabled : Context.LeafRemoteDisabled, // contextValue
 			properties.enabled ? "RemoteEnabled.svg" : "RemoteDisabled.svg"); // iconFileName
 	}
 }
@@ -64,7 +64,7 @@ abstract class PackagesContainerTreeItem extends TreeItem2 {
 			'', // description (will be filled on refresh)
 			'', // tooltip (will be filled on refresh)
 			collapsibleState, // collapsibleState
-			Contexts.LeafPackagesContainer, // contextValue
+			Context.LeafPackagesContainer, // contextValue
 			icon // iconFileName
 		);
 	}
@@ -128,7 +128,7 @@ export class PackageTreeItem extends TreeItem2 {
 			(properties && properties.info && properties.info.tags) ? properties.info.tags.sort().join(', ') : '', // description
 			(properties && properties.info) ? properties.info.description : '', // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties && properties.installed ? Contexts.LeafPackageInstalled : Contexts.LeafPackageAvailable, // contextValue
+			properties && properties.installed ? Context.LeafPackageInstalled : Context.LeafPackageAvailable, // contextValue
 			properties && properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
 	}
 
@@ -190,7 +190,7 @@ export class ProfileTreeItem extends TreeItem2 {
 			(properties && properties.current) ? '[current]' : '', // description
 			computeDetails(properties), // tooltip
 			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
-			properties.installed ? Contexts.LeafProfileCurrent : Contexts.LeafProfileOther, // contextValue
+			properties.installed ? Context.LeafProfileCurrent : Context.LeafProfileOther, // contextValue
 			"Profile.svg"); // iconFileName
 	}
 
@@ -250,7 +250,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 			"", // description
 			"Filters", // tooltip
 			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
-			Contexts.LeafPackagesFilterContainer, // contextValue
+			Context.LeafPackagesFilterContainer, // contextValue
 			"Filter.svg"); // iconFileName
 	}
 
@@ -271,7 +271,7 @@ export class FilterTreeItem extends CheckboxTreeItem {
 	 */
 	constructor(
 		public readonly value: string,
-		contextValue: Contexts = Contexts.LeafPackagesFilter
+		contextValue: Context = Context.LeafPackagesFilter
 	) {
 		super(`Filter: ${value} `, undefined, // model data
 			value, // label
@@ -279,6 +279,6 @@ export class FilterTreeItem extends CheckboxTreeItem {
 			value, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
 			contextValue, // contextValue
-			Commands.LeafPackagesToggleFilter); // commandId
+			Command.LeafPackagesToggleFilter); // commandId
 	}
 }

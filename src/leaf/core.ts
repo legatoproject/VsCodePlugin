@@ -2,12 +2,12 @@
 
 import * as fs from "fs";
 import * as vscode from "vscode";
-import { LeafBridge, LeafBridgeCommands, LeafBridgeElement } from './bridge';
-import { AbstractLeafTaskManager, SequencialLeafTaskManager } from './taskManager';
-import { ACTION_LABELS } from '../uiUtils';
-import { executeInShell, EnvVars, AbstractManager, debounce, removeDuplicates } from '../utils';
+import { LeafBridgeCommands, LeafBridgeElement } from './bridge';
+import { LeafIOManager } from './ioManager';
+import { ACTION_LABELS } from '../commons/uiUtils';
+import { executeInShell, EnvVars, AbstractManager, debounce, removeDuplicates } from '../commons/utils';
 import { join } from 'path';
-import { Commands } from '../identifiers';
+import { Command } from '../commons/identifiers';
 
 export const enum LeafEnvScope {
   Package = "package",
@@ -42,10 +42,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   private static INSTANCE: LeafManager;
 
   // Task management
-  public readonly taskManager: AbstractLeafTaskManager = this.disposables.toDispose(new SequencialLeafTaskManager());
-
-  // Leaf Bridge
-  private readonly leafBridge: LeafBridge = new LeafBridge();
+  private readonly ioManager: LeafIOManager;
 
   // Read-only leaf data
   private readonly leafPath: string;
@@ -68,6 +65,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
 
     // Get leaf path
     this.leafPath = leafPath;
+    this.ioManager = this.disposables.toDispose(new LeafIOManager(this.getLeafWorkspaceDirectory()));
 
     // Get info node from leaf bridge
     this.leafInfo = this.requestBridgeInfo();
@@ -78,7 +76,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     this.addListener(LeafEvent.WorkspaceInfosChanged, this.checkIsLeafWorkspaceChangeAndEmit, this, this.disposables);
 
     // Create fetch command
-    this.createCommand(Commands.LeafPackagesFetch, this.fetchRemote);
+    this.createCommand(Command.LeafPackagesFetch, this.fetchRemote);
 
     // Start watching leaf file and set initial values
     this.watchLeafFiles();
@@ -126,7 +124,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Get info node from leaf bridge. Show notification if any.
    */
   private async requestBridgeInfo(): Promise<LeafBridgeElement> {
-    let info = await this.leafBridge.send(LeafBridgeCommands.Info);
+    let info = await this.ioManager.sendToBridge(LeafBridgeCommands.Info);
     if (!info) {
       throw new Error("Communication issue with leaf bridge");
     }
@@ -281,15 +279,15 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     this.leafWorkspaceInfo = this.compareAndTrigEvent(
       LeafEvent.WorkspaceInfosChanged,
       this.leafWorkspaceInfo,
-      this.leafBridge.send(LeafBridgeCommands.WorkspaceInfo));
+      this.ioManager.sendToBridge(LeafBridgeCommands.WorkspaceInfo));
     this.leafEnvVar = this.compareAndTrigEvent(
       LeafEvent.EnvVarsChanged,
       this.leafEnvVar,
-      this.leafBridge.send(LeafBridgeCommands.ResolveVar));
+      this.ioManager.sendToBridge(LeafBridgeCommands.ResolveVar));
     this.leafRemotes = this.compareAndTrigEvent(
       LeafEvent.RemotesChanged,
       this.leafRemotes,
-      this.leafBridge.send(LeafBridgeCommands.Remotes));
+      this.ioManager.sendToBridge(LeafBridgeCommands.Remotes));
   }
 
   /**
@@ -298,7 +296,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Merge custom tags and tags
    */
   private async requestPackages(): Promise<any | undefined> {
-    let packs = await this.leafBridge.send(LeafBridgeCommands.Packages);
+    let packs = await this.ioManager.sendToBridge(LeafBridgeCommands.Packages);
     if (packs) {
       // Mark installed or available
       let instPacks = packs.installedPackages;
@@ -398,6 +396,13 @@ export class LeafManager extends AbstractManager<LeafEvent> {
       return vscode.workspace.rootPath;
     }
     throw new Error('workspace.rootPath is undefined');
+  }
+
+  public getVsCodeLeafWorkspaceFolder(): vscode.WorkspaceFolder {
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+      return vscode.workspace.workspaceFolders[0];
+    }
+    throw new Error('There is no workspace folder');
   }
 
   /**
@@ -528,7 +533,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * profile: profile name to switch to
    */
   public async switchProfile(profile: string): Promise<void> {
-    return this.taskManager.executeAsTask(`Switching to profile ${profile}`, `leaf profile switch ${profile}`);
+    return this.ioManager.executeAsChannel(`Switching to profile ${profile}`, 'leaf', 'profile', 'switch', profile);
   }
 
   /**
@@ -536,7 +541,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * profile: profile(s) name(s) to delete
    */
   public async deleteProfile(...profile: string[]): Promise<void> {
-    return this.taskManager.executeAsTask(`Deleting profile ${profile}`, `leaf profile delete ${profile.join(' ')}`);
+    return this.ioManager.executeAsChannel(`Deleting profile ${profile}`, 'leaf', 'profile', 'delete', profile.join(' '));
   }
 
   /**
@@ -545,15 +550,12 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * packs: the list of packages id to add to the created profile
    */
   public async createProfile(profile?: string, ...packs: string[]): Promise<void> {
-    let cmd = `leaf setup`;
-    let packageArgs = packs.map(id => `-p ${id}`).join(' ');
-    if (packageArgs) {
-      cmd += ` ${packageArgs}`;
-    }
+    let cmd = ['leaf', 'setup'];
+    packs.forEach(id => cmd.push('-p', id));
     if (profile) {
-      cmd += ` ${profile}`;
+      cmd.push(profile);
     }
-    return this.taskManager.executeAsTask(`Create new profile`, cmd);
+    return this.ioManager.executeAsTask(`Create new profile`, ...cmd);
   }
 
   /**
@@ -566,16 +568,18 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     if (packIds.length === 0) {
       throw new Error('No package to add');
     }
-    let cmd: string;
-    let packagesArgs = packIds.map(packId => `--add-package ${packId}`).join(' ');
+    let cmd: string[] = [];
+    let packagesArgs = ([] as string[]).concat(...packIds.map(packId => ['--add-package', packId]));
+    let actionName = `Add [${packIds.join(' ')}] to profile ${profileName}`;
     if (profileName === await this.getCurrentProfileName()) {
       // Is current profile -> leaf update
-      cmd = `leaf update ${packagesArgs}`;
+      cmd = ['leaf', 'update', ...packagesArgs];
+      return this.ioManager.executeAsTask(actionName, ...cmd);
     } else {
       // Is another profile -> leaf profile config then leaf profile sync
-      cmd = `leaf profile config ${packagesArgs} ${profileName} && leaf profile sync ${profileName}`;
+      cmd = ['leaf', 'profile', 'config', ...packagesArgs, profileName, '&&', 'leaf', 'profile', 'sync', profileName];
+      return this.ioManager.executeAsChannel(actionName, ...cmd);
     }
-    return this.taskManager.executeAsTask(`Add [${packIds.join(' ')}] to profile ${profileName}`, cmd);
   }
 
   /**
@@ -588,23 +592,28 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     if (packIds.length === 0) {
       throw new Error('No package to remove');
     }
-    let packagesArgs = packIds.map(packId => `--rm-package ${packId}`).join(' ');
-    let cmd = `leaf profile config ${packagesArgs} ${profileName} && leaf profile sync ${profileName}`;
-    return this.taskManager.executeAsTask(`Remove [${packIds.join(' ')}] from profile ${profileName}`, cmd);
+    let packagesArgs = ([] as string[]).concat(...packIds.map(packId => ['--rm-package', packId]));
+    return this.ioManager.executeAsChannel(
+      `Remove[${packIds.join(' ')}]from profile ${profileName} `,
+      'leaf', 'profile', 'config', ...packagesArgs, profileName, '&&', 'leaf', 'profile', 'sync', profileName);
   }
 
   /**
    * Enable or disable remote
    */
   public async enableRemote(remoteId: string, enabled: boolean = true): Promise<void> {
-    return this.taskManager.executeAsTask(`${enabled ? "Enable" : "Disable"} remote ${remoteId}`, `leaf remote ${enabled ? "enable" : "disable"} ${remoteId}`);
+    return this.ioManager.executeAsChannel(
+      `${enabled ? "Enable" : "Disable"} remote ${remoteId} `,
+      'leaf', 'remote', enabled ? "enable" : "disable", remoteId);
   }
 
   /**
    * Fetch all remotes
    */
   public async fetchRemote(): Promise<void> {
-    return this.taskManager.executeAsTask("Fetch remotes", "leaf remote fetch");
+    return this.ioManager.executeAsChannel(
+      "Fetch remotes",
+      'leaf', 'remote', 'fetch');
   }
 
   /**
@@ -626,25 +635,30 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
-   * Set leaf env value
+   * Set or Unset leaf env value
+   * if value is undefined, the var is unset
    */
-  public setEnvValue(envar: string, value: string, scope: LeafEnvScope = LeafEnvScope.Profile) {
-    let command = `leaf env ${scope} --set ${envar}=\'${value}\'`;
-    return this.taskManager.executeAsTask(LEAF_TASKS.setEnv, command);
+  public setEnvValue(envar: string, value: string | undefined, scope: LeafEnvScope = LeafEnvScope.Profile) {
+    let args = value ? ['--set', `${envar}=${value}`] : ['--unset', `${envar}`];
+    return this.ioManager.executeAsChannel(LEAF_TASKS.setEnv, 'leaf', 'env', scope, ...args);
   }
 
   /**
    * Add new leaf remote
    */
   public async addRemote(alias: string, url: string): Promise<void> {
-    return this.taskManager.executeAsTask(`Add remote ${alias} (${url})`, `leaf remote add --insecure ${alias} ${url}`);
+    return this.ioManager.executeAsChannel(
+      `Add remote ${alias} (${url})`,
+      'leaf', 'remote', 'add', '--insecure', alias, url);
   }
 
   /**
    * Remove leaf remote
    */
   public async removeRemote(...alias: string[]): Promise<void> {
-    return this.taskManager.executeAsTask(`Remove remote ${alias}`, `leaf remote remove ${alias.join(' ')}`);
+    return this.ioManager.executeAsChannel(
+      `Remove remote ${alias}`,
+      'leaf', 'remote', 'remove', alias.join(' '));
   }
 
   /**

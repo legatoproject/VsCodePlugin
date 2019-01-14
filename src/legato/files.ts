@@ -10,25 +10,36 @@ export interface FileChooserMessage {
 }
 
 /**
+ * Patterns for Legato files
+ */
+export enum LegatoFilesPatterns {
+  DefinitionsFiles = "**/*.[as]def",
+  UpdateFiles = "**/*.update",
+  leafDataFolder = "**/leaf-data",
+  ImageFiles = "**/*.{cwe,spk}",
+  CurrentImagesFiles = "leaf-data/current/**/*.{cwe,spk}"
+}
+
+/**
  * Lists .adef and .sdef files in project
  */
 export function listDefinitionFiles(): Thenable<vscode.Uri[]> {
-  return vscode.workspace.findFiles("**/*.[as]def", EXCLUDED_FOLDER);
+  return vscode.workspace.findFiles(LegatoFilesPatterns.DefinitionsFiles, EXCLUDED_FOLDER);
 }
 
 /**
 * Lists .update files in project
 */
 export function listUpdateFiles(): Thenable<vscode.Uri[]> {
-  return vscode.workspace.findFiles("**/*.update", EXCLUDED_FOLDER);
+  return vscode.workspace.findFiles(LegatoFilesPatterns.UpdateFiles, EXCLUDED_FOLDER);
 }
 
 /**
 * Lists image (.cwe and .spk) files  in project
 */
 export async function listImageFiles(): Promise<vscode.Uri[]> {
-  const uris = await vscode.workspace.findFiles("**/*.{cwe,spk}", "**/leaf-data");
-  const leafdataUris = await vscode.workspace.findFiles("leaf-data/current/**/*.{cwe,spk}");
+  const uris = await vscode.workspace.findFiles(LegatoFilesPatterns.ImageFiles, LegatoFilesPatterns.leafDataFolder);
+  const leafdataUris = await vscode.workspace.findFiles(LegatoFilesPatterns.CurrentImagesFiles);
   return uris.concat(leafdataUris);
 }
 
@@ -36,25 +47,24 @@ export async function listImageFiles(): Promise<vscode.Uri[]> {
  * @param legatoFiles files among to choose
  * @param messages define messages of the file chooser
  */
-export function chooseFile(legatoFiles: vscode.Uri[], messages: FileChooserMessage): Promise<vscode.Uri | undefined> {
-  return new Promise((resolve, _reject) => {
-    if (legatoFiles.length === 0) {
-      vscode.window.showErrorMessage(messages.noFileFoundMessage);
-      resolve(undefined);
-    } else if (legatoFiles.length === 1) {
-      console.log(`File set to the only one - ${legatoFiles[0].path}`);
-      resolve(legatoFiles[0]);
-    } else {
-      let uriToSelect = vscode.window.createQuickPick();
-      uriToSelect.placeholder = messages.quickPickPlaceHolder;
-      uriToSelect.items = legatoFiles.map(uri => new UriQuickPickItem(uri));
-      uriToSelect.onDidChangeSelection((e: vscode.QuickPickItem[]) => {
-        resolve((<UriQuickPickItem>e[0]).uri);
-        uriToSelect.dispose();
-      });
-      uriToSelect.show();
-    }
-  });
+export async function chooseFile(legatoFiles: vscode.Uri[], messages: FileChooserMessage): Promise<vscode.Uri | undefined> {
+  // No files
+  if (legatoFiles.length === 0) {
+    vscode.window.showErrorMessage(messages.noFileFoundMessage);
+    return undefined;
+  }
+
+  // One file
+  if (legatoFiles.length === 1) {
+    console.log(`File set to the only one - ${legatoFiles[0].path}`);
+    return legatoFiles[0];
+  }
+
+  // Let user choose file
+  let item = await vscode.window.showQuickPick<UriQuickPickItem>(
+    legatoFiles.map(uri => new UriQuickPickItem(uri)), // items
+    { placeHolder: messages.quickPickPlaceHolder }); // options
+  return item ? item.uri : undefined;
 }
 
 class UriQuickPickItem implements vscode.QuickPickItem {

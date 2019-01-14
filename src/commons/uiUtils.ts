@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { CommandRegister } from './utils';
-import { Views, Commands, Contexts } from './identifiers';
+import { View, Command, Context } from './identifiers';
 
 /**
  * Dialog labels
@@ -63,7 +63,7 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		contextValue: Contexts,
+		contextValue: Context,
 		private iconFileName?: string,
 		public command?: vscode.Command
 	) {
@@ -75,7 +75,11 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 		return [];
 	}
 
-	iconPath = this.iconFileName ? path.join(__filename, '..', '..', 'resources', this.iconFileName) : undefined;
+	protected pathFromResources(iconFileName?: string): string | undefined {
+		return iconFileName ? path.join(__filename, '..', '..', '..', 'resources', iconFileName) : undefined;
+	}
+
+	iconPath = this.pathFromResources(this.iconFileName);
 }
 
 
@@ -92,8 +96,8 @@ export class CheckboxTreeItem extends TreeItem2 {
 		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly contextValue: Contexts,
-		commandId: Commands
+		public readonly contextValue: Context,
+		commandId: Command
 	) {
 		super(id, properties, label, description, tooltip, collapsibleState, contextValue);
 		this.command = {
@@ -107,7 +111,7 @@ export class CheckboxTreeItem extends TreeItem2 {
 	public setChecked(value: boolean) {
 		this.checked = value;
 		let iconFileName = value ? 'CheckedCheckbox.svg' : 'UncheckedCheckbox.svg';
-		this.iconPath = path.join(__filename, '..', '..', 'resources', iconFileName);
+		this.iconPath = this.pathFromResources(iconFileName);
 	}
 
 	public isChecked(): boolean {
@@ -122,7 +126,7 @@ export abstract class TreeDataProvider2 extends CommandRegister implements vscod
 	private _onDidChangeTreeData: vscode.EventEmitter<TreeItem2 | undefined> = new vscode.EventEmitter<TreeItem2 | undefined>();
 	readonly onDidChangeTreeData: vscode.Event<TreeItem2 | undefined> = this._onDidChangeTreeData.event;
 
-	constructor(viewId: Views) {
+	constructor(viewId: View) {
 		super();
 		this.toDispose(vscode.window.registerTreeDataProvider(viewId, this));
 	}

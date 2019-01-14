@@ -9,7 +9,7 @@ import { LeafPackagesView } from './leaf/packages';
 import { LeafRemotesView } from './leaf/remotes';
 import { TargetUiManager } from './tm/assist';
 import { LegatoLanguageManager } from './legato/language';
-import { ConfigurationManager } from './configuration';
+import { ConfigurationManager } from './commons/configuration';
 
 
 /**

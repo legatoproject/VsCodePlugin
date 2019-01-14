@@ -2,8 +2,8 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { Views, Commands } from '../identifiers';
-import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../uiUtils';
+import { View, Command } from '../commons/identifiers';
+import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../commons/uiUtils';
 import { RemoteQuickPickItem, RemoteTreeItem } from './uiComponents';
 import { LeafManager, LeafEvent } from './core';
 
@@ -18,12 +18,12 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Create commands
 	 */
 	constructor() {
-		super(Views.LeafRemotes);
+		super(View.LeafRemotes);
 		LeafManager.getInstance().addListener(LeafEvent.RemotesChanged, this.refresh, this);
-		this.createCommand(Commands.LeafRemotesAdd, this.addRemote);
-		this.createCommand(Commands.LeafRemotesRemove, this.removeRemote);
-		this.createCommand(Commands.LeafRemotesEnable, node => this.enableRemote(node));
-		this.createCommand(Commands.LeafRemotesDisable, node => this.enableRemote(node, false));
+		this.createCommand(Command.LeafRemotesAdd, this.addRemote);
+		this.createCommand(Command.LeafRemotesRemove, this.removeRemote);
+		this.createCommand(Command.LeafRemotesEnable, node => this.enableRemote(node));
+		this.createCommand(Command.LeafRemotesDisable, node => this.enableRemote(node, false));
 	}
 
 	/**

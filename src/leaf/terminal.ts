@@ -2,9 +2,9 @@
 
 import { Terminal, window } from "vscode";
 import { LeafManager, LeafEvent } from './core';
-import { Commands } from '../identifiers';
-import { ACTION_LABELS } from '../uiUtils';
-import { CommandRegister } from '../utils';
+import { Command } from '../commons/identifiers';
+import { ACTION_LABELS } from '../commons/uiUtils';
+import { CommandRegister } from '../commons/utils';
 
 const LEAF_SHELL_LABEL = `Leaf shell`;
 
@@ -28,7 +28,7 @@ export class LeafTerminalManager extends CommandRegister {
     LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsOrCurrentProfileChanged, this);
 
     // Also, let's add leaf commands
-    this.createCommand(Commands.LeafTerminalOpenLeaf, this.showTerminal);
+    this.createCommand(Command.LeafTerminalOpenLeaf, this.showTerminal);
 
     // Listen to terminal closing (by user) and launch terminal
     this.toDispose(window.onDidCloseTerminal(this.onCloseTerminal, this));
