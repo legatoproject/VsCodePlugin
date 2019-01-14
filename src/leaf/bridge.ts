@@ -101,7 +101,7 @@ export class LeafBridge {
                             console.log(`[Leaf Bridge] Response received for id '${anyResponse.id}': '${line.substring(0, 10)}...'`);
                         } else if (anyResponse.error) {
                             pendingRequest.resolve(undefined);
-                            console.log(`[Leaf Bridge] Error received for id '${anyResponse.id}': '${anyResponse.error}...'`);
+                            console.log(`[Leaf Bridge] Error received for id '${anyResponse.id}': '${anyResponse.error.message}...'`);
                         } else {
                             pendingRequest.resolve(undefined);
                             console.log(`[Leaf Bridge] No 'result' or 'error' child node in parsed json '${line.substring(0, 10)}...'`);

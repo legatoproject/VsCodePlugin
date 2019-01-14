@@ -15,11 +15,11 @@ import subprocess
 import sys
 import traceback
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from pathlib import Path
 
 from leaf import __version__
 from leaf.constants import EnvConstants
+from leaf.core.error import WorkspaceNotInitializedException
 from leaf.core.packagemanager import PackageManager, RemoteManager
 from leaf.core.tags import TagManager
 from leaf.core.workspacemanager import WorkspaceManager
@@ -164,10 +164,9 @@ class VariablesHandler(LeafHandler):
         out = {}
         wm = WorkspaceManager(self._getWorkspace(**kwargs), Verbosity.QUIET)
         if not wm.isWorkspaceInitialized():
-            raise ValueError("Workspace %s is not initialized" % wm.workspaceRootFolder)
+            raise WorkspaceNotInitializedException()
         profile = wm.getProfile(kwargs['profile'] if 'profile' in kwargs else wm.getCurrentProfileName())
-        if not wm.isProfileSync(profile):
-            raise ValueError("Profile %s is out of sync" % profile.name)
+        wm.isProfileSync(profile, raiseIfNotSync=True)
         exports = ""
         profileEnv = wm.getFullEnvironment(profile)
         exports = "; ".join(map(lambda kv: 'export %s="%s"' % kv, profileEnv.toList()))
@@ -209,7 +208,8 @@ def sendResponse(requestId, result=None, error=None):
     if requestId is not None:
         out["id"] = requestId
     if error is not None:
-        out["error"] = error
+        out["error"] = {'type': type(error).__name__,
+                        'message': str(error)}
     elif result is not None:
         out["result"] = result
     print(json.dumps(out), flush=True)
@@ -247,7 +247,7 @@ if __name__ == '__main__':
                     sendResponse(requestId,
                                  result=handler.execute(workspace=requestWorkspace, **requestArgs))
                 except Exception as e:
-                    sendResponse(requestId, error=str(e))
+                    sendResponse(requestId, error=e)
                     if LEAF_DEBUG:
                         traceback.print_exc(file=sys.stderr)
                         sys.stderr.flush()

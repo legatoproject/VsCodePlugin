@@ -80,6 +80,9 @@ class TestLeafCodeInterface(unittest.TestCase):
             outs, errs = proc.communicate(input=COMMAND_WORKSPACE.encode())
             result = json.loads(outs.decode())
             self.assertIsNotNone(result.get('error'))
+            self.assertIsInstance(result.get('error'), dict)
+            self.assertIsInstance(result.get('error').get('type'), str)
+            self.assertIsInstance(result.get('error').get('message'), str)
 
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
             outs, errs = proc.communicate(input=(COMMAND_WORKSPACE__ws % '/foo/bar').encode())
@@ -119,7 +122,8 @@ class TestLeafCodeInterface(unittest.TestCase):
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
             outs, errs = proc.communicate(input=(COMMAND_VARIABLES__ws_name % (workspace, "FOOO")).encode())
             result = json.loads(outs.decode())
-            self.assertEqual("Unknown profile FOOO", result['error'])
+            self.assertEqual("InvalidProfileNameException", result.get('error').get('type'))
+            self.assertEqual("Unknown profile FOOO", result.get('error').get('message'))
             self.assertFalse('result' in result)
         with Popen([str(LCI_BIN)], stdout=subprocess.PIPE, stdin=subprocess.PIPE) as proc:
             outs, errs = proc.communicate(input=(COMMAND_VARIABLES__ws_var % (workspace, 'DEST_IP')).encode())
