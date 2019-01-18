@@ -1,5 +1,8 @@
 # Change Log
 
+## 0.5.0
+- New settings to launch device shell/logs either in integrated or external terminal
+
 ## 0.4.0
 - New build task to trigger build+install in one step
 - Device status bar now pops up a menu with device related commands

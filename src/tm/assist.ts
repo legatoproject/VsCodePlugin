@@ -10,25 +10,28 @@ import { CommandRegister } from '../commons/utils';
 import { ACTION_LABELS } from '../commons/uiUtils';
 import { Command, TaskDefinitionType } from '../commons/identifiers';
 import { TaskProcessLauncher } from '../commons/process';
-
-const TARGET_SHELL_LABEL = 'Device shell';
-const LOG_SHELL_LABEL = 'Device logs';
+import { Configuration } from '../commons/configuration';
+import { TerminalKind, ReSpawnableTerminal } from '../commons/terminal';
 
 export class TargetUiManager extends CommandRegister {
 
-  private targetStatusbar: vscode.StatusBarItem;
-  private remoteTerminal = new RemoteTerminal(TARGET_SHELL_LABEL, "/bin/sh", ["-c", "ssh root@$DEST_IP"]);
-  private logTerminal = new RemoteTerminal(LOG_SHELL_LABEL, "/bin/sh", ["-c", "ssh root@$DEST_IP \"/sbin/logread -f\""]);
-  private paletteOnDeviceIP: ContextualCommandPalette;
-  private legatoTaskProcessLauncher: TaskProcessLauncher = this.toDispose(new TaskProcessLauncher(
-    TaskDefinitionType.LegatoTm,
-    LeafManager.getInstance().getLeafWorkspaceDirectory(),
-    undefined, // No scheduler
-    LeafManager.getInstance().getEnvVars,
-    LeafManager.getInstance()));
+  private readonly targetStatusbar: vscode.StatusBarItem;
+  private readonly remoteShellTerminal: ReSpawnableTerminal = new RemoteShellTerminal();
+  private readonly remoteLogTerminal: ReSpawnableTerminal = new RemoteLogsTerminal();
+  private readonly paletteOnDeviceIP: ContextualCommandPalette;
+  private readonly legatoTaskProcessLauncher: TaskProcessLauncher;
 
   public constructor() {
     super();
+
+    // Create the task process launcher (this class can launch a process as a vscode task)
+    this.legatoTaskProcessLauncher = this.toDispose(new TaskProcessLauncher(
+      TaskDefinitionType.LegatoTm, // Task type 
+      LeafManager.getInstance().getLeafWorkspaceDirectory(), // cwd
+      undefined, // No scheduler
+      LeafManager.getInstance().getEnvVars, // env
+      LeafManager.getInstance())); // thisArg
+
 
     // Status bar
     this.targetStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 5);
@@ -51,14 +54,14 @@ export class TargetUiManager extends CommandRegister {
         {
           id: Command.LegatoTmShell,
           label: 'Open Device shell',
-          callback: this.remoteTerminal.show,
-          thisArg: this.remoteTerminal
+          callback: this.remoteShellTerminal.show,
+          thisArg: this.remoteShellTerminal
         },
         {
           id: Command.LegatoTmLogs,
           label: "Open Device logs",
-          callback: this.logTerminal.show,
-          thisArg: this.logTerminal
+          callback: this.remoteLogTerminal.show,
+          thisArg: this.remoteLogTerminal
         },
         {
           id: Command.LegatoTmInstallOn,
@@ -194,34 +197,62 @@ export class TargetUiManager extends CommandRegister {
   }
 }
 
-export class RemoteTerminal {
-  private leafTerminal: vscode.Terminal | undefined;
-  private terminalLabel: string;
-  private shellPath: string;
-  private shellArgs: string[];
-  constructor(label: string, path: string, shellArgs: string[]) {
-    this.terminalLabel = label;
-    this.shellPath = path;
-    this.shellArgs = shellArgs;
+/**
+ * Parent of RemoteShellTerminal & RemoteLogsTerminal
+ * Give destIP
+ */
+abstract class DeviceTerminal extends ReSpawnableTerminal {
+  protected async getDestIp(): Promise<string> {
+    let destIp = await LeafManager.getInstance().getEnvValue(LEGATO_ENV.DEST_IP);
+    if (!destIp) {
+      throw Error('Cannot launch this command, $DEST_IP is not set');
+    }
+    return destIp;
+  }
+}
 
-    vscode.window.onDidCloseTerminal((closedTerminal: vscode.Terminal) => {
-      if (closedTerminal.name === this.terminalLabel) {
-        closedTerminal.dispose();
-        this.leafTerminal = undefined;
-      }
-    }, this);
+/**
+ * Remote device shell terminal
+ */
+class RemoteShellTerminal extends DeviceTerminal {
+  constructor() {
+    super('Device shell'); // Name
   }
 
-  public async show(preserveFocus?: boolean) {
-    if (!this.leafTerminal) {
-      this.leafTerminal = vscode.window.createTerminal({
-        name: this.terminalLabel,
-        shellPath: this.shellPath,
-        shellArgs: this.shellArgs,
-        cwd: LeafManager.getInstance().getLeafWorkspaceDirectory(),
-        env: await LeafManager.getInstance().getEnvVars()
-      });
-    }
-    this.leafTerminal.show(true);
+  /**
+   * Connect to device using ssh
+   */
+  protected async createCommand(): Promise<string> {
+    return `ssh root@${await this.getDestIp()}`;
+  }
+
+  /**
+   * @returns kind from [Configuration](#Configuration)
+   */
+  protected getKind(): TerminalKind {
+    return Configuration.Legato.Tm.Terminal.Kind.getValue();
+  }
+}
+
+/**
+ * Remote device logs terminal
+ */
+class RemoteLogsTerminal extends DeviceTerminal {
+  constructor() {
+    super('Device logs'); // Name
+  }
+
+  /**
+   * Execute '/sbin/logread -f' via ssh
+   */
+  protected async createCommand(): Promise<string> {
+    return `ssh root@${await this.getDestIp()} /sbin/logread -f`;
+  }
+
+  /**
+   * @returns kind from [Configuration](#Configuration)
+   */
+  protected getKind(): TerminalKind {
+    return Configuration.Legato.Tm.Log.Kind.getValue();
   }
 }

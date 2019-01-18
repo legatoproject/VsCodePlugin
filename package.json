@@ -374,7 +374,39 @@
                     "message": 5
                 }
             }
-        ]
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "Legato",
+            "properties": {
+                "legato.tm.terminal.kind": {
+                    "type": "string",
+                    "enum": [
+                        "integrated",
+                        "external"
+                    ],
+                    "enumDescriptions": [
+                        "Use VS Code's integrated terminal.",
+                        "Use the configured external terminal."
+                    ],
+                    "default": "integrated",
+                    "description": "Customizes what kind of terminal to launch for device shell"
+                },
+                "legato.tm.log.kind": {
+                    "type": "string",
+                    "enum": [
+                        "integrated",
+                        "external"
+                    ],
+                    "enumDescriptions": [
+                        "Use VS Code's integrated terminal.",
+                        "Use the configured external terminal."
+                    ],
+                    "default": "integrated",
+                    "description": "Customizes what kind of terminal to launch for device logs"
+                }
+            }
+        }
     },
     "main": "./out/extension",
     "scripts": {

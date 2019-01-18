@@ -54,12 +54,12 @@ This extension provides the following features to ease Legato development in VS 
 #### Target Management
 
 - Legato device status bar + menu on click to expose device related commands
-- `Legato/Device: Set IP address` command for IP address configuration
-- `Legato/Device: Open Shell` command to open an SSH terminal on the remote Legato device
-- `Legato/Device: Open Logs` command to open an SSH terminal showing remote Legato device logs
-- `Legato/Device: Install on device` command for app/device install (also available in **\*.update** files right-click menu)
-- `Legato/Device: Flash image to device` command for device image flashing (also available in **\*.cwe/\*.spk** files right-click menu)
-- `Legato/Device: Reset user partition` command to restore device file system in its original state
+  - `Legato/Device: Set IP address` command for IP address configuration
+  - `Legato/Device: Open Shell` command to open an SSH terminal on the remote Legato device
+  - `Legato/Device: Open Logs` command to open an SSH terminal showing remote Legato device logs
+  - `Legato/Device: Install on device` command for app/device install (also available in **\*.update** files right-click menu)
+  - `Legato/Device: Flash image to device` command for device image flashing (also available in **\*.cwe/\*.spk** files right-click menu)
+  - `Legato/Device: Reset user partition` command to restore device file system in its original state
 
 ## Settings
 
@@ -68,6 +68,11 @@ This extension provides the following features to ease Legato development in VS 
 This extension updates the following default settings for a better integration of leaf and Legato into VS Code workflows:
 
 - `files.watcherExclude`: the extension makes sure that `**/leaf-data/**` folders are excluded from file watching
+
+### Target Management
+
+- `legato.tm.log.kind`: launch Device Logs either in integrated or external terminal
+- `legato.tm.terminal.kind`: launch Device Shell either in integrated or external terminal
 
 ## Requirements
 
