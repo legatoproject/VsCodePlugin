@@ -24,6 +24,8 @@ export const enum Command { // (cmd)
     LeafRemotesDisable = "cmd.leaf.rmt.disable",
 
     // #### LEGATO (.legato) ####
+    // COMMON (.common)
+    LegatoCommonShowWelcomePage = "cmd.legato.common.showwelcomepage",
     // BUILD (.build)
     LegatoBuildPickDefFile = "cmd.legato.build.pickDefFile",
     // TM (.tm)

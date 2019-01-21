@@ -82,6 +82,7 @@ export namespace Configuration {
      * Common settings
      */
     export namespace Common {
+        export const showWhatsNewAfterUpgrades = new Section<boolean>("leaf.common.showWhatsNewAfterUpgrades");
     }
 
     /**

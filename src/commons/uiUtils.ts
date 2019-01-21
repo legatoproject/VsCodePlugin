@@ -73,8 +73,7 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 
 	protected async setIcon(iconFileName?: string) {
 		if (iconFileName) {
-			let ext = await extPromise;
-			this.iconPath = await ext.getExtensionPath(ExtensionPaths.Resources, iconFileName);
+			this.iconPath = (await extPromise).getExtensionPath(ExtensionPaths.Resources, iconFileName);
 		} else {
 			this.iconPath = undefined;
 		}

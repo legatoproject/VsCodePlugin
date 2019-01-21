@@ -4,6 +4,7 @@
 - New settings to launch device shell/logs either in integrated or external terminal
 - Check minimum leaf version (1.6)
 - Automatically import Legato snippets from leaf packages
+- Add welcome page
 
 ## 0.4.0
 - New build task to trigger build+install in one step

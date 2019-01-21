@@ -1,4 +1,5 @@
 'use strict';
+
 import * as vscode from 'vscode';
 import { join } from 'path';
 import { LeafTerminalManager } from './leaf/terminal';
@@ -15,13 +16,16 @@ import { VersionManager } from './commons/version';
 import { DisposableBag } from './commons/manager';
 import { DelayedPromise } from './commons/promise';
 import { SnippetsManager } from './legato/snippets';
+import { WelcomePageManager } from './commons/welcome';
 
 /**
  * Folder names of extension resources
  */
 export const enum ExtensionPaths {
     Resources = 'resources',
-    Vscode = '.vscode'
+    Vscode = '.vscode',
+    WelcomePage = 'webview/welcomepage',
+    ChangeLog = 'CHANGELOG.md'
 }
 
 /**
@@ -43,7 +47,7 @@ class Extension extends DisposableBag {
      * @param context the context of the extension
      * @param leafPath the checked path to leaf
      */
-    public constructor(public readonly context: vscode.ExtensionContext, leafPath: string) {
+    public constructor(public readonly context: vscode.ExtensionContext, leafPath: string, versionManager: VersionManager) {
         super();
 
         // Check Leaf installation, create LeafManager and dispose it on deactivate
@@ -57,6 +61,9 @@ class Extension extends DisposableBag {
         // We use then because we want to store read-only promise in constructor
         this.legatoManager = this.toDispose(new LegatoManager(this.leafManager));
         this.legatoLanguageManager = this.toDispose(new LegatoLanguageManager(this.leafManager, this.legatoManager));
+
+        // Everything is fine, let's manage welcome page
+        this.toDispose(new WelcomePageManager(versionManager));
     }
 
     /**
@@ -141,7 +148,7 @@ export async function activate(context: vscode.ExtensionContext) {
     let leafPath = await LeafManager.checkLeafInstallation(versionManager);
 
     // Start extension
-    let extension = new Extension(context, leafPath);
+    let extension = new Extension(context, leafPath, versionManager);
     extension.initComponnents();
 
     // Resolve awaiting callers

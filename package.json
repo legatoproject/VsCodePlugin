@@ -188,6 +188,11 @@
                 "category": "Leaf/Remotes"
             },
             {
+                "command": "cmd.legato.common.showwelcomepage",
+                "title": "Show welcome page",
+                "category": "Legato"
+            },
+            {
                 "command": "cmd.legato.build.pickDefFile",
                 "title": "Select active definition file",
                 "category": "Legato"
@@ -424,10 +429,12 @@
         "tslint": "^5.12.1",
         "@types/node": "^10.12.21",
         "@types/mocha": "^2.2.42",
-        "@types/fs-extra": "^5.0.5"
+        "@types/fs-extra": "^5.0.5",
+        "@types/marked": "0.6.1"
     },
     "dependencies": {
         "vscode-languageclient": "^5.1.1",
-        "fs-extra": "^7.0.1"
+        "fs-extra": "^7.0.1",
+        "marked": "^0.6.1"
     }
 }

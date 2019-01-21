@@ -1,0 +1,24 @@
+body {
+    background-color: var(--vscode-editor-background);
+}
+
+.btn-primary {
+    border-color:  #F7781E;
+    background-color: #F7781E;
+}
+.btn-primary:hover {
+    border-color:  #dd6108;
+    background-color: #dd6108;
+}
+.btn-success {
+    border-color:  #7395A0;
+    background-color: #7395A0;
+}
+.btn-success:hover {
+    border-color:  #5d7e89;
+    background-color: #5d7e89;
+}
+.extension-description {
+    font-size: 1.7rem;
+    color: #7395A0;
+}
