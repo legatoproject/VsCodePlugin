@@ -1,5 +1,7 @@
 {
   "info": {
+    "description": "Source code for VS Code Legato extension",
+    "leafMinVersion": "1.2",
     "features": {
       "legato-vscode-src": {
         "key": "LEGATO_VSCODE_SRC",
@@ -10,11 +12,24 @@
           "source-master": "master"
         }
       }
-    }
+    },
+    "depends": [
+      "swi-cloneutils_latest"
+    ]
   },
   "sync": [
     {
-      "command": ["@{DIR}/clone.sh", "@{DIR:swi-cloneutils_latest}/clone.sh", "@{VERSION}"],
+      "command": [
+        "@{DIR:swi-cloneutils_latest}/swi-clone",
+        "-s",
+        "legato-vscode",
+        "-It",
+        "internal",
+        "-m",
+        "source:tools/vscode-plugin/tags/@{VERSION}.xml",
+        "-m",
+        "source-master:tools/vscode-plugin/branches/master.xml"
+      ],
       "verbose": true
     }
   ]

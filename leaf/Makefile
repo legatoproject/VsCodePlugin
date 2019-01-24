@@ -6,56 +6,48 @@
 OUTPUT:=out
 INDEX:=$(OUTPUT)/index.json
 INPUT_PACKAGE=../package/legato-plugin-$(VERSION).vsix
-DATE=$(shell export LANG=EN_en && test -f $(INPUT_PACKAGE) && date -u -r $(INPUT_PACKAGE))
+DATE=$(shell test -f $(INPUT_PACKAGE) && date -uR -r $(INPUT_PACKAGE))
 
 # Names and version
-VERSION:=$(shell git describe --tags)
-LEAF_PACK_NAME:=swi-legato-vscode
-LEAF_PACK:=$(OUTPUT)/$(LEAF_PACK_NAME)_$(VERSION).leaf
-LEAF_PACK_SRC_NAME:=swi-legato-vscode-src
-LEAF_PACK_SRC:=$(OUTPUT)/$(LEAF_PACK_SRC_NAME)_$(VERSION).leaf
-
-# Usual tar args for leaf packaging (helps to make sure that generated .leaf files are reproducible with the same inputs)
-LEAF_TAR_ARGS:=-J --mode='a+r,a-w,u+w' --owner=0 --group=0 --numeric-owner --sort name --mtime="`date -d "$(DATE)" -u`" --exclude=template.json .
+VERSION ?= $(shell git describe --tags)
+RELEASE_VERSION := $(shell echo $(VERSION) | grep -v "\-g" || true)
+ifneq ($(RELEASE_VERSION),)
+NAMES := swi-legato-vscode swi-legato-vscode-src
+SRCDEP = `if $(IS_MAIN_PACK); then echo "--depends swi-legato-vscode-src_$(VERSION)(LEGATO_VSCODE_SRC)"; fi`
+else
+NAMES := swi-legato-vscode
+SRCDEP =
+endif
+PACKAGES := $(foreach NAME,$(NAMES),$(OUTPUT)/$(NAME)_$(VERSION).leaf)
+MANIFESTS := $(foreach NAME,$(NAMES),$(OUTPUT)/$(NAME)_$(VERSION)/manifest.json)
+TEMPLATES := $(foreach NAME,$(NAMES),$(NAME)/template.json)
+CUROUTPUT = $(subst /manifest.json,,$(subst .leaf,,$@))
+CURNAME = $(subst _$(VERSION),,$(subst $(OUTPUT)/,,$(CUROUTPUT)))
+IS_MAIN_PACK = test "$(CURNAME)" = "swi-legato-vscode"
 
 all: $(INDEX)
 
-$(INDEX): $(LEAF_PACK) $(LEAF_PACK_SRC) Makefile
+$(INDEX): $(PACKAGES) Makefile
 	cd $(OUTPUT) && leaf build index -o index.json --description "VSCode Legato extension packages" *.leaf
 
-$(LEAF_PACK): $(OUTPUT)/$(LEAF_PACK_NAME)/manifest.json $(LEAF_PACK_NAME)/hook.sh $(INPUT_PACKAGE) Makefile
-	cp $(INPUT_PACKAGE) $(OUTPUT)/$(LEAF_PACK_NAME)
-	cp $(LEAF_PACK_NAME)/* $(OUTPUT)/$(LEAF_PACK_NAME)
-	leaf build pack -o $(LEAF_PACK) -i $(OUTPUT)/$(LEAF_PACK_NAME)/ -- $(LEAF_TAR_ARGS)
+%.leaf: %/manifest.json Makefile
+	cp -a $(CURNAME)/* $(CUROUTPUT)
+	if $(IS_MAIN_PACK); then cp -a $(INPUT_PACKAGE) $(CUROUTPUT); fi
+	leaf build pack \
+		-o $@ \
+		-i $(CUROUTPUT) \
+		-- \
+		-J --mtime="$(DATE)" --sort name --mode='a+r,a-w,u+w' --owner=0 --group=0 --numeric-owner  --exclude=template.json .
 
-$(LEAF_PACK_SRC): $(OUTPUT)/$(LEAF_PACK_SRC_NAME)/manifest.json $(LEAF_PACK_SRC_NAME)/clone.sh Makefile
-	cp $(LEAF_PACK_SRC_NAME)/* $(OUTPUT)/$(LEAF_PACK_SRC_NAME)
-	leaf build pack -o $(LEAF_PACK_SRC) -i $(OUTPUT)/$(LEAF_PACK_SRC_NAME)/ -- $(LEAF_TAR_ARGS)
-
-$(OUTPUT)/$(LEAF_PACK_NAME)/manifest.json: $(LEAF_PACK_NAME)/template.json Makefile
-	mkdir -p $(OUTPUT)/$(LEAF_PACK_NAME)
+$(MANIFESTS): $(CURDIR)/Makefile $(TEMPLATES)
+	mkdir -p $(CUROUTPUT)
 	leaf build manifest \
-		-o $(OUTPUT)/$(LEAF_PACK_NAME) \
-		--name $(LEAF_PACK_NAME) \
+		-o $(CUROUTPUT) \
+		--name $(CURNAME) \
 		--version $(VERSION) \
-		--description "Legato extension for VS Code" \
 		--date "$(DATE)" \
-		--master true \
-		--upgradable true \
-		--depends '$(LEAF_PACK_SRC_NAME)_$(VERSION)(LEGATO_VSCODE_SRC)' \
-		--append $(LEAF_PACK_NAME)/template.json
-
-$(OUTPUT)/$(LEAF_PACK_SRC_NAME)/manifest.json: $(LEAF_PACK_SRC_NAME)/template.json Makefile
-	mkdir -p $(OUTPUT)/$(LEAF_PACK_SRC_NAME)
-	leaf build manifest \
-		-o $(OUTPUT)/$(LEAF_PACK_SRC_NAME) \
-		--name $(LEAF_PACK_SRC_NAME) \
-		--version $(VERSION) \
-		--description "Source code for VS Code Legato extension" \
-		--date "$(DATE)" \
-		--depends swi-cloneutils_latest \
-		--minver 1.2 \
-		--append $(LEAF_PACK_SRC_NAME)/template.json
+		--append $(CURNAME)/template.json \
+		$(SRCDEP)
 
 clean:
 	rm -Rf $(OUTPUT)

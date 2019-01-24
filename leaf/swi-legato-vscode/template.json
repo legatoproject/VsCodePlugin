@@ -1,19 +1,37 @@
 {
+  "info": {
+    "description": "Legato extension for VS Code",
+    "leafMinVersion": "1.4",
+    "master": true,
+    "upgrade": true
+  },
   "install": [
     {
-      "command": ["@{DIR}/hook.sh", "install", "@{DIR}/legato-plugin-@{VERSION}.vsix"],
+      "command": [
+        "@{DIR}/hook.sh",
+        "install",
+        "@{DIR}/legato-plugin-@{VERSION}.vsix"
+      ],
       "verbose": true
     }
   ],
   "sync": [
     {
-      "command": ["@{DIR}/hook.sh", "install", "@{DIR}/legato-plugin-@{VERSION}.vsix"],
+      "command": [
+        "@{DIR}/hook.sh",
+        "install",
+        "@{DIR}/legato-plugin-@{VERSION}.vsix"
+      ],
       "verbose": true
     }
   ],
   "uninstall": [
     {
-      "command": ["@{DIR}/hook.sh", "uninstall", "@{DIR}/legato-plugin-@{VERSION}.vsix"],
+      "command": [
+        "@{DIR}/hook.sh",
+        "uninstall",
+        "@{DIR}/legato-plugin-@{VERSION}.vsix"
+      ],
       "verbose": true
     }
   ]
