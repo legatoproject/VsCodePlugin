@@ -244,7 +244,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 	/**
 	 * Set empty/default values then call refreshLabel()
 	 */
-	constructor(public permanentChildren: FilterTreeItem[], public children: FilterTreeItem[]) {
+	constructor(public builtinFilters: ReadonlyArray<FilterTreeItem>, public userFilters: FilterTreeItem[]) {
 		super("FilterContainer", undefined, // model data
 			"Filters", // label
 			"", // description
@@ -259,8 +259,8 @@ export class FilterContainerTreeItem extends TreeItem2 {
 	 */
 	public async getChildren(): Promise<FilterTreeItem[]> {
 		let out: FilterTreeItem[] = [];
-		out.push(...this.permanentChildren);
-		out.push(...this.children);
+		out.push(...this.builtinFilters);
+		out.push(...this.userFilters);
 		return out;
 	}
 }
@@ -271,7 +271,7 @@ export class FilterTreeItem extends CheckboxTreeItem {
 	 */
 	constructor(
 		public readonly value: string,
-		contextValue: Context = Context.LeafPackagesFilter
+		contextValue: Context
 	) {
 		super(`Filter: ${value} `, undefined, // model data
 			value, // label

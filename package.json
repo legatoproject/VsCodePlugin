@@ -87,7 +87,7 @@
                 },
                 {
                     "command": "cmd.leaf.pkg.filter.remove",
-                    "when": "view == view-leaf-pkg && viewItem == context-leaf-pkg-filter-element",
+                    "when": "view == view-leaf-pkg && viewItem == context-leaf-pkg-filter-user",
                     "group": "inline"
                 },
                 {
@@ -379,6 +379,12 @@
             "type": "object",
             "title": "Legato",
             "properties": {
+                "leaf.common.showWhatsNewAfterUpgrades": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Specifies whether to show What's New after upgrading to new feature releases",
+                    "scope": "window"
+                },
                 "legato.tm.terminal.kind": {
                     "type": "string",
                     "enum": [
@@ -390,7 +396,8 @@
                         "Use the configured external terminal."
                     ],
                     "default": "integrated",
-                    "description": "Customizes what kind of terminal to launch for device shell"
+                    "description": "Customizes what kind of terminal to launch for device shell",
+                    "scope": "window"
                 },
                 "legato.tm.log.kind": {
                     "type": "string",
@@ -403,7 +410,8 @@
                         "Use the configured external terminal."
                     ],
                     "default": "integrated",
-                    "description": "Customizes what kind of terminal to launch for device logs"
+                    "description": "Customizes what kind of terminal to launch for device logs",
+                    "scope": "window"
                 }
             }
         }

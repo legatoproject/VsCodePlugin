@@ -40,7 +40,9 @@ class Section<T> {
      * @returns the current value of the section
      */
     public getValue(): T {
-        return this.getConfig().get(this.name, this.defaultValue) as T; // Not undefined, already checked in constructor
+        let out = this.getConfig().get(this.name, this.defaultValue) as T; // Not undefined, already checked in constructor
+        console.log(`[Configuration] Get value of '${this.name}': '${out}'`);
+        return out;
     }
 
     /**
@@ -48,6 +50,7 @@ class Section<T> {
      * See [update](#WorkspaceConfiguration.update)
      */
     public update(value: any, configurationTarget?: vscode.ConfigurationTarget | boolean): Thenable<void> {
+        console.log(`[Configuration] Set value of '${this.name}': '${value}'`);
         return this.getConfig().update(this.name, value, configurationTarget);
     }
 }
@@ -63,6 +66,12 @@ export namespace Configuration {
      */
     export function launchChecker(): vscode.Disposable {
         return new ConfigurationChecker().launch();
+    }
+
+    /**
+     * Common settings
+     */
+    export namespace Common {
     }
 
     /**

@@ -1,5 +1,7 @@
 'use strict';
 
+export const extensionQualifiedId = 'SWIR.legato-plugin';
+
 // This module centralize all ids used in package.json
 export const enum Command { // (cmd)
     // #### LEAF (.leaf) ####
@@ -40,8 +42,8 @@ export const enum Context { // (context)
     // PACKAGES (-pkg)
     LeafPackagesContainer = "context-leaf-pkg-container",
     LeafPackagesFilterContainer = "context-leaf-pkg-filters-container",
-    LeafPackagesPermanentFilter = "context-leaf-pkg-filters-permanent",
-    LeafPackagesFilter = "context-leaf-pkg-filter-element",
+    LeafPackagesBuiltinFilter = "context-leaf-pkg-filters-builtin",
+    LeafPackagesUserFilter = "context-leaf-pkg-filter-user",
     LeafPackageInstalled = "context-leaf-pkg-installed",
     LeafPackageAvailable = "context-leaf-pkg-available",
     // REMOTES (-rmt)

@@ -5,6 +5,15 @@ import { ACTION_LABELS } from './uiUtils';
 import { PromiseCallback, PromiseExecutor, newIdGenerator } from './utils';
 
 /**
+ * Internal enum used to process waiting queue
+ */
+const enum Queueing {
+    Queue, // Add to execution queue right now
+    Wait, // Do nothing, waiting queue will be used later
+    Cancel // Cancel and empty waiting queue
+}
+
+/**
  * Internal object used to track promise executions
  */
 interface Operation<T> {
@@ -34,9 +43,11 @@ export class Immediate implements Scheduler {
  * Ensure than all scheduled promiseExecutors are executed one after the other
  */
 export class Sequencer implements Scheduler {
+    private waitingQueue: Operation<any>[] = [];
     private runningOperation: Operation<any> | undefined = undefined;
-    private currentOperationsQueue: Operation<any>[] = [];
+    private readonly executionQueue: Operation<any>[] = [];
     private readonly idGenerator: IterableIterator<number> = newIdGenerator(); // task id generator
+    private currentQueueingPopup: Thenable<string | undefined> | undefined = undefined;
 
     /**
      * resourceName the name of the resource that need a Sequencer
@@ -48,8 +59,10 @@ export class Sequencer implements Scheduler {
      */
     public async schedule<T>(promiseExecutor: PromiseExecutor<T>): Promise<T> {
         return new Promise<T>((resolve, reject) => {
+            let newId = this.idGenerator.next().value;
+            console.log(`[Scheduler][Sequencer] Add operation to waiting queue: ${newId}`);
             this.scheduleOperation({
-                id: this.idGenerator.next().value,
+                id: newId,
                 executor: promiseExecutor,
                 callback: new PromiseCallback(resolve, reject)
             });
@@ -61,24 +74,50 @@ export class Sequencer implements Scheduler {
      * If the is already an operation, ask user permission to add operation in a queue.
      */
     private async scheduleOperation(operation: Operation<any>) {
-        if (!this.runningOperation || await this.askUserAboutAddingToQueue()) {
-            console.log(`[Scheduler][Sequencer] Add operation to queue: #${operation.id}`);
-            this.currentOperationsQueue.push(operation);
-            this.runNextOperation();
-        } else {
-            console.log(`[Scheduler][Sequencer] Operation canceled by user: #${operation.id}`);
-            operation.callback.reject(new Error("Operation canceled by user"));
+        this.waitingQueue.push(operation);
+        let queueing = this.runningOperation ? await this.askUserAboutAddingToQueue() : Queueing.Queue;
+        let waitingQueueAsString = this.waitingQueue.map(op => op.id).join(', ');
+        switch (queueing) {
+            case Queueing.Queue:
+                console.log(`[Scheduler][Sequencer] Add operation(s) to execution queue: [${waitingQueueAsString}]`);
+                this.executionQueue.push(...this.waitingQueue);
+                this.waitingQueue = [];
+                this.runNextOperation();
+                break;
+            case Queueing.Cancel:
+                console.log(`[Scheduler][Sequencer] Operation(s) canceled by user: [${waitingQueueAsString}]`);
+                this.waitingQueue.forEach(op => op.callback.reject(new Error("Operation canceled by user")));
+                this.waitingQueue = [];
+                break;
+            case Queueing.Wait:
+                // Do nothing
+                break;
         }
     }
 
     /**
      * Show warning message with "Forget" and "Cancel" buttons
      */
-    private async askUserAboutAddingToQueue(): Promise<boolean> {
-        return ACTION_LABELS.ADD_TO_QUEUE === await vscode.window.showWarningMessage(
+    private async askUserAboutAddingToQueue(): Promise<Queueing> {
+        // If there is already a popup, do nothing
+        if (this.currentQueueingPopup) {
+            return Queueing.Wait;
+        }
+
+        // If not, let's show a new one
+        this.currentQueueingPopup = vscode.window.showWarningMessage(
             `${this.resourceName} is already busy. Do you want to queue this new operation for later execution, or simply forget it?`,
             ACTION_LABELS.FORGET,
             ACTION_LABELS.ADD_TO_QUEUE);
+
+        // Wait for user response
+        let result = await this.currentQueueingPopup;
+
+        // Mark popup as closed
+        this.currentQueueingPopup = undefined;
+
+        // Return result
+        return result === ACTION_LABELS.ADD_TO_QUEUE ? Queueing.Queue : Queueing.Cancel;
     }
 
     /**
@@ -86,13 +125,13 @@ export class Sequencer implements Scheduler {
      */
     private async runNextOperation() {
         if (this.runningOperation) {
-            let len = this.currentOperationsQueue.length;
+            let len = this.executionQueue.length;
             if (len > 0) {
                 console.log(`[Scheduler][Sequencer] ${len} operation(s) postponed due to other operation running: #${this.runningOperation.id}`);
             }
         } else {
             // Update queue
-            this.runningOperation = this.currentOperationsQueue.shift();
+            this.runningOperation = this.executionQueue.shift();
 
             // If there is a next operation, let's execute it
             if (this.runningOperation) {

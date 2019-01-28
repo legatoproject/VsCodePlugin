@@ -6,17 +6,24 @@ import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPi
 import { LeafManager, LeafEvent } from './core';
 import * as vscode from 'vscode';
 import { LeafBridgeElement } from './bridge';
+import { Mementos } from '../commons/memento';
 
 /**
  * Packages view and commands
  */
 export class LeafPackagesView extends TreeDataProvider2 {
 
-	private static readonly FILTERS_MEMENTO_ID = "leaf.packages.filters";
-	private static readonly PERMANENT_FILTERS_MEMENTO_ID = "leaf.packages.filters";
-	public readonly permanentFilters: Filter[] = [PERMANENT_FILTERS.MASTER];
-	public readonly filters: Filter[] = [];
-	private readonly filterContainerItem = new FilterContainerTreeItem(this.permanentFilters, this.filters);
+	// Memento handle to save filter state (checked or not)
+	private readonly memento = Mementos.Leaf.Packages.Filters;
+
+	// Builtin and user filters
+	private readonly builtinFilters: ReadonlyArray<BuiltinFilter> = [
+		new BuiltinFilter("master", (_packId, packProperties) => packProperties.info.master)
+	];
+	private readonly userFilters: UserFilter[] = [];
+
+	// Containers in the tree
+	private readonly filterContainerItem = new FilterContainerTreeItem(this.builtinFilters, this.userFilters);
 	private readonly availPkgContainerItem = new AvailablePackagesContainerTreeItem(packs => this.filterPackages(packs));
 	private readonly instPkgContainerItem = new InstalledPackagesContainerTreeItem(packs => this.filterPackages(packs));
 
@@ -39,55 +46,47 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * Load filters and ther state from global extension state
 	 */
 	private loadFilters() {
-		// Load permanent filters
-		let permanentFilters: { [key: string]: boolean } = this.loadFromMemento(LeafPackagesView.FILTERS_MEMENTO_ID) as { [key: string]: boolean };
-		if (permanentFilters) {
-			for (let filterValue of Object.keys(permanentFilters)) {
-				if (filterValue in PERMANENT_FILTERS) {
-					PERMANENT_FILTERS[filterValue].setChecked(permanentFilters[filterValue]);
-				}
+		// Load builtin filters
+		let builtinFiltersSavedStates = this.memento.Builtin.get();
+		for (let filterValue of Object.keys(builtinFiltersSavedStates)) {
+			let correspondingBuiltinFilter = this.builtinFilters.find(pf => pf.value === filterValue);
+			if (correspondingBuiltinFilter) {
+				correspondingBuiltinFilter.setChecked(builtinFiltersSavedStates[filterValue]);
 			}
 		}
 
 		// Load filters
-		let filters: { [key: string]: boolean } = this.loadFromMemento(LeafPackagesView.FILTERS_MEMENTO_ID) as { [key: string]: boolean };
-		if (filters) {
-			for (let filterValue of Object.keys(filters)) {
-				let filter = this.toFilter(filterValue, filters[filterValue]);
-				if (filter) {
-					this.filters.push(filter);
-				}
+		let filters = this.memento.User.get();
+		for (let filterValue of Object.keys(filters)) {
+			let filter = this.toFilter(filterValue, filters[filterValue]);
+			if (filter) {
+				this.userFilters.push(filter);
 			}
 		}
 	}
 
 	/**
-	 * Load filters and states from memento using the given memento id
+	 * Convert filter array to map with isChecked as value
 	 */
-	private loadFromMemento(mementoId: string): { [key: string]: boolean } {
-		return LeafManager.getInstance().context.workspaceState.get(mementoId) as { [key: string]: boolean };
-	}
-
-	/**
-	 * Save filters and ther state from global extension state
-	 */
-	private async saveFilters() {
-		// Save permanent filters states
-		this.saveToMemento(LeafPackagesView.PERMANENT_FILTERS_MEMENTO_ID, this.permanentFilters);
-
-		// Save user filters and states
-		this.saveToMemento(LeafPackagesView.FILTERS_MEMENTO_ID, this.filters);
-	}
-
-	/**
-	 * Save filters and states from memento using the given memento id
-	 */
-	private saveToMemento(mementoId: string, filters: Array<Filter>) {
-		let filtersMap = filters.reduce((previous: { [key: string]: boolean }, current: Filter) => {
+	private toStatesMap(filters: ReadonlyArray<Filter>) {
+		return filters.reduce((previous: { [key: string]: boolean }, current: Filter) => {
 			previous[current.value] = current.isChecked();
 			return previous;
 		}, {});
-		LeafManager.getInstance().context.workspaceState.update(mementoId, filtersMap);
+	}
+
+	/**
+	 * Save built-in filters and ther state to workspace extension memento
+	 */
+	private async saveBuiltinFilters() {
+		this.memento.Builtin.update(this.toStatesMap(this.builtinFilters));
+	}
+
+	/**
+	 * Save user filters and ther state to workspace extension memento
+	 */
+	private async saveUserFilters() {
+		this.memento.User.update(this.toStatesMap(this.userFilters));
 	}
 
 	/**
@@ -127,9 +126,9 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			let result = box.selectedItems.length > 0 ? box.selectedItems[0].label : box.value;
 			let filter = this.toFilter(result);
 			if (filter) {
-				this.filters.push(filter);
+				this.userFilters.push(filter);
 				this.refresh();
-				this.saveFilters();
+				this.saveUserFilters();
 			}
 			box.hide();
 		});
@@ -166,15 +165,15 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	/**
 	 * Remove filter from filter list
 	 */
-	private async removeFilter(item: Filter | undefined) {
+	private async removeFilter(item: UserFilter | undefined) {
 		if (!item) {
 			// No selection, lo and exit
 			console.log("[LeafPackagesView] Remove filter command called without item");
 			return;
 		}
-		this.filters.splice(this.filters.indexOf(item), 1);
+		this.userFilters.splice(this.userFilters.indexOf(item), 1);
 		this.refresh();
-		this.saveFilters();
+		this.saveUserFilters();
 	}
 
 	/**
@@ -284,15 +283,12 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	private onFilterClicked(item: Filter) {
 		let newValue = !item.isChecked();
 		item.setChecked(newValue);
-		if (newValue) {
-			if (item === PERMANENT_FILTERS.INSTALLED) {
-				PERMANENT_FILTERS.AVAILABLE.setChecked(false);
-			} else if (item === PERMANENT_FILTERS.AVAILABLE) {
-				PERMANENT_FILTERS.INSTALLED.setChecked(false);
-			}
-		}
 		this.refresh();
-		this.saveFilters();
+		if (item instanceof BuiltinFilter) {
+			this.saveBuiltinFilters();
+		} else {
+			this.saveUserFilters();
+		}
 	}
 
 	/**
@@ -305,7 +301,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	}
 
 	/**
-	 * @return filter packages
+	 * @return filtered packages
 	 */
 	public filterPackages(packs: LeafBridgeElement): LeafBridgeElement {
 		let filteredPacks: any = {};
@@ -319,7 +315,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * Return true if the given package is matching all the enabled filters
 	 */
 	private matchCheckedFilters(packId: string, packProperties: any) {
-		return this.permanentFilters.concat(this.filters)
+		return (this.builtinFilters as ReadonlyArray<Filter>).concat(this.userFilters)
 			.filter(filter => filter.isChecked()) // Use only checked filters
 			.every(filter => filter.match(packId, packProperties));
 	}
@@ -330,19 +326,15 @@ export class LeafPackagesView extends TreeDataProvider2 {
  * Parent of filters (3 subclasses)
  */
 abstract class Filter extends FilterTreeItem {
-	constructor(value: string, contextValue: Context = Context.LeafPackagesFilter) {
-		super(value, contextValue);
-	}
-
 	public abstract match(packId: string, packProperties: any): boolean;
 }
 
 /**
  * Theses filters are not removables
  */
-class PermanentFilter extends Filter {
+class BuiltinFilter extends Filter {
 	constructor(value: string, private readonly predicate: (packId: string, packProperties: any) => boolean, checked = true) {
-		super(value, Context.LeafPackagesPermanentFilter);
+		super(value, Context.LeafPackagesBuiltinFilter);
 		this.label = `[${value}]`;
 		this.setChecked(checked);
 	}
@@ -352,16 +344,20 @@ class PermanentFilter extends Filter {
 }
 
 /**
- * Static list of all permanent filters
+ * Parent of user filters
  */
-export const PERMANENT_FILTERS: { [key: string]: PermanentFilter } = {
-	MASTER: new PermanentFilter("master", (_packId, packProperties) => packProperties.info.master)
-};
+abstract class UserFilter extends Filter {
+	constructor(value: string) {
+		super(value, Context.LeafPackagesUserFilter);
+	}
+
+	public abstract match(packId: string, packProperties: any): boolean;
+}
 
 /**
  * Regex filter
  */
-class RegexFilter extends Filter {
+class RegexFilter extends UserFilter {
 	constructor(value: string) {
 		super(value);
 	}
@@ -383,7 +379,7 @@ class RegexFilter extends Filter {
 /**
  * Tag filter
  */
-class TagFilter extends Filter {
+class TagFilter extends UserFilter {
 	constructor(value: string) {
 		super(value);
 	}

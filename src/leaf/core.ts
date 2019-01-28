@@ -60,7 +60,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * Initialize model infos and start watching leaf files
    */
-  private constructor(leafPath: string, public readonly context: vscode.ExtensionContext) {
+  private constructor(leafPath: string) {
     super();
 
     // Get leaf path
@@ -92,7 +92,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   public static getInstance(): LeafManager {
     if (!LeafManager.INSTANCE) {
-      throw new Error("createInstance must be called and awaited before calling this singleton's instance");
+      throw new Error("checkLeafInstalled must be called and awaited before calling this singleton's instance");
     }
     return LeafManager.INSTANCE;
   }
@@ -100,7 +100,10 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * Check leaf installation, ask user to install it then check again
    */
-  public static async checkLeafInstalled(context: vscode.ExtensionContext) {
+  public static async checkLeafInstalled() {
+    if (LeafManager.INSTANCE) {
+      throw new Error("checkLeafInstalled must be called only once");
+    }
     let leafPath = undefined;
     do {
       try {
@@ -117,7 +120,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     } while (!leafPath);
 
     // Initialized singletion
-    LeafManager.INSTANCE = new LeafManager(leafPath, context);
+    LeafManager.INSTANCE = new LeafManager(leafPath);
   }
 
   /**

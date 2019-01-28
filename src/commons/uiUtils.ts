@@ -1,9 +1,9 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { CommandRegister } from './utils';
 import { View, Command, Context } from './identifiers';
+import { getExtensionPath, ExtensionPaths } from '../extension';
 
 /**
  * Dialog labels
@@ -54,21 +54,19 @@ export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPic
  * Base for TreeItem
  */
 export class TreeItem2 extends IUiItems implements vscode.TreeItem {
-	public readonly contextValue: string;
 	public parent: TreeItem2 | undefined;
 	constructor(
 		id: string,
 		properties: any | undefined,
-		public label: string,
+		public readonly label: string,
 		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		contextValue: Context,
-		private iconFileName?: string,
+		public readonly contextValue?: Context,
+		private readonly iconFileName?: string,
 		public command?: vscode.Command
 	) {
 		super(id, properties);
-		this.contextValue = contextValue;
 	}
 
 	public async getChildren(): Promise<TreeItem2[]> {
@@ -76,7 +74,10 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 	}
 
 	protected pathFromResources(iconFileName?: string): string | undefined {
-		return iconFileName ? path.join(__filename, '..', '..', '..', 'resources', iconFileName) : undefined;
+		if (!iconFileName) {
+			return undefined;
+		}
+		return getExtensionPath(ExtensionPaths.Resources, iconFileName);
 	}
 
 	iconPath = this.pathFromResources(this.iconFileName);

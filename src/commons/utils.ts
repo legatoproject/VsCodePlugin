@@ -216,7 +216,7 @@ export class CommandRegister extends DisposableBag {
      * @param cb A command handler function.
      * @param thisArg The `this` context used when invoking the handler function.
      */
-    public createCommand(id: string, cb: (...args: any[]) => any, thisArg: any = this) {
+    public createCommand(id: Command, cb: (...args: any[]) => any, thisArg: any = this) {
         this.toDispose(vscode.commands.registerCommand(id, cb, thisArg));
     }
 }

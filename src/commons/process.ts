@@ -20,38 +20,19 @@ abstract class ProcessLauncher {
     public constructor(
         protected readonly cwd: string,
         private readonly scheduler: Scheduler = new Immediate(),
-        private readonly envProvider?: () => Promise<EnvVars | undefined>,
+        private readonly envProvider: () => Promise<EnvVars | undefined>,
         private readonly thisArgs?: any) { }
 
     /**
      * @return the env vars to use
      */
     protected async getEnv(): Promise<EnvVars> {
-        let out: EnvVars | undefined;
-
-        // If an env provider exist
-        if (this.envProvider) {
-            let env = await this.envProvider.apply(this.thisArgs);
-            // And if this provider actually return something
-            if (env) {
-                // use it
-                out = env;
-            }
+        let env = await this.envProvider.apply(this.thisArgs);
+        if (!env) {
+            throw new Error("No env available, execution canceled");
         }
 
-        // If not
-        if (!out) {
-            // Use the default env
-            out = await Promise.resolve(process.env as EnvVars);
-        }
-
-        // If the env does not provide LEAF_WORKSPACE
-        if (!out["LEAF_WORKSPACE"]) {
-            // Override the inherited one 
-            out["LEAF_WORKSPACE"] = "";
-        }
-
-        return out;
+        return env;
     }
 
     /**
@@ -92,8 +73,8 @@ export class TaskProcessLauncher extends ProcessLauncher {
     public constructor(
         private readonly taskDefinitionType: TaskDefinitionType,
         cwd: string,
-        scheduler?: Scheduler,
-        envProvider?: () => Promise<EnvVars | undefined>,
+        scheduler: Scheduler | undefined,
+        envProvider: () => Promise<EnvVars | undefined>,
         thisArgs?: any
     ) {
         super(cwd, scheduler, envProvider, thisArgs);
@@ -195,8 +176,8 @@ export class OutputChannelProcessLauncher extends ProcessLauncher {
     public constructor(
         public readonly name: string,
         cwd: string,
-        scheduler?: Scheduler,
-        envProvider?: () => Promise<EnvVars>,
+        scheduler: Scheduler | undefined,
+        envProvider: () => Promise<EnvVars | undefined>,
         thisArgs?: any
     ) {
         super(cwd, scheduler, envProvider, thisArgs);

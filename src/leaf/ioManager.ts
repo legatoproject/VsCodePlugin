@@ -1,7 +1,7 @@
 'use strict';
 
 import { TaskDefinitionType } from '../commons/identifiers';
-import { DisposableBag } from '../commons/utils';
+import { DisposableBag, EnvVars } from '../commons/utils';
 import { Sequencer } from '../commons/scheduler';
 import { LeafBridge, LeafBridgeElement, LeafBridgeCommands } from './bridge';
 import { OutputChannelProcessLauncher, TaskProcessLauncher } from '../commons/process';
@@ -26,12 +26,21 @@ export class LeafIOManager extends DisposableBag {
     /**
      * @param cwd the path where to execute the processes
      */
-    public constructor(cwd: string) {
+    public constructor(private readonly cwd: string) {
         super();
         this.sequencer = new Sequencer('Leaf');
         this.bridge = this.toDispose(new LeafBridge());
-        this.outputChannelProcessLauncher = this.toDispose(new OutputChannelProcessLauncher('Leaf', cwd, this.sequencer));
-        this.taskProcessLauncher = this.toDispose(new TaskProcessLauncher(TaskDefinitionType.Leaf, cwd, this.sequencer));
+        this.outputChannelProcessLauncher = this.toDispose(new OutputChannelProcessLauncher('Leaf', cwd, this.sequencer, this.getEnv, this));
+        this.taskProcessLauncher = this.toDispose(new TaskProcessLauncher(TaskDefinitionType.Leaf, cwd, this.sequencer, this.getEnv, this));
+    }
+
+    /**
+     * Build env for our processes
+     */
+    private getEnv(): Promise<EnvVars> {
+        let env = process.env as EnvVars;
+        env["LEAF_WORKSPACE"] = this.cwd;
+        return Promise.resolve(env);
     }
 
     /**
