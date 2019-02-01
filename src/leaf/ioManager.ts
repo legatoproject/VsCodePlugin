@@ -1,10 +1,16 @@
 'use strict';
 
 import { TaskDefinitionType } from '../commons/identifiers';
-import { DisposableBag, EnvVars } from '../commons/utils';
+import { EnvVars } from '../commons/utils';
+import { DisposableBag } from '../commons/manager';
 import { Sequencer } from '../commons/scheduler';
 import { LeafBridge, LeafBridgeElement, LeafBridgeCommands } from './bridge';
-import { OutputChannelProcessLauncher, TaskProcessLauncher } from '../commons/process';
+import { ProcessLauncher, OutputChannelProcessLauncher, TaskProcessLauncher, ProcessLauncherOptions } from '../commons/process';
+
+export const enum ExecKind {
+    Task,
+    OutputChannel
+}
 
 /**
  * Take care of IO operation from/to Leaf
@@ -30,8 +36,14 @@ export class LeafIOManager extends DisposableBag {
         super();
         this.sequencer = new Sequencer('Leaf');
         this.bridge = this.toDispose(new LeafBridge());
-        this.outputChannelProcessLauncher = this.toDispose(new OutputChannelProcessLauncher('Leaf', cwd, this.sequencer, this.getEnv, this));
-        this.taskProcessLauncher = this.toDispose(new TaskProcessLauncher(TaskDefinitionType.Leaf, cwd, this.sequencer, this.getEnv, this));
+        let options: ProcessLauncherOptions = {
+            defaultCwd: cwd,
+            scheduler: this.sequencer,
+            envProvider: this.getEnv,
+            thisArg: this
+        };
+        this.outputChannelProcessLauncher = this.toDispose(new OutputChannelProcessLauncher('Leaf', options));
+        this.taskProcessLauncher = this.toDispose(new TaskProcessLauncher(TaskDefinitionType.Leaf, options));
     }
 
     /**
@@ -44,19 +56,31 @@ export class LeafIOManager extends DisposableBag {
     }
 
     /**
+     * Return the launcher of the given kind
+     */
+    private getLauncher(kind: ExecKind): ProcessLauncher {
+        switch (kind) {
+            case ExecKind.OutputChannel:
+                return this.outputChannelProcessLauncher;
+            case ExecKind.Task:
+                return this.taskProcessLauncher;
+        }
+    }
+
+    /**
      * Execute a command as a task
      * @return a promise that is resolved at the end of the task or rejected if the user cancel it
      */
-    public async executeAsTask(name: string, ...cmd: string[]): Promise<void> {
-        return this.taskProcessLauncher.executeProcess(name, ...cmd);
+    public async executeInShell(kind: ExecKind, name: string, cmdLine: string): Promise<void> {
+        return this.getLauncher(kind).executeInShell(name, cmdLine);
     }
 
     /**
      * Execute a command as a child process and print the output in a channel
      * @return a promise that is resolved at the end of the process or rejected if the user cancel it
      */
-    public async executeAsChannel(name: string, ...cmd: string[]): Promise<void> {
-        return this.outputChannelProcessLauncher.executeProcess(name, ...cmd);
+    public async executeProcess(kind: ExecKind, name: string, ...cmdArray: string[]): Promise<void> {
+        return this.getLauncher(kind).executeProcess(name, cmdArray);
     }
 
     /**

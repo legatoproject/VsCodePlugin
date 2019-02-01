@@ -4,7 +4,7 @@ import { Terminal, window } from "vscode";
 import { LeafManager, LeafEvent } from './core';
 import { Command } from '../commons/identifiers';
 import { ACTION_LABELS } from '../commons/uiUtils';
-import { CommandRegister } from '../commons/utils';
+import { CommandRegister } from '../commons/manager';
 
 const LEAF_SHELL_LABEL = `Leaf shell`;
 
@@ -17,15 +17,15 @@ export class LeafTerminalManager extends CommandRegister {
   private leafTerminal: Terminal | undefined;
   private terminalCreated = false;
 
-  public constructor() {
+  public constructor(private readonly leafManager: LeafManager) {
     super();
 
     // On profile change
-    LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onEnvVarsOrCurrentProfileChanged, this);
+    this.leafManager.addListener(LeafEvent.CurrentProfileChanged, this.onEnvVarsOrCurrentProfileChanged, this);
 
     // On env change
-    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
-    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsOrCurrentProfileChanged, this);
+    this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
+    this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsOrCurrentProfileChanged, this);
 
     // Also, let's add leaf commands
     this.createCommand(Command.LeafTerminalOpenLeaf, this.showTerminal);
@@ -45,17 +45,17 @@ export class LeafTerminalManager extends CommandRegister {
       return; // Already created
     }
 
-    let currentProfileName = await LeafManager.getInstance().getCurrentProfileName();
+    let currentProfileName = await this.leafManager.getCurrentProfileName();
     if (!currentProfileName) {
       return; // No current profile, do nothing
     }
 
-    let enVars = await LeafManager.getInstance().getEnvVars();
+    let enVars = await this.leafManager.getEnvVars();
     if (!enVars) {
       return; // No envars, profile out of sync, do nothing
     }
 
-    let profiles = await LeafManager.getInstance().getProfiles();
+    let profiles = await this.leafManager.getProfiles();
     if (!profiles) {
       return; // No profiles, do nothing
     }
@@ -90,7 +90,7 @@ export class LeafTerminalManager extends CommandRegister {
     this.terminalCreated = true;
     if (!this.leafTerminal) {
       console.log(`[LeafTerminal] Create Leaf shell named \'${LEAF_SHELL_LABEL}\'`);
-      let leafBinPath = await LeafManager.getInstance().getLeafPath();
+      let leafBinPath = await this.leafManager.getLeafPath();
       this.leafTerminal = window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, ["shell"]);
     }
     this.leafTerminal.show();

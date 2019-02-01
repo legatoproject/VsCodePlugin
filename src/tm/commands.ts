@@ -1,14 +1,14 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { CommandRegister } from "../commons/utils";
+import { CommandRegister } from "../commons/manager";
 import { Command } from '../commons/identifiers';
 
 interface CommandDeclaration extends vscode.QuickPickItem {
     id: Command;
     callback: (...args: any[]) => any;
     /**
-     * thisArgs The `this`-argument which will be used when calling the callback.
+     * thisArg The `this`-argument which will be used when calling the callback.
      */
     thisArg?: any;
 }

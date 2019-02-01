@@ -1,9 +1,9 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { CommandRegister } from './utils';
+import { CommandRegister } from './manager';
 import { View, Command, Context } from './identifiers';
-import { getExtensionPath, ExtensionPaths } from '../extension';
+import { extPromise, ExtensionPaths } from '../extension';
 
 /**
  * Dialog labels
@@ -55,6 +55,7 @@ export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPic
  */
 export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 	public parent: TreeItem2 | undefined;
+	public iconPath?: string;
 	constructor(
 		id: string,
 		properties: any | undefined,
@@ -63,24 +64,25 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
 		public readonly contextValue?: Context,
-		private readonly iconFileName?: string,
+		iconFileName?: string,
 		public command?: vscode.Command
 	) {
 		super(id, properties);
+		this.setIcon(iconFileName);
+	}
+
+	protected async setIcon(iconFileName?: string) {
+		if (iconFileName) {
+			let ext = await extPromise;
+			this.iconPath = await ext.getExtensionPath(ExtensionPaths.Resources, iconFileName);
+		} else {
+			this.iconPath = undefined;
+		}
 	}
 
 	public async getChildren(): Promise<TreeItem2[]> {
 		return [];
 	}
-
-	protected pathFromResources(iconFileName?: string): string | undefined {
-		if (!iconFileName) {
-			return undefined;
-		}
-		return getExtensionPath(ExtensionPaths.Resources, iconFileName);
-	}
-
-	iconPath = this.pathFromResources(this.iconFileName);
 }
 
 
@@ -111,8 +113,7 @@ export class CheckboxTreeItem extends TreeItem2 {
 
 	public setChecked(value: boolean) {
 		this.checked = value;
-		let iconFileName = value ? 'CheckedCheckbox.svg' : 'UncheckedCheckbox.svg';
-		this.iconPath = this.pathFromResources(iconFileName);
+		this.setIcon(value ? 'CheckedCheckbox.svg' : 'UncheckedCheckbox.svg');
 	}
 
 	public isChecked(): boolean {

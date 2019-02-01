@@ -14,10 +14,6 @@ export enum VersionChangeKind {
  * Manage upgrades, downgrades and give previous and current versions
  */
 export class VersionManager {
-
-    // Singleton instance
-    private static INSTANCE: VersionManager;
-
     // Properties
     public readonly previousVersion: string | undefined;
     public readonly currentVersion: string;
@@ -27,34 +23,15 @@ export class VersionManager {
      * Get previous version from memento then store current version
      * Compute changeKind
      */
-    private constructor() {
+    public constructor(private readonly context: vscode.ExtensionContext) {
         let extension = vscode.extensions.getExtension(extensionQualifiedId)!;
         this.currentVersion = extension.packageJSON.version;
-        this.previousVersion = Mementos.Common.PreviousVersion.get();
-        Mementos.Common.PreviousVersion.update(this.currentVersion);
+        this.previousVersion = Mementos.Common.PreviousVersion.get(this.context);
         this.changeKind = this.getChangeKind();
     }
 
-    /**
-     * Return singleton's instance
-     * you must call and await VersionManager.check before calling this method
-     */
-    public static getInstance(): VersionManager {
-        if (!VersionManager.INSTANCE) {
-            throw new Error("check must be called and awaited before calling this singleton's instance");
-        }
-        return VersionManager.INSTANCE;
-    }
-
-    /**
-     * Trig control singleton instanciation
-     */
-    public static check() {
-        if (VersionManager.INSTANCE) {
-            throw new Error("check must be called only once");
-        }
-        // Initialized singletion
-        VersionManager.INSTANCE = new VersionManager();
+    public saveCurrentVersion() {
+        Mementos.Common.PreviousVersion.update(this.context, this.currentVersion);
     }
 
     /**

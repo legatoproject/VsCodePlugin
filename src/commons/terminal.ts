@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { Configuration } from '../commons/configuration';
 import { spawn } from 'child_process';
-import { DisposableBag } from '../commons/utils';
+import { DisposableBag } from '../commons/manager';
 
 /**
  * List kind of terminals

@@ -15,7 +15,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
 
   private leafStatusbar: StatusBarItem;
 
-  public constructor() {
+  public constructor(private readonly leafManager: LeafManager) {
     super(View.LeafProfiles);
     // So lets add status bar
     this.leafStatusbar = window.createStatusBarItem(StatusBarAlignment.Left, 11);
@@ -31,8 +31,8 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     this.leafStatusbar.command = Command.LeafProfileSwitch;
 
     // Subscribe to leaf events
-    LeafManager.getInstance().addListener(LeafEvent.CurrentProfileChanged, this.onProfileChanged, this);
-    LeafManager.getInstance().addListener(LeafEvent.ProfilesChanged, this.refresh, this);
+    this.leafManager.addListener(LeafEvent.CurrentProfileChanged, this.onProfileChanged, this);
+    this.leafManager.addListener(LeafEvent.ProfilesChanged, this.refresh, this);
     this.setInitialState();
   }
 
@@ -40,14 +40,14 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
    * Async initialisation
    */
   private async setInitialState() {
-    this.onProfileChanged(undefined, await LeafManager.getInstance().getCurrentProfileName());
+    this.onProfileChanged(undefined, await this.leafManager.getCurrentProfileName());
   }
 
   /**
    * Ask user to select a profile then switch to it
    */
   private async switchProfile(): Promise<void> {
-    let profiles = await LeafManager.getInstance().getProfiles();
+    let profiles = await this.leafManager.getProfiles();
     let items: ProfileQuickPickItem[] = toItems(profiles, ProfileQuickPickItem);
     let result = await showMultiStepQuickPick(
       "leaf profile switch",
@@ -57,7 +57,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       items
     );
     if (result) {
-      return LeafManager.getInstance().switchProfile(result.id);
+      return this.leafManager.switchProfile(result.id);
     }
   }
 
@@ -69,7 +69,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     if (item) {
       profileId = item.id;
     } else {
-      let profiles = await LeafManager.getInstance().getProfiles();
+      let profiles = await this.leafManager.getProfiles();
       let result = await showMultiStepQuickPick(
         "leaf profile switch",
         undefined,
@@ -82,7 +82,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       }
     }
     if (profileId) {
-      return LeafManager.getInstance().deleteProfile(profileId);
+      return this.leafManager.deleteProfile(profileId);
     }
   }
 
@@ -90,7 +90,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     if (!packageItem || !packageItem.parent) {
       throw new Error('Command not available from the palette; try the Leaf Profiles view');
     }
-    return LeafManager.getInstance().removePackagesFromProfile(packageItem.parent.id, packageItem.packId);
+    return this.leafManager.removePackagesFromProfile(packageItem.parent.id, packageItem.packId);
   }
 
   /**
@@ -103,7 +103,11 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
   }
 
   protected async getRootElements(): Promise<ProfileTreeItem[]> {
-    let profiles = await LeafManager.getInstance().getProfiles();
-    return toItems(profiles, ProfileTreeItem);
+    let lm = this.leafManager;
+    return toItems(await lm.getProfiles(), class extends ProfileTreeItem {
+      constructor(id: any, properties: any) {
+        super(lm, id, properties);
+      }
+    });
   }
 }

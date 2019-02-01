@@ -340,22 +340,16 @@
         ],
         "taskDefinitions": [
             {
+                "type": "Leaf"
+            },
+            {
                 "type": "Legato Build"
             },
             {
                 "type": "Legato Install"
             },
             {
-                "type": "Leaf",
-                "required": [
-                    "taskId"
-                ],
-                "properties": {
-                    "cmd": {
-                        "type": "string",
-                        "description": "The id of the command to sent to leaf shell"
-                    }
-                }
+                "type": "Legato TM"
             }
         ],
         "problemMatchers": [

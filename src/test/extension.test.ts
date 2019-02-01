@@ -10,15 +10,17 @@ import { LeafManager, LEAF_TASKS } from '../leaf/core';
 import { LegatoManager, LEGATO_MKTOOLS } from '../legato/core';
 import { ITestCallbackContext } from 'mocha';
 import { listDefinitionFiles } from '../legato/files';
+import { extPromise } from '../extension';
 
-const leafManager: LeafManager = LeafManager.getInstance();
 const LEAF_TIMEOUT: number = 10000;
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 // import * as vscode from 'vscode';
 // import * as myExtension from '../extension';
 
-suite("Leaf Tests", function () {
+suite("Leaf Tests", async function () {
+    let leafManager: LeafManager = (await extPromise).leafManager;
+
     // Defines a Mocha unit test
     test(`Check Leaf installation`, function () {
         console.log(`WORKSPACE: ${process.env.CODE_TESTS_WORKSPACE}`);
@@ -73,13 +75,15 @@ suite("Leaf Tests", function () {
     });
 });
 
-suite("Legato Tests", function () {
+suite("Legato Tests", async function () {
+    let legatoManager: LegatoManager = (await extPromise).legatoManager;
+
     test(`List def files`, function (done) {
         listDefinitionFiles().then((files) => {
             files.forEach((uri: Uri) => { console.log(`DEF_FILE=${uri.path}`); });
             console.log(`Workspace scanned:${workspace.rootPath} - DEF found:${files.length}`);
             assert.notEqual(files.length, 0, "To continue, ensure at least one definition file is provided in the workspace");
-            LegatoManager.getInstance().saveActiveDefFile(files[0]);
+            legatoManager.saveActiveDefFile(files[0]);
             done();
         });
     });
@@ -137,7 +141,7 @@ suite("Legato Tests", function () {
                     }
                 });
 
-                LegatoManager.getInstance().saveActiveDefFile(foundSdef);
+                legatoManager.saveActiveDefFile(foundSdef);
                 testCallback.timeout(300000);
 
             } else {

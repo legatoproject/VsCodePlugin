@@ -91,7 +91,8 @@ abstract class PackagesContainerTreeItem extends TreeItem2 {
 }
 
 export class AvailablePackagesContainerTreeItem extends PackagesContainerTreeItem {
-	constructor(filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
+	constructor(protected readonly leafManager: LeafManager,
+		filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
 		super("AvailablePackageContainer", // id
 			`Available`, // label
 			"PackageAvailable.svg", // iconFileName
@@ -100,12 +101,13 @@ export class AvailablePackagesContainerTreeItem extends PackagesContainerTreeIte
 	}
 
 	public async getPackages(): Promise<LeafBridgeElement | undefined> {
-		return LeafManager.getInstance().getAvailablePackages();
+		return this.leafManager.getAvailablePackages();
 	}
 }
 
 export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeItem {
-	constructor(filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
+	constructor(protected readonly leafManager: LeafManager,
+		filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
 		super("InstalledPackageContainer", // id
 			"Installed", // label
 			"PackageInstalled.svg", // iconFileName
@@ -114,7 +116,7 @@ export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeIte
 	}
 
 	public async getPackages(): Promise<LeafBridgeElement | undefined> {
-		return LeafManager.getInstance().getInstalledPackages();
+		return this.leafManager.getInstalledPackages();
 	}
 }
 
@@ -182,6 +184,7 @@ export class ProfileQuickPickItem extends QuickPickItem2 {
 
 export class ProfileTreeItem extends TreeItem2 {
 	constructor(
+		private readonly leafManager: LeafManager,
 		id: any,
 		properties: any
 	) {
@@ -196,7 +199,7 @@ export class ProfileTreeItem extends TreeItem2 {
 
 	public async getChildren(): Promise<TreeItem2[]> {
 		// Find package properties
-		let packs = await LeafManager.getInstance().getMergedPackages();
+		let packs = await this.leafManager.getMergedPackages();
 		let model: { [key: string]: any } = {};
 		if (packs) {
 			for (let packId of this.properties.packages) {

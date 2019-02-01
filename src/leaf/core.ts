@@ -3,9 +3,10 @@
 import * as fs from "fs";
 import * as vscode from "vscode";
 import { LeafBridgeCommands, LeafBridgeElement } from './bridge';
-import { LeafIOManager } from './ioManager';
+import { LeafIOManager, ExecKind } from './ioManager';
 import { ACTION_LABELS } from '../commons/uiUtils';
-import { executeInShell, EnvVars, AbstractManager, debounce, removeDuplicates } from '../commons/utils';
+import { executeInShell, EnvVars, debounce, removeDuplicates } from '../commons/utils';
+import { AbstractManager } from '../commons/manager';
 import { join } from 'path';
 import { Command } from '../commons/identifiers';
 
@@ -38,9 +39,6 @@ const LEAF_FILES = {
  */
 export class LeafManager extends AbstractManager<LeafEvent> {
 
-  // Singleton instance
-  private static INSTANCE: LeafManager;
-
   // Task management
   private readonly ioManager: LeafIOManager;
 
@@ -58,9 +56,32 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   private leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
 
   /**
+   * Check leaf installation, ask user to install it then check again
+   */
+  public static async computeLeafPath(): Promise<string> {
+    let leafPath = undefined;
+    do {
+      try {
+        leafPath = await executeInShell(`which leaf`);
+      } catch {
+        let userChoice = await vscode.window.showErrorMessage(
+          `Leaf is not installed. Please install Leaf and click on '${ACTION_LABELS.CHECK_AGAIN}'.`,
+          ACTION_LABELS.CHECK_AGAIN,
+          ACTION_LABELS.IGNORE);
+        if (!userChoice || userChoice === ACTION_LABELS.IGNORE) {
+          throw new Error("Leaf is not installed");
+        }
+      }
+    } while (!leafPath);
+
+    // Initialized singletion
+    return leafPath;
+  }
+
+  /**
    * Initialize model infos and start watching leaf files
    */
-  private constructor(leafPath: string) {
+  public constructor(leafPath: string) {
     super();
 
     // Get leaf path
@@ -84,43 +105,6 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     // Trig first model refreshing
     this.refreshInfosFromBridge();
     this.refreshPackagesFromBridge();
-  }
-
-  /**
-   * Return singleton's instance
-   * you must call and await LeafManager.checkLeafInstalled before calling this method
-   */
-  public static getInstance(): LeafManager {
-    if (!LeafManager.INSTANCE) {
-      throw new Error("checkLeafInstalled must be called and awaited before calling this singleton's instance");
-    }
-    return LeafManager.INSTANCE;
-  }
-
-  /**
-   * Check leaf installation, ask user to install it then check again
-   */
-  public static async checkLeafInstalled() {
-    if (LeafManager.INSTANCE) {
-      throw new Error("checkLeafInstalled must be called only once");
-    }
-    let leafPath = undefined;
-    do {
-      try {
-        leafPath = await executeInShell(`which leaf`);
-      } catch {
-        let userChoice = await vscode.window.showErrorMessage(
-          `Leaf is not installed. Please install Leaf and click on '${ACTION_LABELS.CHECK_AGAIN}'.`,
-          ACTION_LABELS.CHECK_AGAIN,
-          ACTION_LABELS.IGNORE);
-        if (!userChoice || userChoice === ACTION_LABELS.IGNORE) {
-          throw new Error("Leaf is not installed");
-        }
-      }
-    } while (!leafPath);
-
-    // Initialized singletion
-    LeafManager.INSTANCE = new LeafManager(leafPath);
   }
 
   /**
@@ -232,7 +216,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     onDidChangeCb: (() => any) | undefined,
     onDidDeleteCb: (() => any) | undefined
   ): vscode.FileSystemWatcher {
-    console.log(`[FileWatcher] Watch folder using vscode watcher '${globPattern}'`);
+    console.log(`[FileWatcher] Watch folder using vscode watcher '${globPattern.toString()}'`);
     let watcher: vscode.FileSystemWatcher = vscode.workspace.createFileSystemWatcher(globPattern);
     this.disposables.toDispose(watcher);
     if (onDidCreateCb) {
@@ -360,14 +344,24 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
-   * Instanciate or dispose Disposable elements on workspace becoming leaf or not
-   * Immediatly instanciate if already in a leaf workspace
+   * Call callbacks when entering/exiting leaf workspace
+   * Immediatly call enable/disable from current value
+   * @param onWillEnable callback called when the event return true to wait for component creation
+   * @param onDidDisable callback called when the event return false after disposing components
+   * @param thisArg The `this`-argument which will be used when calling the env vars provider.
    */
-  public createAndDisposeOnLeafWorkspace(...newComponents: { new(): vscode.Disposable }[]) {
-    this.createAndDisposeOn(
+  public async onLeafWorkspace(
+    activator: {
+      onWillEnable: () => Promise<vscode.Disposable[]>,
+      onDidDisable?: (components: vscode.Disposable[]) => any
+    },
+    thisArg?: any
+  ): Promise<vscode.Disposable> {
+    return this.onEvent(
       LeafEvent.onInLeafWorkspaceChange,
-      async () => this.isLeafWorkspace(await this.leafWorkspaceInfo),
-      ...newComponents);
+      this.isLeafWorkspace(await this.leafWorkspaceInfo),
+      activator,
+      thisArg);
   }
 
   /**
@@ -536,7 +530,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * profile: profile name to switch to
    */
   public async switchProfile(profile: string): Promise<void> {
-    return this.ioManager.executeAsChannel(`Switching to profile ${profile}`, 'leaf', 'profile', 'switch', profile);
+    return this.ioManager.executeProcess(ExecKind.OutputChannel, `Switching to profile ${profile}`, 'leaf', 'profile', 'switch', profile);
   }
 
   /**
@@ -544,7 +538,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * profile: profile(s) name(s) to delete
    */
   public async deleteProfile(...profile: string[]): Promise<void> {
-    return this.ioManager.executeAsChannel(`Deleting profile ${profile}`, 'leaf', 'profile', 'delete', profile.join(' '));
+    return this.ioManager.executeProcess(ExecKind.OutputChannel, `Deleting profile ${profile}`, 'leaf', 'profile', 'delete', profile.join(' '));
   }
 
   /**
@@ -558,7 +552,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     if (profile) {
       cmd.push(profile);
     }
-    return this.ioManager.executeAsTask(`Create new profile`, ...cmd);
+    return this.ioManager.executeProcess(ExecKind.Task, `Create new profile`, ...cmd);
   }
 
   /**
@@ -571,17 +565,16 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     if (packIds.length === 0) {
       throw new Error('No package to add');
     }
-    let cmd: string[] = [];
     let packagesArgs = ([] as string[]).concat(...packIds.map(packId => ['--add-package', packId]));
     let actionName = `Add [${packIds.join(' ')}] to profile ${profileName}`;
     if (profileName === await this.getCurrentProfileName()) {
       // Is current profile -> leaf update
-      cmd = ['leaf', 'update', ...packagesArgs];
-      return this.ioManager.executeAsTask(actionName, ...cmd);
+      let cmdArray = ['leaf', 'update', ...packagesArgs];
+      return this.ioManager.executeProcess(ExecKind.Task, actionName, ...cmdArray);
     } else {
       // Is another profile -> leaf profile config then leaf profile sync
-      cmd = ['leaf', 'profile', 'config', ...packagesArgs, profileName, '&&', 'leaf', 'profile', 'sync', profileName];
-      return this.ioManager.executeAsChannel(actionName, ...cmd);
+      let cmdLine = `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`;
+      return this.ioManager.executeInShell(ExecKind.OutputChannel, actionName, cmdLine);
     }
   }
 
@@ -596,16 +589,17 @@ export class LeafManager extends AbstractManager<LeafEvent> {
       throw new Error('No package to remove');
     }
     let packagesArgs = ([] as string[]).concat(...packIds.map(packId => ['--rm-package', packId]));
-    return this.ioManager.executeAsChannel(
+    return this.ioManager.executeInShell(
+      ExecKind.OutputChannel,
       `Remove[${packIds.join(' ')}]from profile ${profileName} `,
-      'leaf', 'profile', 'config', ...packagesArgs, profileName, '&&', 'leaf', 'profile', 'sync', profileName);
+      `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`);
   }
 
   /**
    * Enable or disable remote
    */
   public async enableRemote(remoteId: string, enabled: boolean = true): Promise<void> {
-    return this.ioManager.executeAsChannel(
+    return this.ioManager.executeProcess(ExecKind.OutputChannel,
       `${enabled ? "Enable" : "Disable"} remote ${remoteId} `,
       'leaf', 'remote', enabled ? "enable" : "disable", remoteId);
   }
@@ -614,7 +608,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Fetch all remotes
    */
   public async fetchRemote(): Promise<void> {
-    return this.ioManager.executeAsChannel(
+    return this.ioManager.executeProcess(ExecKind.OutputChannel,
       "Fetch remotes",
       'leaf', 'remote', 'fetch');
   }
@@ -643,14 +637,14 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   public setEnvValue(envar: string, value: string | undefined, scope: LeafEnvScope = LeafEnvScope.Profile) {
     let args = value ? ['--set', `${envar}=${value}`] : ['--unset', `${envar}`];
-    return this.ioManager.executeAsChannel(LEAF_TASKS.setEnv, 'leaf', 'env', scope, ...args);
+    return this.ioManager.executeProcess(ExecKind.OutputChannel, LEAF_TASKS.setEnv, 'leaf', 'env', scope, ...args);
   }
 
   /**
    * Add new leaf remote
    */
   public async addRemote(alias: string, url: string): Promise<void> {
-    return this.ioManager.executeAsChannel(
+    return this.ioManager.executeProcess(ExecKind.OutputChannel,
       `Add remote ${alias} (${url})`,
       'leaf', 'remote', 'add', '--insecure', alias, url);
   }
@@ -659,7 +653,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Remove leaf remote
    */
   public async removeRemote(...alias: string[]): Promise<void> {
-    return this.ioManager.executeAsChannel(
+    return this.ioManager.executeProcess(ExecKind.OutputChannel,
       `Remove remote ${alias}`,
       'leaf', 'remote', 'remove', alias.join(' '));
   }

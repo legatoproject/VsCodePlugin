@@ -1,6 +1,5 @@
 'use strict';
 import * as vscode from 'vscode';
-import { getContext } from '../extension';
 
 const enum Scope {
     Global, Workspace
@@ -12,8 +11,7 @@ class ExtensionMemento<T> {
         public readonly key: string,
         public readonly defaultValue: T) { }
 
-    private getMemento(): vscode.Memento {
-        let context = getContext();
+    private getMemento(context: vscode.ExtensionContext): vscode.Memento {
         switch (this.scope) {
             case Scope.Global:
                 return context.globalState;
@@ -22,15 +20,15 @@ class ExtensionMemento<T> {
         }
     }
 
-    public get(): T {
-        let out = this.getMemento().get(this.key, this.defaultValue);
+    public get(context: vscode.ExtensionContext): T {
+        let out = this.getMemento(context).get(this.key, this.defaultValue);
         console.log(`[Memento] Get value of '${this.key}': '${out}'`);
         return out;
     }
 
-    public update(value: T): Thenable<void> {
+    public update(context: vscode.ExtensionContext, value: T): Thenable<void> {
         console.log(`[Memento] Set value of '${this.key}': '${value}'`);
-        return this.getMemento().update(this.key, value);
+        return this.getMemento(context).update(this.key, value);
     }
 }
 

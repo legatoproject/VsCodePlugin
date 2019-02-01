@@ -10,68 +10,137 @@ import { LeafPackagesView } from './leaf/packages';
 import { LeafRemotesView } from './leaf/remotes';
 import { TargetUiManager } from './tm/assist';
 import { LegatoLanguageManager } from './legato/language';
-import { Configuration } from './commons/configuration';
+import { ConfigurationChecker } from './commons/configuration';
 import { VersionManager } from './commons/version';
+import { DisposableBag } from './commons/manager';
+import { DelayedPromise } from './commons/promise';
 
-let _context: vscode.ExtensionContext | undefined = undefined;
+/**
+ * Folder names of extension resources
+ */
+export const enum ExtensionPaths {
+    Resources = 'resources'
+}
+
+/**
+ * Manage the entire extension life-cycle
+ */
+class Extension extends DisposableBag {
+    // Common managers
+    private readonly versionManager = new VersionManager(this.context);
+    private readonly confChecker: ConfigurationChecker = this.toDispose(new ConfigurationChecker());
+
+    // Leaf manager
+    public readonly leafManager: LeafManager;
+
+    // Legato managers
+    public readonly legatoManager: LegatoManager;
+    public readonly legatoLanguageManager: LegatoLanguageManager;
+
+    /**
+     * Instanciates managers
+     * @param context the context of the extension
+     * @param leafPath the checked path to leaf
+     */
+    public constructor(public readonly context: vscode.ExtensionContext, leafPath: string) {
+        super();
+
+        // Save current version 
+        this.versionManager.saveCurrentVersion();
+
+        // Check Leaf installation, create LeafManager and dispose it on deactivate
+        // We use then because we want to store read-only promise in constructor
+        this.leafManager = this.toDispose(new LeafManager(leafPath));
+
+        // Check vscode configuration
+        this.confChecker.launch();
+
+        // Create LegatoManager using LeafManager and dispose it on deactivate
+        // We use then because we want to store read-only promise in constructor
+        this.legatoManager = this.toDispose(new LegatoManager(this.leafManager));
+        this.legatoLanguageManager = this.toDispose(new LegatoLanguageManager(this.leafManager, this.legatoManager));
+    }
+
+    /**
+     * Launch ui components
+     */
+    public async initComponnents() {
+        this.initLeafComponnents();
+        this.initLegatoComponnents();
+    }
+
+    // Leaf
+
+    /**
+     * Launch leaf components
+     */
+    private async initLeafComponnents() {
+        // Launch data providers for packages and remotes view
+        this.toDispose(new LeafPackagesView(this.context, this.leafManager));
+        this.toDispose(new LeafRemotesView(this.leafManager));
+
+        // Launch/Dispose on In/Out of LeafWorkspace
+        this.toDispose(await this.leafManager.onLeafWorkspace({ onWillEnable: this.enteringLeafWorkspace }, this));
+    }
+
+    /**
+     * Called when the workspace become leaf compatible
+     */
+    private async enteringLeafWorkspace(): Promise<vscode.Disposable[]> {
+        return [
+            new LeafTerminalManager(this.leafManager),
+            new LeafProfileStatusBar(this.leafManager)
+        ];
+    }
+
+    // Legato
+
+    /**
+     * Launch Legato components
+     */
+    private async initLegatoComponnents() {
+        // Launch/Dispose on In/Out of LegatoWorkspace
+        this.toDispose(await this.legatoManager.onLegatoWorkspace({ onWillEnable: this.enteringLegatoWorkspace }, this));
+    }
+
+    /**
+     * Called when the workspace become legato compatible
+     */
+    private async enteringLegatoWorkspace(): Promise<vscode.Disposable[]> {
+        return [
+            new TargetUiManager(this.leafManager),
+            new LegatoUiManager(this.leafManager, this.legatoManager)
+        ];
+    }
+
+    /**
+     * Get the absolute path of a resource contained in the extension.
+     *
+     * @param path A relative path to a resource contained in the extension.
+     * @return The absolute path of the resource.
+     */
+    public getExtensionPath(...path: string[]) {
+        return this.context.asAbsolutePath(join(...path));
+    }
+}
+
+/**
+ * The extension promise global handle
+ */
+export var extPromise: Promise<Extension> = new DelayedPromise();
 
 /**
  * this method is called when your extension is activated
  * your extension is activated the very first time the command is executed
  */
 export async function activate(context: vscode.ExtensionContext) {
-    // Set current context
-    _context = context;
-
-    // Set previous and current version
-    VersionManager.check();
-
-    // Check Leaf installation
-    await LeafManager.checkLeafInstalled();
-
-    // Check vscode configuration
-    context.subscriptions.push(Configuration.launchChecker());
-
-    // Register manager to dispose it on deactivate
-    context.subscriptions.push(LeafManager.getInstance());
-    context.subscriptions.push(LegatoManager.getInstance());
-
-    // Launch data providers for packages and remotes view
-    context.subscriptions.push(new LeafPackagesView());
-    context.subscriptions.push(new LeafRemotesView());
-
-    // Launch/Dispose on In/Out of LeafWorkspace
-    LeafManager.getInstance().createAndDisposeOnLeafWorkspace(
-        LeafTerminalManager,
-        LeafProfileStatusBar);
-
-    // Launch/Dispose on In/Out of LegatoWorkspace
-    LegatoManager.getInstance().createAndDisposeOnLegatoWorkspace(
-        LegatoUiManager,
-        TargetUiManager,
-        LegatoLanguageManager);
+    let extension = new Extension(context, await LeafManager.computeLeafPath());
+    extension.initComponnents();
+    (extPromise as DelayedPromise<Extension>).resolve(extension);
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {
-    _context = undefined;
-}
-
-export function getContext(): vscode.ExtensionContext {
-    if (!_context) {
-        throw new Error('Extension is not active anymore'); // Should not be called
-    }
-    return _context;
-}
-
-export const enum ExtensionPaths {
-    Resources = 'resources'
-}
-
-export function getExtensionPath(...path: string[]) {
-    let out = getContext().extensionPath;
-    if (path && path.length > 0) {
-        out = join(out, ...path);
-    }
-    return out;
+export async function deactivate() {
+    (await extPromise).dispose();
+    extPromise = new DelayedPromise();
 }

@@ -6,7 +6,7 @@ import { ContextualCommandPalette } from "./commands";
 import { LeafManager, LeafEvent } from "../leaf/core";
 import { LEGATO_ENV } from "../legato/core";
 import { chooseFile, listUpdateFiles, listImageFiles, FileChooserMessage } from "../legato/files";
-import { CommandRegister } from '../commons/utils';
+import { CommandRegister } from '../commons/manager';
 import { ACTION_LABELS } from '../commons/uiUtils';
 import { Command, TaskDefinitionType } from '../commons/identifiers';
 import { TaskProcessLauncher } from '../commons/process';
@@ -16,22 +16,26 @@ import { TerminalKind, ReSpawnableTerminal } from '../commons/terminal';
 export class TargetUiManager extends CommandRegister {
 
   private readonly targetStatusbar: vscode.StatusBarItem;
-  private readonly remoteShellTerminal: ReSpawnableTerminal = new RemoteShellTerminal();
-  private readonly remoteLogTerminal: ReSpawnableTerminal = new RemoteLogsTerminal();
+  private readonly remoteShellTerminal: ReSpawnableTerminal;
+  private readonly remoteLogTerminal: ReSpawnableTerminal;
   private readonly paletteOnDeviceIP: ContextualCommandPalette;
   private readonly legatoTaskProcessLauncher: TaskProcessLauncher;
 
-  public constructor() {
+  public constructor(private readonly leafManager: LeafManager) {
     super();
+
+    // Create terminals
+    this.remoteShellTerminal = new RemoteShellTerminal(this.leafManager);
+    this.remoteLogTerminal = new RemoteLogsTerminal(this.leafManager);
 
     // Create the task process launcher (this class can launch a process as a vscode task)
     this.legatoTaskProcessLauncher = this.toDispose(new TaskProcessLauncher(
       TaskDefinitionType.LegatoTm, // Task type 
-      LeafManager.getInstance().getLeafWorkspaceDirectory(), // cwd
-      undefined, // No scheduler
-      LeafManager.getInstance().getEnvVars, // env
-      LeafManager.getInstance())); // thisArg
-
+      {
+        defaultCwd: this.leafManager.getLeafWorkspaceDirectory(),
+        envProvider: this.leafManager.getEnvVars,
+        thisArg: this.leafManager
+      }));
 
     // Status bar
     this.targetStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 5);
@@ -93,7 +97,7 @@ export class TargetUiManager extends CommandRegister {
     this.toDispose(this.paletteOnDeviceIP);
 
     // Listen to env changes
-    LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
+    this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
 
     // Show DEST_IP on start
     this.setInitialState();
@@ -103,7 +107,7 @@ export class TargetUiManager extends CommandRegister {
    * Async initialisation
    */
   private async setInitialState() {
-    this.onEnvVarsChange(undefined, await LeafManager.getInstance().getEnvVars());
+    this.onEnvVarsChange(undefined, await this.leafManager.getEnvVars());
   }
 
   private async onEnvVarsChange(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
@@ -114,14 +118,14 @@ export class TargetUiManager extends CommandRegister {
   }
 
   private async askForNewIP() {
-    let ip = await LeafManager.getInstance().getEnvValue(LEGATO_ENV.DEST_IP);
+    let ip = await this.leafManager.getEnvValue(LEGATO_ENV.DEST_IP);
     let newIP = await vscode.window.showInputBox({
       prompt: "Please set the Legato device IP address",
       placeHolder: ip
     });
     if (newIP) {
       this.targetStatusbar.text = newIP;
-      LeafManager.getInstance().setEnvValue(LEGATO_ENV.DEST_IP, newIP);
+      this.leafManager.setEnvValue(LEGATO_ENV.DEST_IP, newIP);
     }
   }
 
@@ -133,7 +137,7 @@ export class TargetUiManager extends CommandRegister {
     if (selectedUpdateFile) {
       this.legatoTaskProcessLauncher.executeProcess(
         `Install ${basename(selectedUpdateFile.path)}`,
-        'update', selectedUpdateFile.path);
+        ['update', selectedUpdateFile.path]);
     }
   }
 
@@ -141,7 +145,7 @@ export class TargetUiManager extends CommandRegister {
     let selectedUpdateFile = await this.getSelectedDefFiles(selectedFile, selectedFiles);
     if (selectedUpdateFile) {
       let name = `Flash ${basename(selectedUpdateFile.path)}`;
-      this.legatoTaskProcessLauncher.executeProcess(name, 'fwupdate', 'download', selectedUpdateFile.path);
+      this.legatoTaskProcessLauncher.executeProcess(name, ['fwupdate', 'download', selectedUpdateFile.path]);
     }
   }
 
@@ -192,7 +196,7 @@ export class TargetUiManager extends CommandRegister {
       ACTION_LABELS.CANCEL,
       ACTION_LABELS.OK);
     if (confirmed) {
-      this.legatoTaskProcessLauncher.executeInShell(`[Recovery] Reset the user partition`, 'swiflash -m $LEGATO_TARGET -r');
+      this.legatoTaskProcessLauncher.executeInShell('[Recovery] Reset the user partition', 'swiflash -m $LEGATO_TARGET -r');
     }
   }
 }
@@ -202,8 +206,11 @@ export class TargetUiManager extends CommandRegister {
  * Give destIP
  */
 abstract class DeviceTerminal extends ReSpawnableTerminal {
+  constructor(name: string, protected readonly leafManager: LeafManager) {
+    super(name);
+  }
   protected async getDestIp(): Promise<string> {
-    let destIp = await LeafManager.getInstance().getEnvValue(LEGATO_ENV.DEST_IP);
+    let destIp = await this.leafManager.getEnvValue(LEGATO_ENV.DEST_IP);
     if (!destIp) {
       throw Error('Cannot launch this command, $DEST_IP is not set');
     }
@@ -215,8 +222,8 @@ abstract class DeviceTerminal extends ReSpawnableTerminal {
  * Remote device shell terminal
  */
 class RemoteShellTerminal extends DeviceTerminal {
-  constructor() {
-    super('Device shell'); // Name
+  constructor(leafManager: LeafManager) {
+    super('Device shell', leafManager); // Name
   }
 
   /**
@@ -238,8 +245,8 @@ class RemoteShellTerminal extends DeviceTerminal {
  * Remote device logs terminal
  */
 class RemoteLogsTerminal extends DeviceTerminal {
-  constructor() {
-    super('Device logs'); // Name
+  constructor(leafManager: LeafManager) {
+    super('Device logs', leafManager); // Name
   }
 
   /**

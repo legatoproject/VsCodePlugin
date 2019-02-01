@@ -1,7 +1,7 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { DisposableBag } from './utils';
+import { DisposableBag } from './manager';
 import { TerminalKind } from './terminal';
 
 /**
@@ -110,7 +110,7 @@ export namespace Configuration {
  * Check configuration on Launch then listen to configuration/workspace changes
  * A disposable which unsubscribes the event listener.
  */
-class ConfigurationChecker extends DisposableBag {
+export class ConfigurationChecker extends DisposableBag {
 
     // Ensure than we do not show the warning message more than necessary
     private alreadyWarnMultipleFolder: boolean = false;

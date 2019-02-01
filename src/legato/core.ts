@@ -1,7 +1,8 @@
 'use strict';
 import * as vscode from "vscode";
 import { LeafManager, LeafEnvScope, LeafEvent } from "../leaf/core";
-import { AbstractManager, EnvVars } from '../commons/utils';
+import { EnvVars } from '../commons/utils';
+import { AbstractManager } from '../commons/manager';
 
 export const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
@@ -27,32 +28,25 @@ export enum LegatoEvent { // Events with theirs parameters
 
 export class LegatoManager extends AbstractManager<LegatoEvent> {
 
-    private static instance: LegatoManager;
-
-    static getInstance(): LegatoManager {
-        LegatoManager.instance = LegatoManager.instance || new LegatoManager();
-        return LegatoManager.instance;
-    }
-
-    private constructor() {
+    public constructor(private readonly leafManager: LeafManager) {
         super();
         // Subscribe to envars bridge node modification to trig legato workspace event if necessary
-        LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
+        this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
     }
 
     public saveActiveDefFile(uri: vscode.Uri | undefined) {
         let value = uri ? `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}` : undefined;
-        LeafManager.getInstance().setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, value, LeafEnvScope.Workspace);
+        this.leafManager.setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, value, LeafEnvScope.Workspace);
     }
 
     public async getActiveDefFile(): Promise<vscode.Uri | undefined> {
-        let defFileUri = await LeafManager.getInstance().getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE);
+        let defFileUri = await this.leafManager.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE);
         return defFileUri ? vscode.Uri.file(defFileUri) : undefined;
     }
 
     public async getLegatoRoot(envVars?: EnvVars | undefined): Promise<string | undefined> {
         if (!envVars) {
-            envVars = await LeafManager.getInstance().getEnvVars();
+            envVars = await this.leafManager.getEnvVars();
         }
         return envVars ? envVars[LEGATO_ENV.LEGATO_ROOT] : undefined;
     }
@@ -60,12 +54,22 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
     /**
      * Instanciate or dispose Disposable elements on workspace becoming legato or not
      * Immediatly instanciate if already in a legato workspace
+     * @param onWillEnable callback called when the event return true to wait for component creation
+     * @param onDidDisable callback called when the event return false after disposing components
+     * @param thisArg The `this`-argument which will be used when calling the env vars provider.
      */
-    public createAndDisposeOnLegatoWorkspace(...newComponents: { new(): vscode.Disposable }[]) {
-        this.createAndDisposeOn(
+    public async onLegatoWorkspace(
+        activator: {
+            onWillEnable: () => Promise<vscode.Disposable[]>,
+            onDidDisable?: (components: vscode.Disposable[]) => any
+        },
+        thisArg?: any
+    ): Promise<vscode.Disposable> {
+        return this.onEvent(
             LegatoEvent.OnInLegatoWorkspaceChange,
-            async () => this.isLegatoWorkspace(await LeafManager.getInstance().getEnvVars()),
-            ...newComponents);
+            this.isLegatoWorkspace(await this.leafManager.getEnvVars()),
+            activator,
+            thisArg);
     }
 
     /**

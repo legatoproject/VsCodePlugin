@@ -24,18 +24,21 @@ export class LeafPackagesView extends TreeDataProvider2 {
 
 	// Containers in the tree
 	private readonly filterContainerItem = new FilterContainerTreeItem(this.builtinFilters, this.userFilters);
-	private readonly availPkgContainerItem = new AvailablePackagesContainerTreeItem(packs => this.filterPackages(packs));
-	private readonly instPkgContainerItem = new InstalledPackagesContainerTreeItem(packs => this.filterPackages(packs));
+	private readonly availPkgContainerItem = new AvailablePackagesContainerTreeItem(this.leafManager, packs => this.filterPackages(packs));
+	private readonly instPkgContainerItem = new InstalledPackagesContainerTreeItem(this.leafManager, packs => this.filterPackages(packs));
 
 	/**
 	 * Register TreeDataProvider
 	 * Create commands
 	 * Listen to packages changes
 	 */
-	public constructor() {
+	public constructor(
+		private readonly context: vscode.ExtensionContext,
+		private readonly leafManager: LeafManager
+	) {
 		super(View.LeafPackages);
 		this.loadFilters();
-		LeafManager.getInstance().addListener(LeafEvent.PackagesChanged, this.refresh, this);
+		this.leafManager.addListener(LeafEvent.PackagesChanged, this.refresh, this);
 		this.createCommand(Command.LeafPackagesAddFilter, this.addFilter);
 		this.createCommand(Command.LeafPackagesRemoveFilter, this.removeFilter);
 		this.createCommand(Command.LeafPackagesAddToProfile, this.addToProfile);
@@ -47,7 +50,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private loadFilters() {
 		// Load builtin filters
-		let builtinFiltersSavedStates = this.memento.Builtin.get();
+		let builtinFiltersSavedStates = this.memento.Builtin.get(this.context);
 		for (let filterValue of Object.keys(builtinFiltersSavedStates)) {
 			let correspondingBuiltinFilter = this.builtinFilters.find(pf => pf.value === filterValue);
 			if (correspondingBuiltinFilter) {
@@ -56,7 +59,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		}
 
 		// Load filters
-		let filters = this.memento.User.get();
+		let filters = this.memento.User.get(this.context);
 		for (let filterValue of Object.keys(filters)) {
 			let filter = this.toFilter(filterValue, filters[filterValue]);
 			if (filter) {
@@ -79,14 +82,14 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * Save built-in filters and ther state to workspace extension memento
 	 */
 	private async saveBuiltinFilters() {
-		this.memento.Builtin.update(this.toStatesMap(this.builtinFilters));
+		this.memento.Builtin.update(this.context, this.toStatesMap(this.builtinFilters));
 	}
 
 	/**
 	 * Save user filters and ther state to workspace extension memento
 	 */
 	private async saveUserFilters() {
-		this.memento.User.update(this.toStatesMap(this.userFilters));
+		this.memento.User.update(this.context, this.toStatesMap(this.userFilters));
 	}
 
 	/**
@@ -99,12 +102,12 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		box.placeholder = "regex or '@tag'";
 
 		// Create tag quick pick items
-		let tags: { [key: string]: number } = await LeafManager.getInstance().getTags();
+		let tags: { [key: string]: number } = await this.leafManager.getTags();
 		let tagItems = Object.keys(tags).map(tag => new TagQuickPickItem(tag, tags[tag]));
 
 		// Get packages
-		let availPacks = await LeafManager.getInstance().getAvailablePackages();
-		let instPacks = await LeafManager.getInstance().getInstalledPackages();
+		let availPacks = await this.leafManager.getAvailablePackages();
+		let instPacks = await this.leafManager.getInstalledPackages();
 
 		// Update items and title on value change
 		let boxValueChangedListener = async (value: string) => {
@@ -194,7 +197,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		}
 
 		// Profile
-		let profiles = await LeafManager.getInstance().getProfiles();
+		let profiles = await this.leafManager.getProfiles();
 		let result = await this.askForProfile(title, selectedPackage, profiles);
 		if (!result) {
 			return; // User cancellation
@@ -210,10 +213,10 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			if (newProfileName.length === 0) {
 				newProfileName = undefined; // "" is a valid return for default profile name
 			}
-			await LeafManager.getInstance().createProfile(newProfileName, selectedPackage.packId);
+			await this.leafManager.createProfile(newProfileName, selectedPackage.packId);
 		} else if (profiles && result.id in profiles) {
 			// Existing profile
-			await LeafManager.getInstance().addPackagesToProfile(result.id, selectedPackage.packId);
+			await this.leafManager.addPackagesToProfile(result.id, selectedPackage.packId);
 		}
 	}
 
@@ -222,7 +225,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private async askForPackage(title: string): Promise<PackageQuickPickItem | undefined> {
 		// Do not await. We want showMultiStepQuickPick to handle this long running operation while showing a busy box.
-		let itemsPromise = LeafManager.getInstance()
+		let itemsPromise = this.leafManager
 			.getMergedPackages()
 			.then(packs => toItems(packs, PackageQuickPickItem));
 		return showMultiStepQuickPick(title, 1, 2, "Please select the package to add", itemsPromise);

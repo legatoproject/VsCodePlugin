@@ -3,30 +3,57 @@ import * as vscode from 'vscode';
 import { join } from 'path';
 import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
 import { LeafManager, LeafEvent } from "../leaf/core";
-import { DisposableBag } from "../commons/utils";
+import { DisposableBag } from "../commons/manager";
 import { LegatoManager, LegatoEvent, LEGATO_ENV } from "./core";
+import { DelayedPromise } from '../commons/promise';
 
 
 export class LegatoLanguageManager extends DisposableBag {
-    public lspClient: Promise<LanguageClient | undefined>;
-    public constructor() {
+    public lspClient: LanguageClient | undefined = undefined;
+    public lspClientPromise: Promise<LanguageClient> = new DelayedPromise<LanguageClient>();
+    public constructor(private readonly leafManager: LeafManager, private readonly legatoManager: LegatoManager) {
         super();
 
         // Listen to leaf events
-        LegatoManager.getInstance().addListener(LegatoEvent.OnLegatoRootChange, this.stopAndStartLegatoLanguageServer, this);
-        LeafManager.getInstance().addListener(LeafEvent.EnvVarsChanged, this.notifyLeafEnvToLanguageServer, this);
+        this.legatoManager.addListener(LegatoEvent.OnLegatoRootChange, this.onLegatoRootChange, this);
+        this.legatoManager.addListener(LegatoEvent.OnInLegatoWorkspaceChange, this.onInLegatoWorkspaceChange, this);
+        this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.notifyLeafEnvToLanguageServer, this);
 
         // Launch server
-        this.lspClient = this.startLegatoServer();
+        this.stopAndStartLegatoLanguageServer();
     }
 
-    private async stopAndStartLegatoLanguageServer(_oldLegatoRoot: string | undefined, newLegatoRoot: string | undefined) {
-        let languageClient = await this.lspClient; // wait for end of starting
-        if (languageClient) {
-            languageClient.stop(); // Should wait for end of stopping by using 'await' ?
+    private async onLegatoRootChange(_oldLegatoRoot: string | undefined, newLegatoRoot: string | undefined) {
+        this.stopAndStartLegatoLanguageServer(newLegatoRoot !== undefined);
+    }
+
+    private async onInLegatoWorkspaceChange(_oldIsLegatoWorkspace: boolean, newIsLegatoWorkspace: boolean) {
+        this.stopAndStartLegatoLanguageServer(newIsLegatoWorkspace);
+    }
+
+    private async stopAndStartLegatoLanguageServer(start?: boolean) {
+        if (!start) {
+            start = (await this.legatoManager.getLegatoRoot()) !== undefined;
         }
-        if (newLegatoRoot) {
-            this.lspClient = this.startLegatoServer();
+
+        if (this.lspClient) {
+            this.lspClient.stop(); // Should wait for end of stopping by using 'await' ?
+        }
+        if (start) {
+            let oldlspClientPromise  = this.lspClientPromise;
+            let newlspClientPromise = this.startLegatoServer();
+
+            // Store new promise
+            this.lspClientPromise = newlspClientPromise;
+
+            // Wait for client to start and store instance
+            this.lspClient = await newlspClientPromise;
+
+            // Resolve the delayed promise if exist
+            if (oldlspClientPromise) {
+                // All modules which await for this.lspClientPromise will be resumed
+                (oldlspClientPromise as DelayedPromise<LanguageClient>).resolve(this.lspClient);
+            }
         } else {
             console.warn("Missing Legato env: no attempt to start the Legato language server");
         }
@@ -34,19 +61,18 @@ export class LegatoLanguageManager extends DisposableBag {
 
     private async notifyLeafEnvToLanguageServer(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
         console.log(`[LegatoLanguageManager] LEAF ENV CHANGED triggered to LSP: ${JSON.stringify(newEnvVar)}`);
-        let languageClient = await this.lspClient;
-        if (languageClient) {
-            languageClient.sendNotification(DidChangeConfigurationNotification.type, newEnvVar);
+        if (this.lspClient) {
+            this.lspClient.sendNotification(DidChangeConfigurationNotification.type, newEnvVar);
         }
     }
 
     /**
       * Start the Legato LSP
       */
-    public async startLegatoServer(debug?: boolean): Promise<LanguageClient | undefined> {
+    private async startLegatoServer(debug?: boolean): Promise<LanguageClient> {
         try {
             // Get Legato root
-            let legatoPath = await LegatoManager.getInstance().getLegatoRoot();
+            let legatoPath = await this.legatoManager.getLegatoRoot();
             if (!legatoPath) {
                 // Should not happen - This component is loaded only when this envvar is set
                 throw new Error(`${LEGATO_ENV.LEGATO_ROOT} not available in env`);
@@ -100,11 +126,13 @@ export class LegatoLanguageManager extends DisposableBag {
                 let disposable: vscode.Disposable = lspClient.start();
                 this.toDispose(disposable);
             }
+
+            // Return new client
             return lspClient;
         } catch (reason) {
             let errMsg = `Failed to start the Legato Language server - reason: ${reason}`;
             console.error(errMsg);
-            return undefined;
+            return new DelayedPromise<LanguageClient>() as Promise<LanguageClient>;
         }
     }
 }

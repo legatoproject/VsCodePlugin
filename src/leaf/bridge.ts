@@ -3,7 +3,8 @@
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
-import { PromiseCallbacks } from '../commons/utils';
+import { DelayedPromise } from '../commons/promise';
+import { newIdGenerator } from '../commons/utils';
 
 /**
  * Available leaf interface commands
@@ -30,9 +31,9 @@ export interface LeafBridgeElement {
 export class LeafBridge {
 
     private readonly process: ChildProcess; // Python leaf extension process
-    private readonly idGenerator: IterableIterator<number> = LeafBridge.newIdGenerator(); // request id generator
+    private readonly idGenerator: IterableIterator<number> = newIdGenerator(); // request id generator
     private stdoutBuffer: string = ""; // Buffer for too loog response
-    private pendingRequests: PromiseCallbacks<LeafBridgeElement | undefined> = {}; // pending promises callbacks
+    private pendingRequests: { [key: string]: DelayedPromise<LeafBridgeElement | undefined> } = {}; // pending promises callbacks
 
     public constructor() {
         // Launch interface
@@ -66,20 +67,17 @@ export class LeafBridge {
      * Send request to leaf extension interface
      */
     public send(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
-        return new Promise<LeafBridgeElement | undefined>((resolve, reject) => {
-            let id = this.idGenerator.next().value;
-            this.pendingRequests[id] = {
-                resolve: resolve,
-                reject: reject
-            };
-            let requestObject = {
-                id: id,
-                command: cmd,
-                workspace: workspace.rootPath
-            };
-            this.process.stdin.write(JSON.stringify(requestObject) + '\n');
-            console.log(`[Leaf Bridge] Sent comand '${cmd}' with id '${id}'`);
-        });
+        let out = new DelayedPromise<LeafBridgeElement | undefined>();
+        let id = this.idGenerator.next().value;
+        this.pendingRequests[id] = out;
+        let requestObject = {
+            id: id,
+            command: cmd,
+            workspace: workspace.rootPath
+        };
+        this.process.stdin.write(JSON.stringify(requestObject) + '\n');
+        console.log(`[Leaf Bridge] Sent comand '${cmd}' with id '${id}'`);
+        return out;
     }
 
     /**
@@ -115,16 +113,6 @@ export class LeafBridge {
                     console.log(`[Leaf Bridge] ${e}: ${chunk}`);
                 }
             }
-        }
-    }
-
-    /**
-     * Request Id generator
-     */
-    private static * newIdGenerator(): IterableIterator<number> {
-        var id = 0;
-        while (true) {
-            yield id++;
         }
     }
 

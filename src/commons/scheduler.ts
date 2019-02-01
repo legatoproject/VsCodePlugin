@@ -2,7 +2,7 @@
 
 import * as vscode from "vscode";
 import { ACTION_LABELS } from './uiUtils';
-import { PromiseCallback, PromiseExecutor, newIdGenerator } from './utils';
+import { WaitingPromise } from '../commons/promise';
 
 /**
  * Internal enum used to process waiting queue
@@ -14,39 +14,29 @@ const enum Queueing {
 }
 
 /**
- * Internal object used to track promise executions
- */
-interface Operation<T> {
-    id: number;
-    executor: PromiseExecutor<T>;
-    callback: PromiseCallback<T>;
-}
-
-/**
- * Can schedule a executor and return the corresponding promise
+ * Can schedule a WaitingPromise and return it as a regular promise
  */
 export interface Scheduler {
-    schedule<T>(promiseExecutor: PromiseExecutor<T>): Promise<T>;
+    schedule<T>(operation: WaitingPromise<T>): Promise<T>;
 }
 
 /**
  * Execute right now
  */
 export class Immediate implements Scheduler {
-    public async schedule<T>(promiseExecutor: PromiseExecutor<T>): Promise<T> {
+    public async schedule<T>(operation: WaitingPromise<T>): Promise<T> {
         console.log('[Scheduler][Immediate] Execute operation');
-        return new Promise<T>(promiseExecutor);
+        return operation.execute();
     }
 }
 
 /**
- * Ensure than all scheduled promiseExecutors are executed one after the other
+ * Ensure than all scheduled operations are executed one after the other
  */
 export class Sequencer implements Scheduler {
-    private waitingQueue: Operation<any>[] = [];
-    private runningOperation: Operation<any> | undefined = undefined;
-    private readonly executionQueue: Operation<any>[] = [];
-    private readonly idGenerator: IterableIterator<number> = newIdGenerator(); // task id generator
+    private waitingQueue: WaitingPromise<any>[] = [];
+    private runningOperation: WaitingPromise<any> | undefined = undefined;
+    private readonly executionQueue: WaitingPromise<any>[] = [];
     private currentQueueingPopup: Thenable<string | undefined> | undefined = undefined;
 
     /**
@@ -57,23 +47,17 @@ export class Sequencer implements Scheduler {
     /**
      * Execute an operation as soon as the queue is empty
      */
-    public async schedule<T>(promiseExecutor: PromiseExecutor<T>): Promise<T> {
-        return new Promise<T>((resolve, reject) => {
-            let newId = this.idGenerator.next().value;
-            console.log(`[Scheduler][Sequencer] Add operation to waiting queue: ${newId}`);
-            this.scheduleOperation({
-                id: newId,
-                executor: promiseExecutor,
-                callback: new PromiseCallback(resolve, reject)
-            });
-        });
+    public schedule<T>(operation: WaitingPromise<T>): Promise<T> {
+        console.log(`[Scheduler][Sequencer] Add operation to waiting queue: ${operation.id}`);
+        this.scheduleOperation(operation);
+        return operation;
     }
 
     /**
      * If there is no operation running, run it
      * If the is already an operation, ask user permission to add operation in a queue.
      */
-    private async scheduleOperation(operation: Operation<any>) {
+    private async scheduleOperation(operation: WaitingPromise<any>) {
         this.waitingQueue.push(operation);
         let queueing = this.runningOperation ? await this.askUserAboutAddingToQueue() : Queueing.Queue;
         let waitingQueueAsString = this.waitingQueue.map(op => op.id).join(', ');
@@ -86,7 +70,7 @@ export class Sequencer implements Scheduler {
                 break;
             case Queueing.Cancel:
                 console.log(`[Scheduler][Sequencer] Operation(s) canceled by user: [${waitingQueueAsString}]`);
-                this.waitingQueue.forEach(op => op.callback.reject(new Error("Operation canceled by user")));
+                this.waitingQueue.forEach(op => op.reject(new Error("Operation canceled by user")));
                 this.waitingQueue = [];
                 break;
             case Queueing.Wait:
@@ -136,13 +120,7 @@ export class Sequencer implements Scheduler {
             // If there is a next operation, let's execute it
             if (this.runningOperation) {
                 console.log(`[Scheduler][Sequencer] Execute operation: #${this.runningOperation.id}`);
-                try {
-                    // Wait until the end of this operation
-                    let result = await new Promise<any>(this.runningOperation.executor);
-                    this.runningOperation.callback.resolve(result);
-                } catch (e) {
-                    this.runningOperation.callback.reject(e);
-                }
+                await this.runningOperation.execute(); // Wait until the end of this operation
                 this.runningOperation = undefined;
                 this.runNextOperation(); // Try running next one if exist
             }
