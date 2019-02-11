@@ -426,6 +426,7 @@
         "@types/mocha": "^2.2.42"
     },
     "dependencies": {
+        "compare-versions": "^3.4.0",
         "vscode-languageclient": "^5.1.1"
     }
 }

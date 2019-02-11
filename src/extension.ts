@@ -134,7 +134,7 @@ export var extPromise: Promise<Extension> = new DelayedPromise();
  * your extension is activated the very first time the command is executed
  */
 export async function activate(context: vscode.ExtensionContext) {
-    let extension = new Extension(context, await LeafManager.computeLeafPath());
+    let extension = new Extension(context, await LeafManager.checkLeafInstallation());
     extension.initComponnents();
     (extPromise as DelayedPromise<Extension>).resolve(extension);
 }

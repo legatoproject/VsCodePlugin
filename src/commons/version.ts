@@ -1,5 +1,6 @@
 'use strict';
 import * as vscode from 'vscode';
+import * as compareVersions from 'compare-versions';
 import { Mementos } from './memento';
 import { extensionQualifiedId } from './identifiers';
 
@@ -44,22 +45,24 @@ export class VersionManager {
             return VersionChangeKind.FirstInstall;
         }
 
+        let compare = compareVersions(this.currentVersion, this.previousVersion);
+
         // No upgrade
-        if (this.previousVersion === this.currentVersion) {
+        if (compare === 0) {
             console.log(`[VersionManager] Launch same version than previously: v${this.currentVersion}`);
             return VersionChangeKind.Same;
         }
 
         // Downgrade
-        let [major, minor] = this.currentVersion.split('.');
-        let [prevMajor, prevMinor] = this.previousVersion.split('.');
-        if (major < prevMajor || (major === prevMajor && minor < prevMinor)) {
+        if (compare < 0) {
             console.log(`[VersionManager] Downgraded from v${this.previousVersion} to v${this.currentVersion}`);
             return VersionChangeKind.Downgrade;
         }
 
         // Upgrade !
         console.log(`[VersionManager] Upgraded from v${this.previousVersion} to v${this.currentVersion}`);
+        let major = this.currentVersion.split('.')[0];
+        let prevMajor = this.previousVersion.split('.')[0];
         if (major > prevMajor) {
             return VersionChangeKind.MajorUpgrade;
         }

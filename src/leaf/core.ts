@@ -2,6 +2,7 @@
 
 import * as fs from "fs";
 import * as vscode from "vscode";
+import * as compareVersions from 'compare-versions';
 import { LeafBridgeCommands, LeafBridgeElement } from './bridge';
 import { LeafIOManager, ExecKind } from './ioManager';
 import { ACTION_LABELS } from '../commons/uiUtils';
@@ -10,12 +11,15 @@ import { AbstractManager } from '../commons/manager';
 import { join } from 'path';
 import { Command } from '../commons/identifiers';
 
+const LEAF_MIN_VERSION = '1.6';
+
 export const enum LeafEnvScope {
   Package = "package",
   Workspace = "workspace",
   Profile = "profile",
   User = "user"
 }
+
 export enum LeafEvent { // Events with theirs parameters
   CurrentProfileChanged = "currentProfileChanged", // oldProfileName: string | undefined, newProfileName: string | undefined
   ProfilesChanged = "leafProfilesChanged", // oldProfiles: any | undefined, newProfiles: any | undefined
@@ -25,9 +29,11 @@ export enum LeafEvent { // Events with theirs parameters
   WorkspaceInfosChanged = "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
   onInLeafWorkspaceChange = "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
 }
+
 export const LEAF_TASKS = {
   setEnv: "set Leaf env"
 };
+
 const LEAF_FILES = {
   DATA_FOLDER: 'leaf-data',
   WORKSPACE_FILE: 'leaf-workspace.json',
@@ -38,6 +44,9 @@ const LEAF_FILES = {
  * LeafManager is responsible for the leaf lifecycle.
  */
 export class LeafManager extends AbstractManager<LeafEvent> {
+
+  // Version regex
+  private static readonly versionRegex: RegExp = /leaf version (.*)/;
 
   // Task management
   private readonly ioManager: LeafIOManager;
@@ -58,11 +67,14 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * Check leaf installation, ask user to install it then check again
    */
-  public static async computeLeafPath(): Promise<string> {
+  public static async checkLeafInstallation(): Promise<string> {
     let leafPath = undefined;
+
+    // Check leaf is installed
     do {
       try {
-        leafPath = await executeInShell(`which leaf`);
+        leafPath = await executeInShell('which leaf');
+        console.log(`[LeafManager] Leaf detected ${leafPath}`);
       } catch {
         let userChoice = await vscode.window.showErrorMessage(
           `Leaf is not installed. Please install Leaf and click on '${ACTION_LABELS.CHECK_AGAIN}'.`,
@@ -73,6 +85,29 @@ export class LeafManager extends AbstractManager<LeafEvent> {
         }
       }
     } while (!leafPath);
+
+    // Check leaf min version
+    let leafVersionOk = false;
+    do {
+      let versionCmd = 'leaf --version';
+      let leafVersionOutput = await executeInShell(versionCmd);
+      let regexResult = this.versionRegex.exec(leafVersionOutput);
+      if (regexResult === null || regexResult.length < 2) {
+        throw new Error(`Regex does not match '${versionCmd}' output`);
+      }
+      let leafVersion = regexResult[1];
+      console.log(`[LeafManager] Leaf version ${leafVersion}`);
+      leafVersionOk = regexResult && compareVersions(leafVersion, LEAF_MIN_VERSION) >= 0;
+      if (!leafVersionOk) {
+        let userChoice = await vscode.window.showErrorMessage(
+          `Installed Leaf version is too old. Please upgrade to Leaf ${LEAF_MIN_VERSION} or higher and click on '${ACTION_LABELS.CHECK_AGAIN}'.`,
+          ACTION_LABELS.CHECK_AGAIN,
+          ACTION_LABELS.IGNORE);
+        if (!userChoice || userChoice === ACTION_LABELS.IGNORE) {
+          throw new Error("Leaf out of date");
+        }
+      }
+    } while (!leafVersionOk);
 
     // Initialized singletion
     return leafPath;
@@ -115,7 +150,6 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     if (!info) {
       throw new Error("Communication issue with leaf bridge");
     }
-    console.log(`[LeafManager] Found Leaf version ${info.version}`);
     return info;
   }
 
