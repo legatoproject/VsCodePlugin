@@ -2,8 +2,9 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { LEAF_FILES } from '../commons/files';
 
-const EXCLUDED_FOLDER = "**/leaf-data/*";
+const EXCLUDED_FOLDER = `**/${LEAF_FILES.DATA_FOLDER}/*`;
 export interface FileChooserMessage {
   noFileFoundMessage: string;
   quickPickPlaceHolder: string;
@@ -12,34 +13,33 @@ export interface FileChooserMessage {
 /**
  * Patterns for Legato files
  */
-export enum LegatoFilesPatterns {
-  DefinitionsFiles = "**/*.[as]def",
-  UpdateFiles = "**/*.update",
-  leafDataFolder = "**/leaf-data",
-  ImageFiles = "**/*.{cwe,spk}",
-  CurrentImagesFiles = "leaf-data/current/**/*.{cwe,spk}"
-}
+export const LEGATO_FILES_PATTERNS = {
+  DEFINITIONS_FILES: "**/*.[as]def",
+  UPDATE_FILES: "**/*.update",
+  IMAGE_FILES: "**/*.{cwe,spk}",
+  CURRENT_IMAGES_FILES: `${LEAF_FILES.DATA_FOLDER}/current/**/*.{cwe,spk}`
+};
 
 /**
  * Lists .adef and .sdef files in project
  */
 export function listDefinitionFiles(): Thenable<vscode.Uri[]> {
-  return vscode.workspace.findFiles(LegatoFilesPatterns.DefinitionsFiles, EXCLUDED_FOLDER);
+  return vscode.workspace.findFiles(LEGATO_FILES_PATTERNS.DEFINITIONS_FILES, EXCLUDED_FOLDER);
 }
 
 /**
 * Lists .update files in project
 */
 export function listUpdateFiles(): Thenable<vscode.Uri[]> {
-  return vscode.workspace.findFiles(LegatoFilesPatterns.UpdateFiles, EXCLUDED_FOLDER);
+  return vscode.workspace.findFiles(LEGATO_FILES_PATTERNS.UPDATE_FILES, EXCLUDED_FOLDER);
 }
 
 /**
 * Lists image (.cwe and .spk) files  in project
 */
 export async function listImageFiles(): Promise<vscode.Uri[]> {
-  const uris = await vscode.workspace.findFiles(LegatoFilesPatterns.ImageFiles, LegatoFilesPatterns.leafDataFolder);
-  const leafdataUris = await vscode.workspace.findFiles(LegatoFilesPatterns.CurrentImagesFiles);
+  const uris = await vscode.workspace.findFiles(LEGATO_FILES_PATTERNS.IMAGE_FILES, LEAF_FILES.DATA_FOLDER);
+  const leafdataUris = await vscode.workspace.findFiles(LEGATO_FILES_PATTERNS.CURRENT_IMAGES_FILES);
   return uris.concat(leafdataUris);
 }
 

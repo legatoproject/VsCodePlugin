@@ -12,6 +12,7 @@ import { Command, TaskDefinitionType } from '../commons/identifiers';
 import { TaskProcessLauncher } from '../commons/process';
 import { Configuration } from '../commons/configuration';
 import { TerminalKind, ReSpawnableTerminal } from '../commons/terminal';
+import { getWorkspaceDirectory } from '../commons/files';
 
 export class TargetUiManager extends CommandRegister {
 
@@ -32,7 +33,7 @@ export class TargetUiManager extends CommandRegister {
     this.legatoTaskProcessLauncher = this.toDispose(new TaskProcessLauncher(
       TaskDefinitionType.LegatoTm, // Task type 
       {
-        defaultCwd: this.leafManager.getLeafWorkspaceDirectory(),
+        defaultCwd: getWorkspaceDirectory(),
         envProvider: this.leafManager.getEnvVars,
         thisArg: this.leafManager
       }));

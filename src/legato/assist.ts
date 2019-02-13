@@ -5,7 +5,7 @@ import * as path from 'path';
 import { Command, TaskDefinitionType } from '../commons/identifiers';
 import { LeafManager, LeafEvent } from '../leaf/core';
 import { CommandRegister } from '../commons/manager';
-import { chooseFile, listDefinitionFiles, LegatoFilesPatterns } from './files';
+import { chooseFile, listDefinitionFiles, LEGATO_FILES_PATTERNS } from './files';
 import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './core';
 
 enum LegatoTasks {
@@ -23,7 +23,7 @@ export class LegatoUiManager extends CommandRegister {
     super();
 
     // Listen def files creation/deletion
-    this.defFileWatcher = this.toDispose(vscode.workspace.createFileSystemWatcher(LegatoFilesPatterns.DefinitionsFiles, false, true, false));
+    this.defFileWatcher = this.toDispose(vscode.workspace.createFileSystemWatcher(LEGATO_FILES_PATTERNS.DEFINITIONS_FILES, false, true, false));
     this.defFileWatcher.onDidCreate(this.onDefFileCreation, this, this);
     this.defFileWatcher.onDidDelete(this.onDefFileDeletion, this, this);
 

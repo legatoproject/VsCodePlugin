@@ -8,8 +8,8 @@ import { LeafIOManager, ExecKind } from './ioManager';
 import { ACTION_LABELS } from '../commons/uiUtils';
 import { executeInShell, EnvVars, debounce, removeDuplicates } from '../commons/utils';
 import { AbstractManager } from '../commons/manager';
-import { join } from 'path';
 import { Command } from '../commons/identifiers';
+import { LEAF_FILES, getWorkspaceDirectory } from '../commons/files';
 
 const LEAF_MIN_VERSION = '1.6';
 
@@ -32,12 +32,6 @@ export enum LeafEvent { // Events with theirs parameters
 
 export const LEAF_TASKS = {
   setEnv: "set Leaf env"
-};
-
-const LEAF_FILES = {
-  DATA_FOLDER: 'leaf-data',
-  WORKSPACE_FILE: 'leaf-workspace.json',
-  REMOTE_CACHE_FILE: 'remotes.json'
 };
 
 /**
@@ -121,7 +115,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
 
     // Get leaf path
     this.leafPath = leafPath;
-    this.ioManager = this.disposables.toDispose(new LeafIOManager(this.getLeafWorkspaceDirectory()));
+    this.ioManager = this.disposables.toDispose(new LeafIOManager(getWorkspaceDirectory()));
 
     // Get info node from leaf bridge
     this.leafInfo = this.requestBridgeInfo();
@@ -194,19 +188,19 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   private async watchLeafFiles() {
     // Listen to leaf-data folder creation/deletion
     this.watchLeafFileByVsCodeWatcher(
-      new vscode.RelativePattern(this.getLeafWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER),
+      new vscode.RelativePattern(getWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER),
       this.startWatchingLeafDataFolder, // File creation callback
       undefined, // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
       this.stopWatchingLeafDataFolder // File deletion callback
     );
     // If leaf-data already exist, listen to it
-    if (fs.existsSync(this.getLeafWorkspaceDirectory(LEAF_FILES.DATA_FOLDER))) {
+    if (fs.existsSync(getWorkspaceDirectory(LEAF_FILES.DATA_FOLDER))) {
       this.startWatchingLeafDataFolder();
     }
 
     // Listen leaf-workspace.json (creation/deletion/change)
     this.watchLeafFileByVsCodeWatcher(
-      this.getLeafWorkspaceDirectory(LEAF_FILES.WORKSPACE_FILE),
+      getWorkspaceDirectory(LEAF_FILES.WORKSPACE_FILE),
       this.refreshInfosFromBridge, this.refreshInfosFromBridge, this.refreshInfosFromBridge);
 
     // Listen config folder
@@ -224,7 +218,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   private startWatchingLeafDataFolder() {
     this.stopWatchingLeafDataFolder(); // Close previous listener if any (should not)
-    let leafDataFolderPath = this.getLeafWorkspaceDirectory(LEAF_FILES.DATA_FOLDER);
+    let leafDataFolderPath = getWorkspaceDirectory(LEAF_FILES.DATA_FOLDER);
     this.leafDataContentWatcher = this.watchLeafFolderByFsWatch(leafDataFolderPath, this.refreshInfosFromBridge);
   }
 
@@ -413,20 +407,6 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   public async getLeafPath(): Promise<string | undefined> {
     return this.leafPath;
-  }
-
-  /**
-   * filename an optional argument which will be appened to the workspace directory
-   * @return current leaf workpace path
-   */
-  public getLeafWorkspaceDirectory(filename?: string): string {
-    if (vscode.workspace.rootPath) {
-      if (filename) {
-        return join(vscode.workspace.rootPath, filename);
-      }
-      return vscode.workspace.rootPath;
-    }
-    throw new Error('workspace.rootPath is undefined');
   }
 
   public getVsCodeLeafWorkspaceFolder(): vscode.WorkspaceFolder {

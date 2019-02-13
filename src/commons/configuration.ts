@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { DisposableBag } from './manager';
 import { TerminalKind } from './terminal';
+import { LEAF_FILES } from '../commons/files';
 
 /**
  * Represent one configuration section (setting)
@@ -49,9 +50,18 @@ class Section<T> {
      * Update the current value of the section.
      * See [update](#WorkspaceConfiguration.update)
      */
-    public update(value: any, configurationTarget?: vscode.ConfigurationTarget | boolean): Thenable<void> {
-        console.log(`[Configuration] Set value of '${this.name}': '${value}'`);
+    public update(value: T, configurationTarget?: vscode.ConfigurationTarget | boolean): Thenable<void> {
+        console.log(`[Configuration] Update value of '${this.name}': '${value}'`);
         return this.getConfig().update(this.name, value, configurationTarget);
+    }
+
+    /**
+     * Retrieve all information about a configuration setting.
+     * See [inspect](#WorkspaceConfiguration.inspect)
+     */
+    public inspect<T>(): { key: string; defaultValue?: T; globalValue?: T; workspaceValue?: T, workspaceFolderValue?: T } | undefined {
+        console.log(`[Configuration] Inspect value of '${this.name}'`);
+        return this.getConfig().inspect(this.name);
     }
 }
 
@@ -78,7 +88,7 @@ export namespace Configuration {
      * VsCode settings
      */
     export namespace VsCode {
-        export const FilesWatcherExclude = new Section<void>("files.watcherExclude");
+        export const FilesWatcherExclude = new Section<any>("files.watcherExclude");
         export const TerminalExternalLinuxExec = new Section<string>("terminal.external.linuxExec", "x-terminal-emulator");
     }
 
@@ -127,10 +137,18 @@ export class ConfigurationChecker extends DisposableBag {
     }
 
     /**
-     * Exclude leaf-data from file watcher
+     * Exclude leaf-data from file vscode watcher
      */
     private excludeLeafData() {
-        Configuration.VsCode.FilesWatcherExclude.update({ "**/leaf-data/**": true }, vscode.ConfigurationTarget.Global);
+        let newSettings: any;
+        let values = Configuration.VsCode.FilesWatcherExclude.inspect();
+        if (values && values.globalValue) {
+            newSettings = values.globalValue;
+        } else {
+            newSettings = {};
+        }
+        newSettings[`**/${LEAF_FILES.DATA_FOLDER}/**`] = true;
+        Configuration.VsCode.FilesWatcherExclude.update(newSettings, vscode.ConfigurationTarget.Global);
     }
 
     /**
