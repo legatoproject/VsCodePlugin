@@ -17,6 +17,7 @@ import { DisposableBag } from './commons/manager';
 import { DelayedPromise } from './commons/promise';
 import { SnippetsManager } from './legato/snippets';
 import { WelcomePageManager } from './commons/welcome';
+import { LegatoSystemTreeview } from './legato/system';
 
 /**
  * Folder names of extension resources
@@ -115,7 +116,8 @@ class Extension extends DisposableBag {
         return [
             new TargetUiManager(this.leafManager),
             new LegatoUiManager(this.leafManager, this.legatoManager),
-            new SnippetsManager(this.leafManager)
+            new SnippetsManager(this.leafManager),
+            new LegatoSystemTreeview(this.leafManager, this.legatoManager, this.legatoLanguageManager)
         ];
     }
 

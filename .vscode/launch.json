@@ -35,6 +35,19 @@
             "preLaunchTask": "npm: watch"
         },
         {
+            "type": "node",
+            "request": "attach",
+            "name": "Attach to Legato LSP Server",
+            "address": "localhost",
+            "protocol": "inspector",
+            "port": 6009,
+            "timeout": 60000,
+            "sourceMaps": true,
+            "outFiles": [
+                "${env:LEGATO_LANGUAGE_SERVER_OUT}/**/*.js"
+            ]
+        },
+        {
             "name": "Extension Tests CI-mode",
             "type": "extensionHost",
             "request": "launch",

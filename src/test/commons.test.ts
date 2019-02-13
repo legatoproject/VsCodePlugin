@@ -172,7 +172,7 @@ function executeBothMode(label: string, cmd: string, launchers: ProcessLauncher[
  * @param this the test callback context
  */
 async function processLaunchers(this: ITestCallbackContext): Promise<any> {
-    this.timeout(10000); // Take 5563ms on my laptop, let's double it for releng
+    this.timeout(20000); // Take 5563ms on my laptop, let's double it for releng
 
     // Create temporary folders
     // prefix is prefix and path of tmpdir (fs.mkdtemp API is awkward)

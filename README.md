@@ -43,6 +43,17 @@ This extension provides the following features to ease Legato development in VS 
 - editors for Legato files (**\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef**)
 - snippets for Legato files
 
+#### Hierarchical view
+
+- dedicated view to display a map of the active system/app, allowing to navigate through definition files
+- commands to handle definition files:
+  - `Legato/System`:
+    - create system
+  - `Legato/App`:
+    - create new app
+    - rename app
+    - remove app
+
 #### Build
 
 - active definition file status bar + `Legato: Select active definition file` command (or click on the status bar) to pick one

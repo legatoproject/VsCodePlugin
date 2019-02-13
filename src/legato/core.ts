@@ -8,7 +8,8 @@ export const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
     DEST_IP: "DEST_IP",
     LEGATO_DEF_FILE: "LEGATO_DEF_FILE",
-    LEGATO_SNIPPETS: "LEGATO_SNIPPETS"
+    LEGATO_SNIPPETS: "LEGATO_SNIPPETS",
+    LEGATO_LANGUAGE_SERVER: "LEGATO_LANGUAGE_SERVER"
 };
 
 export const LEGATO_FILE_EXTENSIONS = {
@@ -24,7 +25,8 @@ export const LEGATO_MKTOOLS = {
 
 export enum LegatoEvent { // Events with theirs parameters
     OnInLegatoWorkspaceChange = "onInLegatoWorkspaceChange", // oldIsLegatoWorkspace: boolean, newIsLegatoWorkspace: boolean
-    OnLegatoRootChange = "onLegatoRootChange" // oldLegatoRoot: string | undefined, newLegatoRoot: string | undefined
+    OnLegatoRootChange = "onLegatoRootChange", // oldLegatoRoot: string | undefined, newLegatoRoot: string | undefined
+    OnLegatoDefFileChange = "onLegatoDefFileChange" // oldActiveDefFile: vscode.Uri | undefined, newActiveDefFile: vscode.Uri | undefined
 }
 
 export class LegatoManager extends AbstractManager<LegatoEvent> {
@@ -33,6 +35,7 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
         super();
         // Subscribe to envars bridge node modification to trig legato workspace event if necessary
         this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
+        this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoDefFileChangeAndEmit, this, this.disposables);
     }
 
     public saveActiveDefFile(uri: vscode.Uri | undefined): Promise<void> {
@@ -41,8 +44,18 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
     }
 
     public async getActiveDefFile(): Promise<vscode.Uri | undefined> {
-        let defFileUri = await this.leafManager.getEnvValue(LEGATO_ENV.LEGATO_DEF_FILE);
-        return defFileUri ? vscode.Uri.file(defFileUri) : undefined;
+        let envVars = await this.leafManager.getEnvVars();
+        return envVars ? this.getActiveDefFileFromEnv(envVars) : undefined;
+    }
+
+    private getActiveDefFileFromEnv(env: EnvVars | undefined): vscode.Uri | undefined {
+        if (env) {
+            let defFileUri = env[LEGATO_ENV.LEGATO_DEF_FILE];
+            if (defFileUri) {
+                return vscode.Uri.file(defFileUri);
+            }
+        }
+        return undefined;
     }
 
     public async getLegatoRoot(envVars?: EnvVars | undefined): Promise<string | undefined> {
@@ -95,6 +108,15 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
         let newLegatoRoot = await this.getLegatoRoot(newEnvVars);
         if (oldLegatoRoot !== newLegatoRoot) {
             this.emit(LegatoEvent.OnLegatoRootChange, oldLegatoRoot, newLegatoRoot);
+        }
+    }
+
+    private async checkIsLegatoDefFileChangeAndEmit(oldEnVars: any | undefined, newEnvVars: any | undefined) {
+        const uriToString = ((uri: vscode.Uri | undefined) => uri ? uri.toString() : undefined); //just to make Uri comparable
+        let oldLegatoActiveDefFile = await this.getActiveDefFileFromEnv(oldEnVars);
+        let newLegatoActiveDefFile = await this.getActiveDefFileFromEnv(newEnvVars);
+        if (uriToString(oldLegatoActiveDefFile) !== uriToString(newLegatoActiveDefFile)) {
+            this.emit(LegatoEvent.OnLegatoDefFileChange, oldLegatoActiveDefFile, newLegatoActiveDefFile);
         }
     }
 

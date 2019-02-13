@@ -20,6 +20,11 @@
                     "id": "viewcontainer-leaf",
                     "title": "Leaf",
                     "icon": "resources/activity-bar-icon.svg"
+                },
+                {
+                    "title": "Legato",
+                    "id": "viewcontainer-legato",
+                    "icon": "resources/activity-bar-legato-bw.png"
                 }
             ]
         },
@@ -36,6 +41,13 @@
                 {
                     "id": "view-leaf-prf",
                     "name": "Profiles"
+                }
+            ],
+            "viewcontainer-legato": [
+                {
+                    "id": "view-legato-system",
+                    "name": "Hierarchy View",
+                    "when": "context-legato-system-enabled"
                 }
             ]
         },
@@ -119,6 +131,36 @@
                     "command": "cmd.leaf.prf.pkgremove",
                     "when": "view == view-leaf-prf && viewItem =~ /context-leaf-pkg-(installed|available)/",
                     "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.system.createApp",
+                    "when": "view == view-legato-system && viewItem == context-legato-apps-selected",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.system.rename",
+                    "when": "view == view-legato-system && viewItem == context-legato-system-selected",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.app.rename",
+                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.app.remove",
+                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.component.rename",
+                    "when": "view == view-legato-system && viewItem == context-legato-component-current",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.component.remove",
+                    "when": "view == view-legato-system && viewItem == context-legato-component-current",
+                    "group": "inline"
                 }
             ]
         },
@@ -196,6 +238,61 @@
                 "command": "cmd.legato.build.pickDefFile",
                 "title": "Select active definition file",
                 "category": "Legato"
+            },
+            {
+                "command": "cmd.legato.system.create",
+                "title": "Create system",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.system.openFile",
+                "title": "Open file",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.system.createApp",
+                "title": "New app",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.system.addApp",
+                "title": "Add app",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.system.rename",
+                "title": "Rename",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.app.rename",
+                "title": "Rename",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmd.legato.app.remove",
+                "title": "Remove",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmd.legato.app.addComponent",
+                "title": "Add component",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmd.legato.app.newComponent",
+                "title": "New component",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmd.legato.component.remove",
+                "title": "Remove",
+                "category": "Legato/Component"
+            },
+            {
+                "command": "cmd.legato.component.rename",
+                "title": "Rename",
+                "category": "Legato/Component"
             },
             {
                 "command": "cmd.legato.tm.shell",

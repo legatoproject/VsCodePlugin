@@ -1,15 +1,24 @@
 import * as fs from 'fs-extra';
 import * as vscode from 'vscode';
-import { join } from 'path';
-import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
-import { LeafManager, LeafEvent } from "../leaf/core";
-import { DisposableBag } from "../commons/manager";
-import { LegatoManager, LegatoEvent, LEGATO_ENV } from "./core";
+import { DidChangeConfigurationNotification, DocumentSymbol, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { AbstractManager } from "../commons/manager";
 import { DelayedPromise } from '../commons/promise';
-import { EnvVars } from '../commons/utils';
+import { LeafEvent, LeafManager } from "../leaf/core";
+import { LegatoEvent, LegatoManager, LEGATO_ENV } from "./core";
 
+enum LegatoLanguageRequest {
+    LegatoSystemView = "le_GetLogicalView"
+}
 
-export class LegatoLanguageManager extends DisposableBag {
+enum LegatoLanguageNotification {
+    LegatoSystemViewUpdated = "le_UpdateLogicalView"
+}
+
+export enum LegatoLanguageEvent { // Events with theirs parameters
+    OnLegatoSystemViewUpdated = "LegatoSystemViewUpdated", // newLogicalView: le_DefinitionObject
+}
+
+export class LegatoLanguageManager extends AbstractManager<LegatoLanguageEvent> {
     public lspClient: LanguageClient | undefined = undefined;
     public lspClientPromise: Promise<LanguageClient> = new DelayedPromise<LanguageClient>();
     public constructor(private readonly leafManager: LeafManager, private readonly legatoManager: LegatoManager) {
@@ -49,6 +58,12 @@ export class LegatoLanguageManager extends DisposableBag {
 
             // Wait for client to start and store instance
             this.lspClient = await newlspClientPromise;
+            await this.lspClient.onReady();
+
+            this.lspClient.onNotification(LegatoLanguageNotification.LegatoSystemViewUpdated, (data: any) => {
+                //the received data does not fit DocumentSymbol class
+                this.emit(LegatoLanguageEvent.OnLegatoSystemViewUpdated, data);
+            });
 
             // Resolve the delayed promise if exist
             if (oldlspClientPromise) {
@@ -60,10 +75,22 @@ export class LegatoLanguageManager extends DisposableBag {
         }
     }
 
-    private async notifyLeafEnvToLanguageServer(_oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined) {
-        console.log(`[LegatoLanguageManager] LEAF ENV CHANGED triggered to LSP: ${JSON.stringify(newEnvVar)}`);
+    private async notifyLeafEnvToLanguageServer(_oldEnv: any | undefined, newEnv: any | undefined) {
+        console.log(`[LegatoLanguageManager] Leaf env change triggered to LSP: ${JSON.stringify(newEnv)}`);
         if (this.lspClient) {
-            this.lspClient.sendNotification(DidChangeConfigurationNotification.type, newEnvVar as any);
+            await this.lspClient.onReady();
+            this.lspClient.sendNotification(DidChangeConfigurationNotification.type, newEnv);
+        }
+    }
+
+    public async requestLegatoActiveDefFileOutline(activeDefFile: vscode.Uri): Promise<DocumentSymbol> {
+        if (this.lspClient) {
+            //active definition file URI in its deep dive version
+            console.log(`Going to request listSystemInterfaces`);
+            await this.lspClient.onReady();
+            return this.lspClient.sendRequest<DocumentSymbol>(LegatoLanguageRequest.LegatoSystemView);
+        } else {
+            throw new Error("No Legato language server found to request symbols");
         }
     }
 
@@ -80,8 +107,9 @@ export class LegatoLanguageManager extends DisposableBag {
             }
 
             // Get server module
-            let serverModule = join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
-            if (!await fs.pathExists(serverModule)) {
+            let serverModule = await this.leafManager.getEnvValue(LEGATO_ENV.LEGATO_LANGUAGE_SERVER);
+            console.log(`Launching Language server: ${serverModule}`);
+            if (!serverModule || (serverModule && !fs.existsSync(serverModule))) {
                 throw new Error(`${serverModule} LSP doesn't exist`);
             }
 
@@ -112,7 +140,9 @@ export class LegatoLanguageManager extends DisposableBag {
                 synchronize: {
                     // Notify the server about file changes to '.clientrc files contained in the workspace
                     fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
-                }
+                },
+                initializationOptions: await this.leafManager.getEnvVars(),
+                workspaceFolder: this.leafManager.getVsCodeLeafWorkspaceFolder()
             };
             // Create the language client and start the client.
             let lspClient = new LanguageClient(
@@ -125,7 +155,7 @@ export class LegatoLanguageManager extends DisposableBag {
             if (!debug) {
                 // Start the client. This will also launch the server
                 let disposable: vscode.Disposable = lspClient.start();
-                this.toDispose(disposable);
+                this.disposables.push(disposable);
             }
 
             // Return new client
