@@ -7,7 +7,8 @@ import { AbstractManager } from '../commons/manager';
 export const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
     DEST_IP: "DEST_IP",
-    LEGATO_DEF_FILE: "LEGATO_DEF_FILE"
+    LEGATO_DEF_FILE: "LEGATO_DEF_FILE",
+    LEGATO_SNIPPETS: "LEGATO_SNIPPETS"
 };
 
 export const LEGATO_FILE_EXTENSIONS = {
@@ -34,9 +35,9 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
         this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.checkIsLegatoWorkspaceChangeAndEmit, this, this.disposables);
     }
 
-    public saveActiveDefFile(uri: vscode.Uri | undefined) {
+    public saveActiveDefFile(uri: vscode.Uri | undefined): Promise<void> {
         let value = uri ? `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}` : undefined;
-        this.leafManager.setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, value, LeafEnvScope.Workspace);
+        return this.leafManager.setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, value, LeafEnvScope.Workspace);
     }
 
     public async getActiveDefFile(): Promise<vscode.Uri | undefined> {
@@ -75,7 +76,7 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
     /**
      * @return true if the given envVars came from a legato workspace
      */
-    private isLegatoWorkspace(envVars: any | undefined): boolean {
+    private isLegatoWorkspace(envVars: EnvVars | undefined): boolean {
         return (envVars !== undefined) && (LEGATO_ENV.LEGATO_ROOT in envVars);
     }
 
@@ -84,7 +85,7 @@ export class LegatoManager extends AbstractManager<LegatoEvent> {
      * Check if workspace became legato or not
      * Emit event if it change
      */
-    private async checkIsLegatoWorkspaceChangeAndEmit(oldEnVars: any | undefined, newEnvVars: any | undefined) {
+    private async checkIsLegatoWorkspaceChangeAndEmit(oldEnVars: EnvVars | undefined, newEnvVars: EnvVars | undefined) {
         let oldIsLegatoWorkspace = this.isLegatoWorkspace(oldEnVars);
         let newIsLegatoWorkspace = this.isLegatoWorkspace(newEnvVars);
         if (oldIsLegatoWorkspace !== newIsLegatoWorkspace) {

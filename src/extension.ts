@@ -14,12 +14,14 @@ import { ConfigurationChecker } from './commons/configuration';
 import { VersionManager } from './commons/version';
 import { DisposableBag } from './commons/manager';
 import { DelayedPromise } from './commons/promise';
+import { SnippetsManager } from './legato/snippets';
 
 /**
  * Folder names of extension resources
  */
 export const enum ExtensionPaths {
-    Resources = 'resources'
+    Resources = 'resources',
+    Vscode = '.vscode'
 }
 
 /**
@@ -27,7 +29,6 @@ export const enum ExtensionPaths {
  */
 class Extension extends DisposableBag {
     // Common managers
-    private readonly versionManager = new VersionManager(this.context);
     private readonly confChecker: ConfigurationChecker = this.toDispose(new ConfigurationChecker());
 
     // Leaf manager
@@ -44,9 +45,6 @@ class Extension extends DisposableBag {
      */
     public constructor(public readonly context: vscode.ExtensionContext, leafPath: string) {
         super();
-
-        // Save current version 
-        this.versionManager.saveCurrentVersion();
 
         // Check Leaf installation, create LeafManager and dispose it on deactivate
         // We use then because we want to store read-only promise in constructor
@@ -109,7 +107,8 @@ class Extension extends DisposableBag {
     private async enteringLegatoWorkspace(): Promise<vscode.Disposable[]> {
         return [
             new TargetUiManager(this.leafManager),
-            new LegatoUiManager(this.leafManager, this.legatoManager)
+            new LegatoUiManager(this.leafManager, this.legatoManager),
+            new SnippetsManager(this.leafManager)
         ];
     }
 
@@ -134,8 +133,18 @@ export var extPromise: Promise<Extension> = new DelayedPromise();
  * your extension is activated the very first time the command is executed
  */
 export async function activate(context: vscode.ExtensionContext) {
-    let extension = new Extension(context, await LeafManager.checkLeafInstallation());
+    // Save current version 
+    let versionManager = new VersionManager(context);
+    versionManager.saveCurrentVersion();
+
+    // Check leaf
+    let leafPath = await LeafManager.checkLeafInstallation(versionManager);
+
+    // Start extension
+    let extension = new Extension(context, leafPath);
     extension.initComponnents();
+
+    // Resolve awaiting callers
     (extPromise as DelayedPromise<Extension>).resolve(extension);
 }
 

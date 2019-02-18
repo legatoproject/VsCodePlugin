@@ -5,6 +5,7 @@ import { LeafManager, LeafEvent } from './core';
 import { Command } from '../commons/identifiers';
 import { ACTION_LABELS } from '../commons/uiUtils';
 import { CommandRegister } from '../commons/manager';
+import { EnvVars } from "../commons/utils";
 
 const LEAF_SHELL_LABEL = `Leaf shell`;
 
@@ -17,6 +18,11 @@ export class LeafTerminalManager extends CommandRegister {
   private leafTerminal: Terminal | undefined;
   private terminalCreated = false;
 
+	/**
+	 * Create leaf terminal when available
+	 * Listen to profile and envvar changes
+	 * Create commands
+	 */
   public constructor(private readonly leafManager: LeafManager) {
     super();
 
@@ -35,6 +41,19 @@ export class LeafTerminalManager extends CommandRegister {
 
     // Set current profile
     this.onEnvVarsOrCurrentProfileChanged();
+  }
+
+  /**
+   * EnVars have been modified
+   */
+  private async onEnvVarsChange(oldEnvVars: EnvVars | undefined, _newEnvVars: EnvVars | undefined) {
+    if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
+      "Leaf environment has changed; Click to update the Leaf shell terminal.",
+      ACTION_LABELS.CANCEL,
+      ACTION_LABELS.APPLY)) {
+      this.leafTerminal.show();
+      this.leafTerminal.sendText("leaf status");
+    }
   }
 
   /**
@@ -68,19 +87,6 @@ export class LeafTerminalManager extends CommandRegister {
     // Everything is ready, let's show terminal
     console.log(`[LeafTerminal] Profile and Env ready, show shell based on ${currentProfileName}`);
     this.showTerminal();
-  }
-
-  /**
-   * EnVars have been modified
-   */
-  private async onEnvVarsChange(oldEnvVars: any | undefined, _newEnvVars: any | undefined) {
-    if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
-      "Leaf environment has changed; Click to update the Leaf shell terminal.",
-      ACTION_LABELS.CANCEL,
-      ACTION_LABELS.APPLY)) {
-      this.leafTerminal.show();
-      this.leafTerminal.sendText("leaf status");
-    }
   }
 
   /**

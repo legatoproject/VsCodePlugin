@@ -7,6 +7,7 @@ import { LeafManager, LeafEvent } from '../leaf/core';
 import { CommandRegister } from '../commons/manager';
 import { chooseFile, listDefinitionFiles, LEGATO_FILES_PATTERNS } from './files';
 import { LegatoManager, LEGATO_ENV, LEGATO_FILE_EXTENSIONS, LEGATO_MKTOOLS } from './core';
+import { EnvVars } from '../commons/utils';
 
 enum LegatoTasks {
   Build = "Build",
@@ -84,17 +85,26 @@ export class LegatoUiManager extends CommandRegister {
    * Async initialisation
    */
   private async setInitialState() {
-    // Set initial value of status bar
-    this.onEnvVarChanged(undefined, await this.leafManager.getEnvVars());
+    try {
+      // Set initial value of status bar
+      await this.onEnvVarChanged(undefined, await this.leafManager.getEnvVars());
+    } catch (reason) {
+      // Catch and log because this method is never awaited
+      console.error(reason);
+    }
   }
 
-  private async onEnvVarChanged(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
-    let defFile = newEnvVar ? newEnvVar[LEGATO_ENV.LEGATO_DEF_FILE] : undefined;
-    let uri = defFile ? vscode.Uri.file(defFile) : undefined;
-    this.setCurrentDefFile(uri);
+  private onEnvVarChanged(oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined): Promise<void> {
+    let oldDefFile = oldEnvVar ? oldEnvVar[LEGATO_ENV.LEGATO_DEF_FILE] : undefined;
+    let newDefFile = newEnvVar ? newEnvVar[LEGATO_ENV.LEGATO_DEF_FILE] : undefined;
+    if (oldDefFile != newDefFile) {
+      let uri = newDefFile ? vscode.Uri.file(newDefFile) : undefined;
+      return this.setCurrentDefFile(uri);
+    }
+    return Promise.resolve();
   }
 
-  private async onPickDefFileCommand() {
+  private async onPickDefFileCommand(): Promise<void> {
     let xdefs: vscode.Uri[] = await listDefinitionFiles();
     let defFile: vscode.Uri | undefined = undefined;
     if (xdefs.length > 0) {
@@ -107,18 +117,19 @@ export class LegatoUiManager extends CommandRegister {
         return; // User cancellation
       }
     }
-    this.setCurrentDefFile(defFile, true);
+    return this.setCurrentDefFile(defFile, true);
   }
 
   /**
    * Update this.currentDefFile, status bar and env var if persisted is true
    */
-  private setCurrentDefFile(defFile: vscode.Uri | undefined, persist: boolean = false) {
+  private setCurrentDefFile(defFile: vscode.Uri | undefined, persist: boolean = false): Promise<void> {
     this.currentDefFile = defFile;
     this.defStatusbar.text = defFile ? path.basename(defFile.path) : '<No def file selected>';
     if (persist) {
-      this.legatoManager.saveActiveDefFile(defFile);
+      return this.legatoManager.saveActiveDefFile(defFile);
     }
+    return Promise.resolve();
   }
 
   private async buildTask(type: TaskDefinitionType, taskName: LegatoTasks, command: string): Promise<vscode.Task> {

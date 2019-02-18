@@ -74,15 +74,15 @@ export abstract class ProcessLauncher extends DisposableBag {
     /**
      * Execute the command as a process using the scheduler given in constructor
      */
-    public executeProcess(name: string, cmdArray: string[], cwd?: string) {
-        this.scheduler.schedule(this.createWaitingPromise(name, false, cmdArray, this.checkCwdAvailable(cwd)));
+    public executeProcess(name: string, cmdArray: string[], cwd?: string): Promise<void> {
+        return this.scheduler.schedule(this.createWaitingPromise(name, false, cmdArray, this.checkCwdAvailable(cwd)));
     }
 
     /**
      * Execute the command in a shell using the scheduler given in constructor
      */
-    public executeInShell(name: string, cmdLine: string, cwd?: string) {
-        this.scheduler.schedule(this.createWaitingPromise(name, true, [cmdLine], this.checkCwdAvailable(cwd)));
+    public executeInShell(name: string, cmdLine: string, cwd?: string): Promise<void> {
+        return this.scheduler.schedule(this.createWaitingPromise(name, true, [cmdLine], this.checkCwdAvailable(cwd)));
     }
 
     /**

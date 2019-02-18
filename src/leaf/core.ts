@@ -1,8 +1,7 @@
 'use strict';
 
-import * as fs from "fs";
+import * as fs from "fs-extra";
 import * as vscode from "vscode";
-import * as compareVersions from 'compare-versions';
 import { LeafBridgeCommands, LeafBridgeElement } from './bridge';
 import { LeafIOManager, ExecKind } from './ioManager';
 import { ACTION_LABELS } from '../commons/uiUtils';
@@ -10,6 +9,7 @@ import { executeInShell, EnvVars, debounce, removeDuplicates } from '../commons/
 import { AbstractManager } from '../commons/manager';
 import { Command } from '../commons/identifiers';
 import { LEAF_FILES, getWorkspaceDirectory } from '../commons/files';
+import { VersionManager } from "../commons/version";
 
 const LEAF_MIN_VERSION = '1.6';
 
@@ -20,13 +20,18 @@ export const enum LeafEnvScope {
   User = "user"
 }
 
+type AllPackages = {
+  installedPackages: LeafBridgeElement,
+  availablePackages: LeafBridgeElement
+};
+
 export enum LeafEvent { // Events with theirs parameters
   CurrentProfileChanged = "currentProfileChanged", // oldProfileName: string | undefined, newProfileName: string | undefined
-  ProfilesChanged = "leafProfilesChanged", // oldProfiles: any | undefined, newProfiles: any | undefined
-  RemotesChanged = "leafRemotesChanged", // oldRemotes: any | undefined, newRemotes: any | undefined
-  EnvVarsChanged = "leafEnvVarsChanged", // oldEnvVar: any | undefined, newEnvVar: any | undefined
-  PackagesChanged = "leafPackagesChanged", // oldPackages: any | undefined, newPackages: any | undefined
-  WorkspaceInfosChanged = "leafWorkspaceInfoChanged", // oldWSInfo: any | undefined, new WSInfo: any | undefined
+  ProfilesChanged = "leafProfilesChanged", // oldProfiles: LeafBridgeElement | undefined, newProfiles: LeafBridgeElement | undefined
+  RemotesChanged = "leafRemotesChanged", // oldRemotes: LeafBridgeElement | undefined, newRemotes: LeafBridgeElement | undefined
+  EnvVarsChanged = "leafEnvVarsChanged", // oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined
+  PackagesChanged = "leafPackagesChanged", // oldPackages: AllPackages | undefined, newPackages: AllPackages | undefined
+  WorkspaceInfosChanged = "leafWorkspaceInfoChanged", // oldWSInfo: LeafBridgeElement | undefined, new WSInfo: LeafBridgeElement | undefined
   onInLeafWorkspaceChange = "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
 }
 
@@ -53,7 +58,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   private leafWorkspaceInfo: Promise<LeafBridgeElement | undefined> = Promise.resolve(undefined);
   private leafRemotes: Promise<LeafBridgeElement | undefined> = Promise.resolve(undefined);
   private leafEnvVar: Promise<EnvVars | undefined> = Promise.resolve(undefined);
-  private leafPackages: Promise<{ installedPackages: LeafBridgeElement, availablePackages: LeafBridgeElement } | undefined> = Promise.resolve(undefined);
+  private leafPackages: Promise<AllPackages | undefined> = Promise.resolve(undefined);
 
   // leaf-data folder content watcher
   private leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
@@ -61,7 +66,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * Check leaf installation, ask user to install it then check again
    */
-  public static async checkLeafInstallation(): Promise<string> {
+  public static async checkLeafInstallation(versionManager: VersionManager): Promise<string> {
     let leafPath = undefined;
 
     // Check leaf is installed
@@ -91,7 +96,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
       }
       let leafVersion = regexResult[1];
       console.log(`[LeafManager] Leaf version ${leafVersion}`);
-      leafVersionOk = regexResult && compareVersions(leafVersion, LEAF_MIN_VERSION) >= 0;
+      leafVersionOk = !versionManager.versionsLowerThan(leafVersion, LEAF_MIN_VERSION);
       if (!leafVersionOk) {
         let userChoice = await vscode.window.showErrorMessage(
           `Installed Leaf version is too old. Please upgrade to Leaf ${LEAF_MIN_VERSION} or higher and click on '${ACTION_LABELS.CHECK_AGAIN}'.`,
@@ -151,7 +156,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Called when workspaceinfo from leaf bridge change
    * Emit event if current profile change
    */
-  private checkCurrentProfileChangeAndEmit(oldWorkspaceInfo: any | undefined, newWorkspaceInfo: any | undefined) {
+  private checkCurrentProfileChangeAndEmit(oldWorkspaceInfo: LeafBridgeElement | undefined, newWorkspaceInfo: LeafBridgeElement | undefined) {
     let oldProfileName = this.getCurrentProfileNameFrom(oldWorkspaceInfo);
     let newProfileName = this.getCurrentProfileNameFrom(newWorkspaceInfo);
     if (oldProfileName !== newProfileName) {
@@ -163,7 +168,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Called when workspaceinfo from leaf bridge change
    * Emit event if something change in profiles
    */
-  private checkProfilesChangeAndEmit(oldWorkspaceInfo: any | undefined, newWorkspaceInfo: any | undefined) {
+  private checkProfilesChangeAndEmit(oldWorkspaceInfo: LeafBridgeElement | undefined, newWorkspaceInfo: LeafBridgeElement | undefined) {
     let oldProfiles = oldWorkspaceInfo ? oldWorkspaceInfo.profiles : undefined;
     let newProfiles = newWorkspaceInfo ? newWorkspaceInfo.profiles : undefined;
     this.compareAndTrigEvent(LeafEvent.ProfilesChanged, oldProfiles, newProfiles);
@@ -174,7 +179,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Check if workspace became leaf or not
    * Emit event if it change
    */
-  private checkIsLeafWorkspaceChangeAndEmit(oldWorkspaceInfo: any | undefined, newWorkspaceInfo: any | undefined) {
+  private checkIsLeafWorkspaceChangeAndEmit(oldWorkspaceInfo: LeafBridgeElement | undefined, newWorkspaceInfo: LeafBridgeElement | undefined) {
     let oldInitialized = this.isLeafWorkspace(oldWorkspaceInfo);
     let newInitialized = this.isLeafWorkspace(newWorkspaceInfo);
     if (!oldWorkspaceInfo || oldInitialized !== newInitialized) {
@@ -186,31 +191,36 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Watch all Leaf files
    */
   private async watchLeafFiles() {
-    // Listen to leaf-data folder creation/deletion
-    this.watchLeafFileByVsCodeWatcher(
-      new vscode.RelativePattern(getWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER),
-      this.startWatchingLeafDataFolder, // File creation callback
-      undefined, // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
-      this.stopWatchingLeafDataFolder // File deletion callback
-    );
-    // If leaf-data already exist, listen to it
-    if (fs.existsSync(getWorkspaceDirectory(LEAF_FILES.DATA_FOLDER))) {
-      this.startWatchingLeafDataFolder();
+    try {
+      // Listen to leaf-data folder creation/deletion
+      this.watchLeafFileByVsCodeWatcher(
+        new vscode.RelativePattern(getWorkspaceDirectory(), LEAF_FILES.DATA_FOLDER),
+        this.startWatchingLeafDataFolder, // File creation callback
+        undefined, // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
+        this.stopWatchingLeafDataFolder // File deletion callback
+      );
+      // If leaf-data already exist, listen to it
+      if (await fs.pathExists(getWorkspaceDirectory(LEAF_FILES.DATA_FOLDER))) {
+        this.startWatchingLeafDataFolder();
+      }
+
+      // Listen leaf-workspace.json (creation/deletion/change)
+      this.watchLeafFileByVsCodeWatcher(
+        getWorkspaceDirectory(LEAF_FILES.WORKSPACE_FILE),
+        this.refreshInfosFromBridge, this.refreshInfosFromBridge, this.refreshInfosFromBridge);
+
+      // Listen config folder
+      let info = await this.leafInfo;
+      this.watchLeafFolderByFsWatch(info.configFolder, this.refreshInfosFromBridge);
+
+      // Listen remotes.json in leaf cache folder
+      this.watchLeafFolderByFsWatch(
+        info.cacheFolder,
+        filename => filename === LEAF_FILES.REMOTE_CACHE_FILE ? this.refreshPackagesFromBridge() : undefined);
+    } catch (reason) {
+      // Catch and log because this method is never awaited
+      console.error(reason);
     }
-
-    // Listen leaf-workspace.json (creation/deletion/change)
-    this.watchLeafFileByVsCodeWatcher(
-      getWorkspaceDirectory(LEAF_FILES.WORKSPACE_FILE),
-      this.refreshInfosFromBridge, this.refreshInfosFromBridge, this.refreshInfosFromBridge);
-
-    // Listen config folder
-    let info = await this.leafInfo;
-    this.watchLeafFolderByFsWatch(info.configFolder, this.refreshInfosFromBridge);
-
-    // Listen remotes.json in leaf cache folder
-    this.watchLeafFolderByFsWatch(
-      info.cacheFolder,
-      filename => filename === LEAF_FILES.REMOTE_CACHE_FILE ? this.refreshPackagesFromBridge() : undefined);
   }
 
   /**
@@ -310,8 +320,8 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Fill installed property
    * Merge custom tags and tags
    */
-  private async requestPackages(): Promise<any | undefined> {
-    let packs = await this.ioManager.sendToBridge(LeafBridgeCommands.Packages);
+  private async requestPackages(): Promise<AllPackages | undefined> {
+    let packs = (await this.ioManager.sendToBridge(LeafBridgeCommands.Packages)) as AllPackages | undefined;
     if (packs) {
       // Mark installed or available
       let instPacks = packs.installedPackages;
@@ -354,17 +364,13 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * Send request from leaf bridge and emit the correspoding event if something change
    */
-  private async compareAndTrigEvent(
+  private async compareAndTrigEvent<T>(
     event: LeafEvent,
-    oldValue: Promise<any | undefined> | any | undefined,
-    newValue: Promise<any | undefined> | any | undefined
-  ): Promise<any | undefined> {
-    if (oldValue instanceof Promise) {
-      oldValue = await oldValue;
-    }
-    if (newValue instanceof Promise) {
-      newValue = await newValue;
-    }
+    oldValueP: Promise<T | undefined>,
+    newValueP: Promise<T | undefined>
+  ): Promise<T | undefined> {
+    let oldValue = await oldValueP;
+    let newValue = await newValueP;
     if (JSON.stringify(newValue) !== JSON.stringify(oldValue)) {
       this.emit(event, oldValue, newValue);
     }
@@ -395,7 +401,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   /**
    * @return true if the given info node came from a leaf workspace
    */
-  private isLeafWorkspace(info: any | undefined): boolean {
+  private isLeafWorkspace(info: LeafBridgeElement | undefined): boolean {
     if ((info !== undefined) && 'initialized' in info) {
       return info.initialized;
     }
@@ -476,7 +482,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   public async getMergedPackages(): Promise<LeafBridgeElement> {
     // Get all packages available.
-    let out: { [key: string]: any } = {};
+    let out: LeafBridgeElement = {};
     let packs = await this.leafPackages;
     if (!packs) {
       return out;
@@ -649,7 +655,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    * Set or Unset leaf env value
    * if value is undefined, the var is unset
    */
-  public setEnvValue(envar: string, value: string | undefined, scope: LeafEnvScope = LeafEnvScope.Profile) {
+  public setEnvValue(envar: string, value: string | undefined, scope: LeafEnvScope = LeafEnvScope.Profile): Promise<void> {
     let args = value ? ['--set', `${envar}=${value}`] : ['--unset', `${envar}`];
     return this.ioManager.executeProcess(ExecKind.OutputChannel, LEAF_TASKS.setEnv, 'leaf', 'env', scope, ...args);
   }
@@ -677,7 +683,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
    */
   public async dispose() {
     super.dispose();
-    this.emit(LeafEvent.onInLeafWorkspaceChange, true, false);
+    this.emit(LeafEvent.onInLeafWorkspaceChange, true, false); // Dispose Leaf UI components
     this.stopWatchingLeafDataFolder();
   }
 }

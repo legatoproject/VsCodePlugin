@@ -130,6 +130,7 @@ export abstract class TreeDataProvider2 extends CommandRegister implements vscod
 
 	constructor(viewId: View) {
 		super();
+		console.log(`[TreeDataProvider2] Register tree data provider: ${viewId}`);
 		this.toDispose(vscode.window.registerTreeDataProvider(viewId, this));
 	}
 
@@ -160,7 +161,7 @@ export async function showMultiStepInputBox(
 	totalSteps: number | undefined,
 	placeholder: string | undefined,
 	prompt: string | undefined,
-	validator?: (value: string) => string | undefined
+	validator?: (value: string) => Promise<string | undefined> | string | undefined
 ): Promise<string | undefined> {
 
 	let box: vscode.InputBox = vscode.window.createInputBox();
@@ -172,7 +173,7 @@ export async function showMultiStepInputBox(
 	let result: string | undefined = undefined;
 
 	if (validator) {
-		box.onDidChangeValue(value => box.validationMessage = validator(value));
+		box.onDidChangeValue(async value => box.validationMessage = await validator(value));
 	}
 
 	box.onDidAccept(() => {

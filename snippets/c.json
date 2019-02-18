@@ -10,15 +10,5 @@
             "    LE_INFO(\"Hello, world.\");",
             "}"
         ]
-    },
-    "component_init": {
-        "prefix": "comp_init",
-        "body": [
-            "COMPONENT_INIT",
-            "{",
-            "    $0",
-            "}"
-        ],
-        "description": "Initialization function for a component."
     }
 }

@@ -1,15 +1,19 @@
 'use strict';
 import * as vscode from 'vscode';
-import * as compareVersions from 'compare-versions';
 import { Mementos } from './memento';
 import { extensionQualifiedId } from './identifiers';
 
 /**
  * Kind of version change
  */
-export enum VersionChangeKind {
+export const enum VersionChangeKind {
     FirstInstall, MinorUpgrade, MajorUpgrade, Downgrade, Same
 }
+
+/**
+ * Used by version comparator
+ */
+const VERSION_SEPARATOR: string = '.';
 
 /**
  * Manage upgrades, downgrades and give previous and current versions
@@ -45,18 +49,16 @@ export class VersionManager {
             return VersionChangeKind.FirstInstall;
         }
 
-        let compare = compareVersions(this.currentVersion, this.previousVersion);
-
-        // No upgrade
-        if (compare === 0) {
-            console.log(`[VersionManager] Launch same version than previously: v${this.currentVersion}`);
-            return VersionChangeKind.Same;
-        }
-
         // Downgrade
-        if (compare < 0) {
+        if (this.versionsLowerThan(this.currentVersion, this.previousVersion)) {
             console.log(`[VersionManager] Downgraded from v${this.previousVersion} to v${this.currentVersion}`);
             return VersionChangeKind.Downgrade;
+        }
+
+        // No upgrade
+        if (!this.versionsLowerThan(this.previousVersion, this.currentVersion)) {
+            console.log(`[VersionManager] Launch same version than previously: v${this.currentVersion}`);
+            return VersionChangeKind.Same;
         }
 
         // Upgrade !
@@ -67,5 +69,42 @@ export class VersionManager {
             return VersionChangeKind.MajorUpgrade;
         }
         return VersionChangeKind.MinorUpgrade;
+    }
+
+    /**
+     * This algorythm must be the same than python leaf implementation
+     */
+    public versionsLowerThan(va: string, vb: string): boolean {
+        if (va === vb) {
+            return false;
+        }
+        let a = this.versionStringToTuple(va);
+        let b = this.versionStringToTuple(vb);
+        let i = 0;
+        while (true) {
+            if (i >= a.length) {
+                return true;
+            }
+            if (i >= b.length) {
+                return false;
+            }
+            let itema = a[i];
+            let itemb = b[i];
+            if (typeof itema !== typeof itemb) {
+                itema = String(itema);
+                itemb = String(itemb);
+            }
+            if (itema !== itemb) {
+                return itema < itemb;
+            }
+            i += 1;
+        }
+        throw new Error();
+    }
+
+    private versionStringToTuple(version: string): (string | number)[] {
+        return version
+            .split(VERSION_SEPARATOR)
+            .map(item => parseInt(item) || item, this);
     }
 }

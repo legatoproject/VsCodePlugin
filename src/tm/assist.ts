@@ -13,6 +13,7 @@ import { TaskProcessLauncher } from '../commons/process';
 import { Configuration } from '../commons/configuration';
 import { TerminalKind, ReSpawnableTerminal } from '../commons/terminal';
 import { getWorkspaceDirectory } from '../commons/files';
+import { EnvVars } from '../commons/utils';
 
 export class TargetUiManager extends CommandRegister {
 
@@ -41,7 +42,6 @@ export class TargetUiManager extends CommandRegister {
     // Status bar
     this.targetStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 5);
     this.toDispose(this.targetStatusbar); // Dispose status bar on deactivate
-    this.targetStatusbar.text = "<Unknown>";
     this.targetStatusbar.tooltip = "Legato Device";
     this.targetStatusbar.show();
 
@@ -107,54 +107,59 @@ export class TargetUiManager extends CommandRegister {
   /**
    * Async initialisation
    */
-  private async setInitialState() {
-    this.onEnvVarsChange(undefined, await this.leafManager.getEnvVars());
-  }
-
-  private async onEnvVarsChange(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
-    let legatoDeviceIpChange = newEnvVar ? newEnvVar[LEGATO_ENV.DEST_IP] : undefined;
-    if (legatoDeviceIpChange) {
-      this.targetStatusbar.text = legatoDeviceIpChange;
+  private async setInitialState(): Promise<void> {
+    try {
+      this.onEnvVarsChange(undefined, await this.leafManager.getEnvVars());
+    } catch (reason) {
+      // Catch and log because this method is never awaited
+      console.error(reason);
     }
   }
 
-  private async askForNewIP() {
+  private onEnvVarsChange(oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined) {
+    let oldDestIp = oldEnvVar ? oldEnvVar[LEGATO_ENV.DEST_IP] : undefined;
+    let newDestIp = newEnvVar ? newEnvVar[LEGATO_ENV.DEST_IP] : undefined;
+    if (oldDestIp !== newDestIp) {
+      this.targetStatusbar.text = newDestIp ? newDestIp : "<Unknown>";
+    }
+  }
+
+  private async askForNewIP(): Promise<void> {
     let ip = await this.leafManager.getEnvValue(LEGATO_ENV.DEST_IP);
     let newIP = await vscode.window.showInputBox({
       prompt: "Please set the Legato device IP address",
       placeHolder: ip
     });
     if (newIP) {
-      this.targetStatusbar.text = newIP;
-      this.leafManager.setEnvValue(LEGATO_ENV.DEST_IP, newIP);
+      return this.leafManager.setEnvValue(LEGATO_ENV.DEST_IP, newIP);
     }
   }
 
-  private async installOnDevice(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]) {
+  private async installOnDevice(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]): Promise<void> {
     let selectedUpdateFile = await this.getSelectedFiles(selectedFile, selectedFiles, listUpdateFiles, {
       noFileFoundMessage: "No *.update files found in workspace.",
       quickPickPlaceHolder: "Please select an update file among ones available in the workspace..."
     });
     if (selectedUpdateFile) {
-      this.legatoTaskProcessLauncher.executeProcess(
+      return this.legatoTaskProcessLauncher.executeProcess(
         `Install ${basename(selectedUpdateFile.path)}`,
         ['update', selectedUpdateFile.path]);
     }
   }
 
-  private async flashImage(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]) {
+  private async flashImage(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]): Promise<void> {
     let selectedUpdateFile = await this.getSelectedDefFiles(selectedFile, selectedFiles);
     if (selectedUpdateFile) {
       let name = `Flash ${basename(selectedUpdateFile.path)}`;
-      this.legatoTaskProcessLauncher.executeProcess(name, ['fwupdate', 'download', selectedUpdateFile.path]);
+      return this.legatoTaskProcessLauncher.executeProcess(name, ['fwupdate', 'download', selectedUpdateFile.path]);
     }
   }
 
-  private async flashImageRecovery(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]) {
+  private async flashImageRecovery(selectedFile?: vscode.Uri, selectedFiles?: vscode.Uri[]): Promise<void> {
     let selectedUpdateFile = await this.getSelectedDefFiles(selectedFile, selectedFiles);
     if (selectedUpdateFile) {
       let name = `[Recovery] Flash ${basename(selectedUpdateFile.path)}`;
-      this.legatoTaskProcessLauncher.executeInShell(name, `swiflash -m $LEGATO_TARGET -i '${selectedUpdateFile.path}'`);
+      return this.legatoTaskProcessLauncher.executeInShell(name, `swiflash -m $LEGATO_TARGET -i '${selectedUpdateFile.path}'`);
     }
   }
 
@@ -191,13 +196,13 @@ export class TargetUiManager extends CommandRegister {
     return userSelection;
   }
 
-  private async resetUserPartition() {
+  private async resetUserPartition(): Promise<void> {
     let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
       "This will restore the device file system by erasing all user files.",
       ACTION_LABELS.CANCEL,
       ACTION_LABELS.OK);
     if (confirmed) {
-      this.legatoTaskProcessLauncher.executeInShell('[Recovery] Reset the user partition', 'swiflash -m $LEGATO_TARGET -r');
+      return this.legatoTaskProcessLauncher.executeInShell('[Recovery] Reset the user partition', 'swiflash -m $LEGATO_TARGET -r');
     }
   }
 }

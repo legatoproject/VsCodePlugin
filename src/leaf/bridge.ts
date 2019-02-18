@@ -54,7 +54,7 @@ export class LeafBridge {
         });
 
         // Listen from stdout
-        this.process.stdout.addListener("data", (chunk: Buffer | string) => this.onInterfaceResponse(chunk));
+        this.process.stdout.addListener("data", (chunk: Buffer | string) => this.onBridgeResponse(chunk));
 
         // Listen from stderr
         this.process.stderr.addListener("data", (chunk: Buffer | string) => console.log(`[Leaf Bridge] Error from leaf interface: ${chunk.toString()}`));
@@ -84,7 +84,7 @@ export class LeafBridge {
      * Called on interface response.
      * Concatenate and parse the resolve or reject the corresponding promise
      */
-    private onInterfaceResponse(chunk: Buffer | string) {
+    private onBridgeResponse(chunk: Buffer | string) {
         this.stdoutBuffer += chunk.toString();
         if (this.stdoutBuffer.endsWith("\n")) {
             let lines: string[] = this.stdoutBuffer.split(/\r?\n/).filter((value) => value.length > 0);
@@ -117,9 +117,9 @@ export class LeafBridge {
     }
 
     public async dispose() {
+        this.send(LeafBridgeCommands.Exit);
         this.process.stdin.end();
         this.process.stdout.removeAllListeners();
         this.process.stderr.removeAllListeners();
-        this.send(LeafBridgeCommands.Exit);
     }
 }

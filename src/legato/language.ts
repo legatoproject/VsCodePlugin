@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import * as vscode from 'vscode';
 import { join } from 'path';
 import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
@@ -6,6 +6,7 @@ import { LeafManager, LeafEvent } from "../leaf/core";
 import { DisposableBag } from "../commons/manager";
 import { LegatoManager, LegatoEvent, LEGATO_ENV } from "./core";
 import { DelayedPromise } from '../commons/promise';
+import { EnvVars } from '../commons/utils';
 
 
 export class LegatoLanguageManager extends DisposableBag {
@@ -40,7 +41,7 @@ export class LegatoLanguageManager extends DisposableBag {
             this.lspClient.stop(); // Should wait for end of stopping by using 'await' ?
         }
         if (start) {
-            let oldlspClientPromise  = this.lspClientPromise;
+            let oldlspClientPromise = this.lspClientPromise;
             let newlspClientPromise = this.startLegatoServer();
 
             // Store new promise
@@ -59,10 +60,10 @@ export class LegatoLanguageManager extends DisposableBag {
         }
     }
 
-    private async notifyLeafEnvToLanguageServer(_oldEnvVar: any | undefined, newEnvVar: any | undefined) {
+    private async notifyLeafEnvToLanguageServer(_oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined) {
         console.log(`[LegatoLanguageManager] LEAF ENV CHANGED triggered to LSP: ${JSON.stringify(newEnvVar)}`);
         if (this.lspClient) {
-            this.lspClient.sendNotification(DidChangeConfigurationNotification.type, newEnvVar);
+            this.lspClient.sendNotification(DidChangeConfigurationNotification.type, newEnvVar as any);
         }
     }
 
@@ -80,7 +81,7 @@ export class LegatoLanguageManager extends DisposableBag {
 
             // Get server module
             let serverModule = join(legatoPath, 'bin', 'languageServer', 'languageServer.js');
-            if (!fs.existsSync(serverModule)) {
+            if (!await fs.pathExists(serverModule)) {
                 throw new Error(`${serverModule} LSP doesn't exist`);
             }
 

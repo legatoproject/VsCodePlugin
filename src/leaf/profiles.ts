@@ -15,6 +15,10 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
 
   private leafStatusbar: StatusBarItem;
 
+  /**
+	 * Listen to profile and envvar changes
+   * Create commands and status bar
+   */
   public constructor(private readonly leafManager: LeafManager) {
     super(View.LeafProfiles);
     // So lets add status bar
@@ -40,7 +44,12 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
    * Async initialisation
    */
   private async setInitialState() {
-    this.onProfileChanged(undefined, await this.leafManager.getCurrentProfileName());
+    try {
+      await this.onProfileChanged(undefined, await this.leafManager.getCurrentProfileName());
+    } catch (reason) {
+      // Catch and log because this method is never awaited
+      console.error(reason);
+    }
   }
 
   /**

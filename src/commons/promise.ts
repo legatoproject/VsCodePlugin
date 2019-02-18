@@ -47,6 +47,13 @@ export class DelayedPromise<T> implements Promise<T> {
     }
 
     /**
+     * Deleguate to actual promise
+     */
+    public finally(onfinally?: (() => void) | undefined | null): Promise<T> {
+        return this.actualPromise.finally(onfinally);
+    }
+
+    /**
      * @returns a PromiseCallback that cannot be undefined
      */
     private getCallback(): PromiseCallback<T> {

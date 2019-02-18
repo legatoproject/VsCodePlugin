@@ -185,7 +185,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * - Ask destination profile (if some exist)
 	 * - Ask a profile name if the user select "New profile" in the previous step or if the is no profiles
 	 */
-	private async addToProfile(selectedPackage: PackageTreeItem | PackageQuickPickItem | undefined) {
+	private async addToProfile(selectedPackage: PackageTreeItem | PackageQuickPickItem | undefined): Promise<void> {
 		let title = "Add package to profile";
 
 		// Package (from selection or combo)
@@ -213,10 +213,10 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			if (newProfileName.length === 0) {
 				newProfileName = undefined; // "" is a valid return for default profile name
 			}
-			await this.leafManager.createProfile(newProfileName, selectedPackage.packId);
+			return this.leafManager.createProfile(newProfileName, selectedPackage.packId);
 		} else if (profiles && result.id in profiles) {
 			// Existing profile
-			await this.leafManager.addPackagesToProfile(result.id, selectedPackage.packId);
+			return this.leafManager.addPackagesToProfile(result.id, selectedPackage.packId);
 		}
 	}
 

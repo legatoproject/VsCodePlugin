@@ -152,7 +152,7 @@ export class ConfigurationChecker extends DisposableBag {
     }
 
     /**
-     * Warn user about not supporting multiple folders in vcode
+     * Warn user about not supporting multiple folders in vscode
      */
     private warningOnMultipleFolders() {
         let folders = vscode.workspace.workspaceFolders;

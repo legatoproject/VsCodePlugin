@@ -9,14 +9,18 @@ export const LEAF_FILES = {
     REMOTE_CACHE_FILE: 'remotes.json'
 };
 
+export const enum WorkspaceResource {
+    VsCode = '.vscode'
+}
+
 /**
  * filename an optional argument which will be appened to the workspace directory
  * @return current workpace path
  */
-export function getWorkspaceDirectory(filename?: string): string {
+export function getWorkspaceDirectory(...path: string[]): string {
     if (vscode.workspace.rootPath) {
-        if (filename) {
-            return join(vscode.workspace.rootPath, filename);
+        if (path.length > 0) {
+            return join(vscode.workspace.rootPath, ...path);
         }
         return vscode.workspace.rootPath;
     }

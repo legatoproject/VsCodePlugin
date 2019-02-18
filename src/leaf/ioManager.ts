@@ -3,7 +3,7 @@
 import { TaskDefinitionType } from '../commons/identifiers';
 import { EnvVars } from '../commons/utils';
 import { DisposableBag } from '../commons/manager';
-import { Sequencer } from '../commons/scheduler';
+import { PoliteSequencer, Scheduler } from '../commons/scheduler';
 import { LeafBridge, LeafBridgeElement, LeafBridgeCommands } from './bridge';
 import { ProcessLauncher, OutputChannelProcessLauncher, TaskProcessLauncher, ProcessLauncherOptions } from '../commons/process';
 
@@ -18,7 +18,7 @@ export const enum ExecKind {
 export class LeafIOManager extends DisposableBag {
 
     // Use sequencer to ensure only one command is send to leaf at a time
-    private readonly sequencer: Sequencer;
+    private readonly sequencer: Scheduler;
 
     // Leaf Bridge
     private readonly bridge: LeafBridge;
@@ -34,7 +34,7 @@ export class LeafIOManager extends DisposableBag {
      */
     public constructor(private readonly cwd: string) {
         super();
-        this.sequencer = new Sequencer('Leaf');
+        this.sequencer = new PoliteSequencer('Leaf');
         this.bridge = this.toDispose(new LeafBridge());
         let options: ProcessLauncherOptions = {
             defaultCwd: cwd,
@@ -71,7 +71,7 @@ export class LeafIOManager extends DisposableBag {
      * Execute a command as a task
      * @return a promise that is resolved at the end of the task or rejected if the user cancel it
      */
-    public async executeInShell(kind: ExecKind, name: string, cmdLine: string): Promise<void> {
+    public executeInShell(kind: ExecKind, name: string, cmdLine: string): Promise<void> {
         return this.getLauncher(kind).executeInShell(name, cmdLine);
     }
 
@@ -79,7 +79,7 @@ export class LeafIOManager extends DisposableBag {
      * Execute a command as a child process and print the output in a channel
      * @return a promise that is resolved at the end of the process or rejected if the user cancel it
      */
-    public async executeProcess(kind: ExecKind, name: string, ...cmdArray: string[]): Promise<void> {
+    public executeProcess(kind: ExecKind, name: string, ...cmdArray: string[]): Promise<void> {
         return this.getLauncher(kind).executeProcess(name, cmdArray);
     }
 
@@ -87,7 +87,7 @@ export class LeafIOManager extends DisposableBag {
      * Send a command to the Leaf Bridge
      * @return a promise that is resolved when the Bridge give an answer
      */
-    public async sendToBridge(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
+    public sendToBridge(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
         return this.bridge.send(cmd);
     }
 }

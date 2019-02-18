@@ -1,7 +1,7 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import * as fs from 'fs';
+import * as fs from 'fs-extra';
 import { View, Command } from '../commons/identifiers';
 import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../commons/uiUtils';
 import { RemoteQuickPickItem, RemoteTreeItem } from './uiComponents';
@@ -14,10 +14,11 @@ import { LeafManager, LeafEvent } from './core';
 export class LeafRemotesView extends TreeDataProvider2 {
 
 	/**
+	 * Register TreeDataProvider
 	 * Listen to remote changes
 	 * Create commands
 	 */
-	constructor(private readonly leafManager : LeafManager) {
+	constructor(private readonly leafManager: LeafManager) {
 		super(View.LeafRemotes);
 		this.leafManager.addListener(LeafEvent.RemotesChanged, this.refresh, this);
 		this.createCommand(Command.LeafRemotesAdd, this.addRemote);
@@ -30,12 +31,12 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Enable a remote
 	 * Ask user to select one if there is no selection in the tree
 	 */
-	private async enableRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined, enabled: boolean = true) {
+	private async enableRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined, enabled: boolean = true): Promise<void> {
 		if (!node) {
 			node = await this.askRemoteToUser(`${enabled ? "Enable" : "Disable"} Leaf remote`);
 		}
 		if (node) {
-			this.leafManager.enableRemote(node.id, enabled);
+			return this.leafManager.enableRemote(node.id, enabled);
 		}
 	}
 
@@ -43,7 +44,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Add a new remote
 	 * Ask user for alias and url the add it
 	 */
-	private async addRemote() {
+	private async addRemote(): Promise<void> {
 		let remotes = await this.leafManager.getRemotes();
 		let title = "Add new remote";
 		let step = 1;
@@ -70,7 +71,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 		}
 
 		// Launch task
-		this.leafManager.addRemote(alias, url);
+		return this.leafManager.addRemote(alias, url);
 	}
 
 	/**
@@ -93,7 +94,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * - Check if uri has a scheme and authority
 	 * - Check if uri has a no scheme but exist in filesystem (local path)
 	 */
-	private validateUrl(value: string) {
+	private async validateUrl(value: string): Promise<string | undefined> {
 		// Valid URL
 		let uri = vscode.Uri.parse(value);
 		if (uri.scheme) {
@@ -103,7 +104,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 			}
 		} else {
 			// Test if local file
-			if (fs.existsSync(value) && fs.statSync(value).isFile()) {
+			if ((await fs.stat(value)).isFile()) {
 				return undefined;
 			}
 		}
@@ -114,12 +115,12 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Remove remote
 	 * Ask user to select one if there is no selection in the tree
 	 */
-	private async removeRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined) {
+	private async removeRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined): Promise<void> {
 		if (!node) {
 			node = await this.askRemoteToUser("Remove Leaf remote");
 		}
 		if (node && ACTION_LABELS.REMOVE === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", ACTION_LABELS.CANCEL, ACTION_LABELS.REMOVE)) {
-			this.leafManager.removeRemote(node.id);
+			return this.leafManager.removeRemote(node.id);
 		}
 	}
 

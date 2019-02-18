@@ -35,14 +35,13 @@ export class Immediate implements Scheduler {
  */
 export class Sequencer implements Scheduler {
     private waitingQueue: WaitingPromise<any>[] = [];
-    private runningOperation: WaitingPromise<any> | undefined = undefined;
-    private readonly executionQueue: WaitingPromise<any>[] = [];
-    private currentQueueingPopup: Thenable<string | undefined> | undefined = undefined;
+    protected runningOperation: WaitingPromise<any> | undefined = undefined;
+    private executionQueue: WaitingPromise<any>[] = [];
 
     /**
      * resourceName the name of the resource that need a Sequencer
      */
-    public constructor(private readonly resourceName: string) { }
+    public constructor(protected readonly resourceName: string) { }
 
     /**
      * Execute an operation as soon as the queue is empty
@@ -54,29 +53,108 @@ export class Sequencer implements Scheduler {
     }
 
     /**
+     * Return human readable list of an operation queue
+     */
+    private getOperationQueueAsString(queue: WaitingPromise<any>[]): string {
+        return queue.map(op => op.id).join(', ');
+    }
+
+    /**
      * If there is no operation running, run it
      * If the is already an operation, ask user permission to add operation in a queue.
      */
     private async scheduleOperation(operation: WaitingPromise<any>) {
-        this.waitingQueue.push(operation);
-        let queueing = this.runningOperation ? await this.askUserAboutAddingToQueue() : Queueing.Queue;
-        let waitingQueueAsString = this.waitingQueue.map(op => op.id).join(', ');
-        switch (queueing) {
-            case Queueing.Queue:
-                console.log(`[Scheduler][Sequencer] Add operation(s) to execution queue: [${waitingQueueAsString}]`);
-                this.executionQueue.push(...this.waitingQueue);
-                this.waitingQueue = [];
-                this.runNextOperation();
-                break;
-            case Queueing.Cancel:
-                console.log(`[Scheduler][Sequencer] Operation(s) canceled by user: [${waitingQueueAsString}]`);
-                this.waitingQueue.forEach(op => op.reject(new Error("Operation canceled by user")));
-                this.waitingQueue = [];
-                break;
-            case Queueing.Wait:
-                // Do nothing
-                break;
+        try {
+            this.waitingQueue.push(operation);
+            let queueing = await this.getQueuing();
+            let waitingQueueAsString = this.getOperationQueueAsString(this.waitingQueue);
+            switch (queueing) {
+                case Queueing.Queue:
+                    console.log(`[Scheduler][Sequencer] Add operation(s) to execution queue: [${waitingQueueAsString}]`);
+                    this.executionQueue.push(...this.waitingQueue);
+                    this.waitingQueue = [];
+                    await this.runNextOperation();
+                    break;
+                case Queueing.Cancel:
+                    console.log(`[Scheduler][Sequencer] Operation(s) canceled by user: [${waitingQueueAsString}]`);
+                    this.waitingQueue.forEach(op => op.reject(new Error("Operation canceled by user")));
+                    this.waitingQueue = [];
+                    break;
+                case Queueing.Wait:
+                    // Do nothing
+                    break;
+            }
+        } catch (reason) {
+            // Catch and log because this method is never awaited
+            console.error(reason);
         }
+    }
+
+    /**
+     * @return queuing strategy to use (always Queueing.Queue)
+     */
+    protected async getQueuing(): Promise<Queueing> {
+        return Queueing.Queue;
+    }
+
+    /**
+     * Run next task if any
+     */
+    private async runNextOperation(): Promise<void> {
+        if (this.runningOperation) {
+            let len = this.executionQueue.length;
+            if (len > 0) {
+                console.log(`[Scheduler][Sequencer] ${len} operation(s) postponed due to other operation running: #${this.runningOperation.id}`);
+            }
+        } else {
+            // Update queue
+            this.runningOperation = this.executionQueue.shift();
+
+            // If there is a next operation, let's execute it
+            if (this.runningOperation) {
+                console.log(`[Scheduler][Sequencer] Execute operation: #${this.runningOperation.id}`);
+                try {
+                    await this.runningOperation.execute(); // Wait until the end of this operation
+                } catch (reason) {
+                    // If the operation fail, log error and cancel all scheduled operations
+                    console.error(reason);
+                    let allOperations = this.waitingQueue.concat(this.executionQueue);
+                    let len = allOperations.length;
+                    if (len > 0) {
+                        console.log(`[Scheduler][Sequencer] ${len} operation(s) canceled due to an error in current operation: [${this.getOperationQueueAsString(allOperations)}]`);
+                        allOperations.forEach(op => op.reject(new Error("Operation canceled due to current operation error")));
+                        this.waitingQueue = [];
+                        this.executionQueue = [];
+                    }
+                } finally {
+                    this.runningOperation = undefined;
+                    await this.runNextOperation(); // Try running next one if exist
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Ensure than all scheduled operations are executed one after the other
+ * If an operation is already running when another is requested, ask if the operation must be forgotten or queued
+ */
+export class PoliteSequencer extends Sequencer {
+    // Current visible queuing popup if any
+    private currentQueueingPopup: Thenable<string | undefined> | undefined = undefined;
+
+    /**
+     * resourceName the name of the resource that need a Sequencer
+     */
+    constructor(resourceName: string) {
+        super(resourceName);
+    }
+
+    /**
+     * @return queuing strategy choosen by user
+     */
+    protected async getQueuing(): Promise<Queueing> {
+        return this.runningOperation ? await this.askUserAboutAddingToQueue() : Queueing.Queue;
     }
 
     /**
@@ -102,28 +180,5 @@ export class Sequencer implements Scheduler {
 
         // Return result
         return result === ACTION_LABELS.ADD_TO_QUEUE ? Queueing.Queue : Queueing.Cancel;
-    }
-
-    /**
-     * Run next task if any
-     */
-    private async runNextOperation() {
-        if (this.runningOperation) {
-            let len = this.executionQueue.length;
-            if (len > 0) {
-                console.log(`[Scheduler][Sequencer] ${len} operation(s) postponed due to other operation running: #${this.runningOperation.id}`);
-            }
-        } else {
-            // Update queue
-            this.runningOperation = this.executionQueue.shift();
-
-            // If there is a next operation, let's execute it
-            if (this.runningOperation) {
-                console.log(`[Scheduler][Sequencer] Execute operation: #${this.runningOperation.id}`);
-                await this.runningOperation.execute(); // Wait until the end of this operation
-                this.runningOperation = undefined;
-                this.runNextOperation(); // Try running next one if exist
-            }
-        }
     }
 }
