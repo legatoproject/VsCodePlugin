@@ -4,9 +4,18 @@ import * as vscode from "vscode";
 import { TaskDefinitionType } from '../commons/identifiers';
 import { EnvVars } from '../commons/utils';
 import { spawn, SpawnOptions, ChildProcess } from 'child_process';
-import { Scheduler, Immediate } from '../commons/scheduler';
+import { Scheduler, Immediate, Sequencer } from '../commons/scheduler';
 import { WaitingPromise } from '../commons/promise';
 import { DisposableBag } from './manager';
+
+/**
+ * Return the Error corresponding to the given return code
+ * @param returnCode the return code of the process
+ * @returns the corresponding error
+ */
+export function createReturnCodeError(returnCode: number) {
+    return new Error(`Return code: ${returnCode}`);
+}
 
 export interface ProcessLauncherOptions {
     /**
@@ -43,10 +52,17 @@ export abstract class ProcessLauncher extends DisposableBag {
     /**
      * @param options an instance of [ProcessLauncherOptions](#ProcessLauncherOptions)
      */
-    public constructor(options: ProcessLauncherOptions) {
+    public constructor(public readonly name: string, options: ProcessLauncherOptions) {
         super();
         this.options = options;
-        this.scheduler = options.scheduler || new Immediate();
+        this.scheduler = options.scheduler || this.getDefaultScheduler();
+    }
+
+    /**
+     * Return scheduler to use if no one is given in options
+     */
+    protected getDefaultScheduler(): Scheduler {
+        return new Immediate();
     }
 
     /**
@@ -118,7 +134,7 @@ class TaskPromise extends WaitingPromise<void> {
             if (event.exitCode === 0) {
                 this.resolve();
             } else {
-                this.reject(new Error(`Process as exited with exit code ${event.exitCode}`));
+                this.reject(createReturnCodeError(event.exitCode));
             }
             this.taskListener.dispose();
         }
@@ -138,7 +154,14 @@ export class TaskProcessLauncher extends ProcessLauncher {
         private readonly taskDefinitionType: TaskDefinitionType,
         options: ProcessLauncherOptions
     ) {
-        super(options);
+        super(taskDefinitionType, options);
+    }
+
+    /**
+     * Tasks need to have a scheduler to avoid 'Terminate/Restart' popup
+     */
+    protected getDefaultScheduler(): Scheduler {
+        return new Sequencer(this.taskDefinitionType);
     }
 
     /**
@@ -191,10 +214,10 @@ export class OutputChannelProcessLauncher extends ProcessLauncher {
      * @param options an instance of [ProcessLauncherOptions](#ProcessLauncherOptions)
      */
     public constructor(
-        public readonly name: string,
+        name: string,
         options: ProcessLauncherOptions
     ) {
-        super(options);
+        super(name, options);
         console.log(`[OutputChannelProcessLauncher][${this.name}] Create channel`);
         this.channel = this.toDispose(vscode.window.createOutputChannel(this.name));
     }
@@ -233,7 +256,7 @@ export class OutputChannelProcessLauncher extends ProcessLauncher {
                 this.channel.appendLine(`=> Operation terminated with return code ${code}`);
                 if (code && code !== 0) {
                     this.channel.show(true); // true to not take focus
-                    reject(new Error(`Return code: ${code}`));
+                    reject(createReturnCodeError(code));
                 } else {
                     resolve();
                 }

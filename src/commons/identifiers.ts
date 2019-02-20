@@ -75,5 +75,8 @@ export const enum TaskDefinitionType { //
     // #### LEGATO ####
     LegatoBuild = "Legato Build",
     LegatoInstall = "Legato Install",
-    LegatoTm = "Legato TM"
+    LegatoTm = "Legato TM",
+
+    // #### LEAF ####
+    Tests = "Unit tests task"
 }
