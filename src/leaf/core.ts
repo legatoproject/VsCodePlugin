@@ -2,7 +2,7 @@
 
 import * as fs from "fs-extra";
 import * as vscode from "vscode";
-import { LeafBridgeCommands, LeafBridgeElement } from './bridge';
+import { LeafBridgeCommands, LeafBridgeElement, PROFILE_OUT_OF_SYNC_ERROR } from './bridge';
 import { LeafIOManager, ExecKind } from './ioManager';
 import { ACTION_LABELS } from '../commons/uiUtils';
 import { executeInShell, EnvVars, debounce, removeDuplicates } from '../commons/utils';
@@ -32,7 +32,8 @@ export enum LeafEvent { // Events with theirs parameters
   EnvVarsChanged = "leafEnvVarsChanged", // oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined
   PackagesChanged = "leafPackagesChanged", // oldPackages: AllPackages | undefined, newPackages: AllPackages | undefined
   WorkspaceInfosChanged = "leafWorkspaceInfoChanged", // oldWSInfo: LeafBridgeElement | undefined, new WSInfo: LeafBridgeElement | undefined
-  onInLeafWorkspaceChange = "onInLeafWorkspaceChange" // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
+  onInLeafWorkspaceChange = "onInLeafWorkspaceChange", // oldIsLeafWorkspace: boolean, newIsLeafWorkspace: boolean
+  onProfileOutOfSync = "onProfileOutOfSync" // oldIsProfileOutOfSync: boolean, newIsProfileOutOfSync: boolean
 }
 
 export const LEAF_TASKS = {
@@ -62,6 +63,9 @@ export class LeafManager extends AbstractManager<LeafEvent> {
 
   // leaf-data folder content watcher
   private leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
+
+  // Error state
+  private _outOfSync: boolean = true;
 
   /**
    * Check leaf installation, ask user to install it then check again
@@ -139,6 +143,25 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     // Trig first model refreshing
     this.refreshInfosFromBridge();
     this.refreshPackagesFromBridge();
+  }
+
+  /**
+   * Public getter to know if we are in 'profile out of sync' state where envvars cannot be computed by leaf
+   */
+  public isOutOfSync(): boolean {
+    return this._outOfSync;
+  }
+
+  /**
+   * Private setter that emit an event if the value change
+   * @param newValue the new value to set
+   */
+  private setOutOfSync(newValue: boolean) {
+    let oldValue = this._outOfSync;
+    this._outOfSync = newValue;
+    if (oldValue !== newValue) {
+      this.emit(LeafEvent.onProfileOutOfSync, oldValue, newValue);
+    }
   }
 
   /**
@@ -295,6 +318,22 @@ export class LeafManager extends AbstractManager<LeafEvent> {
   }
 
   /**
+   * Catch out of sync error, update outofsync state and emit event if necessary
+   */
+  private async requestEnvVars(): Promise<EnvVars | undefined> {
+    try {
+      let envars = await this.ioManager.sendToBridge(LeafBridgeCommands.ResolveVar);
+      this.setOutOfSync(false);
+      return envars;
+    } catch (error) {
+      if (error === PROFILE_OUT_OF_SYNC_ERROR) {
+        this.setOutOfSync(true);
+      }
+      return undefined;
+    }
+  }
+
+  /**
    * Called when something change in leaf files
    * Check workspace change and emit event if necessary
    */
@@ -308,7 +347,7 @@ export class LeafManager extends AbstractManager<LeafEvent> {
     this.leafEnvVar = this.compareAndTrigEvent(
       LeafEvent.EnvVarsChanged,
       this.leafEnvVar,
-      this.ioManager.sendToBridge(LeafBridgeCommands.ResolveVar));
+      this.requestEnvVars());
     this.leafRemotes = this.compareAndTrigEvent(
       LeafEvent.RemotesChanged,
       this.leafRemotes,
@@ -613,6 +652,14 @@ export class LeafManager extends AbstractManager<LeafEvent> {
       ExecKind.OutputChannel,
       `Remove[${packIds.join(' ')}]from profile ${profileName} `,
       `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`);
+  }
+
+  /**
+   * Synchronise current profile as a task
+   * @returns the corresponding promise
+   */
+  public async syncCurrentProfile(): Promise<void> {
+    return this.ioManager.executeProcess(ExecKind.Task, "Sync current profile", 'leaf', 'profile', 'sync');
   }
 
   /**

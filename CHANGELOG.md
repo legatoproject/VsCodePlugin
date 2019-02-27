@@ -5,6 +5,7 @@
 - Check minimum leaf version (1.6)
 - Automatically import Legato snippets from leaf packages
 - Add welcome page
+- Add profile sync informatin in status bar + fix action
 
 ## 0.4.0
 - New build task to trigger build+install in one step
