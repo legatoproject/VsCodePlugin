@@ -8,6 +8,10 @@ leaf-data
 *.vsix
 output/
 
+# VSCode
+/.vscode/*
+!/.vscode/settings.json
+
 # Python support
 /venv
 *.pyc
