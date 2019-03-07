@@ -11,7 +11,7 @@ import { Command } from '../commons/identifiers';
 import { LEAF_FILES, getWorkspaceDirectory } from '../commons/files';
 import { VersionManager } from "../commons/version";
 
-const LEAF_MIN_VERSION = '1.6';
+const LEAF_MIN_VERSION = '1.7';
 
 export const enum LeafEnvScope {
   Package = "package",

@@ -87,7 +87,7 @@ This extension updates the following default settings for a better integration o
 
 ## Requirements
 
-This extension requires the `leaf` tool to be installed (1.6 or higher)
+This extension requires the `leaf` tool to be installed (1.7 or higher)
 
 > To get `leaf` tool installed, just execute the following commands:
 > - `wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb`

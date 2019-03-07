@@ -2,7 +2,7 @@
 
 ## 0.5.0
 - New settings to launch device shell/logs either in integrated or external terminal
-- Check minimum leaf version (1.6)
+- Check minimum leaf version (1.7)
 - Automatically import Legato snippets from leaf packages
 - Add welcome page
 - Add profile sync informatin in status bar + fix action
