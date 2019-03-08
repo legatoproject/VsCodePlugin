@@ -41,6 +41,11 @@ export class LegatoLanguageManager extends AbstractManager<LegatoLanguageEvent> 
         this.stopAndStartLegatoLanguageServer(newIsLegatoWorkspace);
     }
 
+    /**
+     * 
+     * @param start 
+     * @event LegatoLanguageEvent.LegatoSystemViewUpdated when the language server notifies on [[LegatoLanguageNotification.LegatoSystemViewUpdated]], this event is raised
+     */
     private async stopAndStartLegatoLanguageServer(start?: boolean) {
         if (!start) {
             start = (await this.legatoManager.getLegatoRoot()) !== undefined;

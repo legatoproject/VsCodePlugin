@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { DocumentSymbol, Range, SymbolKind } from "vscode-languageclient";
 import { Command, Context, TaskDefinitionType, View } from "../commons/identifiers";
 import { ProcessLauncherOptions, TaskProcessLauncher } from '../commons/process';
-import { TreeDataProvider2, TreeItem2 } from "../commons/uiUtils";
+import { TreeDataProvider2, TreeItem2, ACTION_LABELS } from "../commons/uiUtils";
 import { LeafManager } from '../leaf/core';
 import { LegatoEvent, LegatoManager, LEGATO_ENV } from "./core";
 import { LegatoLanguageEvent, LegatoLanguageManager } from "./language";
@@ -66,7 +66,6 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 				console.log(`LEGATO_DEF_FILE changed from ${_oldActiveDeFile} to ${newActiveDeFile.toString()}`);
 				this.symbols = await this.legatoLanguageManager.requestLegatoActiveDefFileOutline(newActiveDeFile);
 				if (this.symbols) {
-					console.log(JSON.stringify(this.symbols));
 					this.refresh();
 				}
 			} else {
@@ -84,9 +83,13 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		}
 	}
 
+	/**
+	 * On [[LegatoLanguageEvent.OnLegatoSystemViewUpdated]] event, the logical system view is updated
+	 * @param data refreshed symbols expected to fit le_DefinitionObject
+	 */
 	private async onLogicalViewRefresh(data: any) {
-		// as the data received from the language server does not with DocumentSymbol, a 'le_GetLogicalView' request is sent to reresh the treeview
-		this.onLegatoDefFileChange(undefined, await this.legatoManager.getActiveDefFile());
+		this.symbols = data;
+		this.refresh();
 	}
 
 	private async getCwd(): Promise<string> {
@@ -142,13 +145,13 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			this.legatoTaskProcessLauncher.executeInShell("mkedit", createSystemCmd, this.leafManager.getVsCodeLeafWorkspaceFolder().uri.fsPath);
 		}
 	}
-	private async renameSystem(node: DocumentSymbolTreeItem) {
+	private async renameSystem(sdef: DocumentSymbolTreeItem) {
 		let newSystem = await vscode.window.showInputBox({
 			prompt: "Please enter a new name for your system",
 			placeHolder: "newSystemName"
 		});
 		if (newSystem) {
-			let sdefUri = vscode.Uri.parse(node.symbol.location.uri);
+			let sdefUri = vscode.Uri.parse(sdef.symbol.location.uri);
 			// rename the sdef file into the same directory
 			let renameSystemCmd = `mkedit rename system ${sdefUri.fsPath} ${path.join(path.dirname(sdefUri.fsPath), newSystem)}`;
 			this.legatoTaskProcessLauncher.executeInShell("mkedit", renameSystemCmd, await this.getCwd());
@@ -172,20 +175,26 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	/***
 	 * Invoke mkedit to rename the current application
 	 */
-	private async renameApplication(node: DocumentSymbolTreeItem) {
+	private async renameApplication(app: DocumentSymbolTreeItem) {
 		let newApp = await vscode.window.showInputBox({
 			prompt: "Please enter a new name for your application",
 			placeHolder: "newApp"
 		});
 		if (newApp) {
-			let renameAppCmd = `mkedit rename app ${node.label} ${newApp}`;
+			let renameAppCmd = `mkedit rename app ${app.label} ${newApp}`;
 			this.legatoTaskProcessLauncher.executeInShell("mkedit", renameAppCmd, await this.getCwd());
 		}
 	}
-	private async removeApplication(node: DocumentSymbolTreeItem) {
-		if (node) {
-			let removeAppCmd = `mkedit remove app ${node.label}`;
-			this.legatoTaskProcessLauncher.executeInShell("mkedit", removeAppCmd, await this.getCwd());
+	private async removeApplication(app: DocumentSymbolTreeItem) {
+		if (app) {
+			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+				`Do you really want to remove the "${app.label}" application?`,
+				ACTION_LABELS.CANCEL,
+				ACTION_LABELS.OK);
+			if (confirmed) {
+				let removeAppCmd = `mkedit remove app ${app.label}`;
+				this.legatoTaskProcessLauncher.executeInShell("mkedit", removeAppCmd, await this.getCwd());
+			}
 		}
 	}
 
@@ -212,19 +221,19 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			this.legatoTaskProcessLauncher.executeInShell("mkedit", createAppCmd, await this.getCwd());
 		}
 	}
-	private async renameComponent(node: DocumentSymbolTreeItem) {
+	private async renameComponent(cdef: DocumentSymbolTreeItem) {
 		let newApp = await vscode.window.showInputBox({
 			prompt: "Please enter a new name for your component",
 			placeHolder: "newComponent"
 		});
 		if (newApp) {
-			let renameComponentCmd = `mkedit rename component ${node.label} ${newApp}`;
+			let renameComponentCmd = `mkedit rename component ${cdef.label} ${newApp}`;
 			this.legatoTaskProcessLauncher.executeInShell("mkedit", renameComponentCmd, await this.getCwd());
 		}
 	}
-	private async removeComponent(node: DocumentSymbolTreeItem) {
-		if (node) {
-			let removeComponentCmd = `mkedit remove component ${node.label}`;
+	private async removeComponent(cdef: DocumentSymbolTreeItem) {
+		if (cdef) {
+			let removeComponentCmd = `mkedit remove component ${cdef.label}`;
 			this.legatoTaskProcessLauncher.executeInShell("mkedit", removeComponentCmd, await this.getCwd());
 		}
 	}
