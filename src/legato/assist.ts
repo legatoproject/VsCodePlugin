@@ -40,20 +40,13 @@ export class LegatoUiManager extends CommandRegister {
     this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarChanged, this);
 
     // Tasks definition
-    // Delete this line when this issue will be fixed: https://github.com/Microsoft/vscode/issues/68486
-    let isDisposed: boolean = false;
-    // Uncomment when this issue will be fixed: https://github.com/Microsoft/vscode/issues/68486
-    /*let legatoTaskProviderSub =*/ vscode.tasks.registerTaskProvider(
+    let legatoTaskProviderSub = vscode.tasks.registerTaskProvider(
       '', // type is not used in impl of registerTaskProvider
       {
-        // Temporary fix for issue: https://github.com/Microsoft/vscode/issues/68486
-        provideTasks: () => isDisposed ? [] : this.getLegatoTasks(),
+        provideTasks: () => this.getLegatoTasks(),
         resolveTask: (_task: vscode.Task) => undefined
       });
-    // Delete this line when this issue will be fixed: https://github.com/Microsoft/vscode/issues/68486
-    this.onDispose(() => isDisposed = true); // Temporary fix for issue: https://github.com/Microsoft/vscode/issues/68486
-    // Uncomment when this issue will be fixed: https://github.com/Microsoft/vscode/issues/68486
-    // this.toDispose(legatoTaskProviderSub);
+    this.toDispose(legatoTaskProviderSub);
 
     // Create command
     this.createCommand(Command.LegatoBuildPickDefFile, this.onPickDefFileCommand);
@@ -97,7 +90,7 @@ export class LegatoUiManager extends CommandRegister {
   private onEnvVarChanged(oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined): Promise<void> {
     let oldDefFile = oldEnvVar ? oldEnvVar[LEGATO_ENV.LEGATO_DEF_FILE] : undefined;
     let newDefFile = newEnvVar ? newEnvVar[LEGATO_ENV.LEGATO_DEF_FILE] : undefined;
-    if (oldDefFile != newDefFile) {
+    if (oldDefFile !== newDefFile) {
       let uri = newDefFile ? vscode.Uri.file(newDefFile) : undefined;
       return this.setCurrentDefFile(uri);
     }
