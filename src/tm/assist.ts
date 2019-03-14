@@ -42,7 +42,7 @@ export class TargetUiManager extends CommandRegister {
     // Status bar
     this.targetStatusbar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 5);
     this.toDispose(this.targetStatusbar); // Dispose status bar on deactivate
-    this.targetStatusbar.tooltip = "Legato Device";
+    this.targetStatusbar.tooltip = "Legato Device commands";
     this.targetStatusbar.show();
 
     // Commands declaration to be used as QuickPickItem

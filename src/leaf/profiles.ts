@@ -137,8 +137,10 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     if (this.leafStatusbar) {
       let state = newProfileName && !(await this.leafManager.isOutOfSync());
       let stateIcon = state ? OK_ICON : WARNING_ICON;
+      let stateTooltip = state ? "(sync)" : "(not sync)";
       let profile = newProfileName || 'No profile';
       this.leafStatusbar.text = `${stateIcon} ${profile}`;
+      this.leafStatusbar.tooltip = `Current Leaf profile ${stateTooltip}`;
     }
   }
 
