@@ -1,10 +1,11 @@
 'use strict';
 
+import * as vscode from 'vscode';
 import { workspace } from "vscode";
 import { spawn, ChildProcess } from 'child_process';
-import { join } from 'path';
-import { DelayedPromise } from '../commons/promise';
-import { newIdGenerator } from '../commons/utils';
+import { DelayedPromise } from '../../commons/promise';
+import { newIdGenerator, deepClone, LeafBridgeElement } from '../../commons/utils';
+import { ExtensionPaths, ResourcesManager } from '../../commons/resources';
 
 /**
  * Available leaf bridge commands
@@ -19,13 +20,6 @@ export const enum LeafBridgeCommands {
 }
 
 /**
- * Interface for result returned by leaf bridge
- */
-export interface LeafBridgeElement {
-    [key: string]: any;
-}
-
-/**
  * This custom error is thrown when we are in the 'profile out of sync' state
  * where envvars cannot be computed by leaf
  */
@@ -34,20 +28,37 @@ export const PROFILE_OUT_OF_SYNC_ERROR = new Error("Profile out of sync");
 /**
  * LeafBridge read and write to the IDE dedicated python leaf's extension
  */
-export class LeafBridge {
+export class LeafBridge implements vscode.Disposable {
 
-    private readonly process: ChildProcess; // Python leaf extension process
-    private readonly idGenerator: IterableIterator<number> = newIdGenerator(); // request id generator
-    private stdoutBuffer: string = ""; // Buffer for too loog response
-    private pendingRequests: { [key: string]: DelayedPromise<LeafBridgeElement | undefined> } = {}; // pending promises callbacks
+    /**
+     * Python leaf extension process
+     */
+    private readonly process: ChildProcess;
 
-    public constructor() {
+    /**
+     * Request id generator
+     */
+    private readonly idGenerator: IterableIterator<number> = newIdGenerator();
+
+    /**
+     * Buffer for too long response
+     */
+    private stdoutBuffer: string = "";
+
+    /**
+     * Pending promises callbacks
+     */
+    private pendingRequests: { [key: number]: DelayedPromise<LeafBridgeElement | undefined> } = {};
+
+    /**
+     * Need the resource manager to get the bridge path
+     */
+    public constructor(resources: ResourcesManager) {
         // Launch bridge
-        let pathToExec = join(__filename, '..', '..', '..', 'python-src', 'leaf-bridge.py');
+        let pathToExec = resources.getExtensionPath(ExtensionPaths.bridge);
 
         // Copy system env vars
-        let env: NodeJS.ProcessEnv = {};
-        Object.keys(process.env).forEach(key => env[key] = process.env[key]);
+        let env: NodeJS.ProcessEnv = deepClone(process.env);
 
         // Add Leaf en var
         env.LEAF_NON_INTERACTIVE = "1";
@@ -120,7 +131,7 @@ export class LeafBridge {
                     } else {
                         pendingRequest.resolve(undefined);
                     }
-                    console.log(`[Leaf Bridge] Error received for id '${anyResponse.id}': '${errorType}/${anyResponse.error.message}'`);
+                    console.log(`[Leaf Bridge] Error received for id '${anyResponse.id}': '${errorType} -> ${anyResponse.error.message}'`);
                 } else {
                     pendingRequest.resolve(undefined);
                     console.log(`[Leaf Bridge] No 'result' or 'error' child node in parsed json '${line.substring(0, 10)}...'`);

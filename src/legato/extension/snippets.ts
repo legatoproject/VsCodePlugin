@@ -1,12 +1,10 @@
 'use strict';
 
 import * as fs from "fs-extra";
-import { LeafManager, LeafEvent } from "../leaf/core";
-import { EnvVars } from "../commons/utils";
-import { LEGATO_ENV } from "./core";
-import { DisposableBag } from "../commons/manager";
-import { getWorkspaceDirectory, WorkspaceResource } from "../commons/files";
+import { DisposableBag } from "../../commons/manager";
+import { getWorkspaceFolderPath, WorkspaceResource } from "../../commons/files";
 import { join } from "path";
+import { LegatoManager } from "../api/core";
 
 // Consntants list
 const SNIPPETS_PATHS_SEPARATOR = ':';
@@ -19,53 +17,36 @@ const SNIPPETS_PREFIX = 'legato-';
  */
 export class SnippetsManager extends DisposableBag {
     // Destination folder for .code-snippets files
-    private readonly destination: string = getWorkspaceDirectory(WorkspaceResource.VsCode);
+    private readonly destination: string = getWorkspaceFolderPath(WorkspaceResource.VsCode);
 
     /**
      * Listen to envars changes
      * Populate/Clear .vscode/Snippets when necessary
      */
-    constructor(private readonly leafManager: LeafManager) {
+    constructor(legatoManager: LegatoManager) {
         super();
-        leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChanged, this);
-        this.setInitialState();
-    }
-
-    /**
-     * Populate .vscode/Snippets if available
-     */
-    private async setInitialState() {
-        try {
-            await this.onEnvVarsChanged(undefined, await this.leafManager.getEnvVars());
-        } catch (reason) {
-            // Catch and log because this method is never awaited
-            console.error(reason);
-        }
+        legatoManager.snippets.addListener(this.onNewSnippets, this);
     }
 
     /**
      * Check LEGATO_SNIPPETS envar change
      * Populate/Clear .vscode/Snippets if LEGATO_SNIPPETS is available
      */
-    private async onEnvVarsChanged(oldEnvVar: EnvVars | undefined, newEnvVar: EnvVars | undefined): Promise<void> {
-        let oldLegatoSnippets = oldEnvVar ? oldEnvVar[LEGATO_ENV.LEGATO_SNIPPETS] : undefined;
-        let newLegatoSnippets = newEnvVar ? newEnvVar[LEGATO_ENV.LEGATO_SNIPPETS] : undefined;
-        if (oldLegatoSnippets !== newLegatoSnippets) {
-            await this.deleteExistingSnippets();
-            if (newLegatoSnippets) { // Get legato snippet folders list
-                let legatoSnippetsFolders = newLegatoSnippets
-                    .split(SNIPPETS_PATHS_SEPARATOR) // Split on ':'
-                    .filter(path => path.length > 0); // Exclude empty string
+    private async onNewSnippets(newLegatoSnippets: string | undefined): Promise<void> {
+        await this.deleteExistingSnippets();
+        if (newLegatoSnippets) { // Get legato snippet folders list
+            let legatoSnippetsFolders = newLegatoSnippets
+                .split(SNIPPETS_PATHS_SEPARATOR) // Split on ':'
+                .filter(path => path.length > 0); // Exclude empty string
 
-                // If there is something to copy
-                if (legatoSnippetsFolders.length > 0) {
-                    // Ensure destination is created
-                    await fs.ensureDir(this.destination);
-                }
-
-                // Copy all snippet folders in parralel
-                await Promise.all(legatoSnippetsFolders.map(this.copySnippetsFrom, this));
+            // If there is something to copy
+            if (legatoSnippetsFolders.length > 0) {
+                // Ensure destination is created
+                await fs.ensureDir(this.destination);
             }
+
+            // Copy all snippet folders in parralel
+            await Promise.all(legatoSnippetsFolders.map(this.copySnippetsFrom, this));
         }
     }
 

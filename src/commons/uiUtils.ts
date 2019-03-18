@@ -3,7 +3,9 @@
 import * as vscode from 'vscode';
 import { CommandRegister } from './manager';
 import { View, Command, Context } from './identifiers';
-import { extPromise, ExtensionPaths } from '../extension';
+import { extPromise } from '../extension';
+import { ExtensionPaths } from './resources';
+import { LeafBridgeElement } from './utils';
 
 /**
  * Dialog labels
@@ -73,7 +75,7 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 
 	protected async setIcon(iconFileName?: string) {
 		if (iconFileName) {
-			this.iconPath = (await extPromise).getExtensionPath(ExtensionPaths.Resources, iconFileName);
+			this.iconPath = (await extPromise).resourcesManager.getExtensionPath(ExtensionPaths.Resources, iconFileName);
 		} else {
 			this.iconPath = undefined;
 		}
@@ -199,7 +201,7 @@ export async function showMultiStepQuickPick<T extends QuickPickItem2>(
 	items: T[] | Promise<T[]>
 ): Promise<T | undefined> {
 
-	let box: vscode.QuickPick<T> = vscode.window.createQuickPick();
+	let box = vscode.window.createQuickPick<T>();
 	box.title = title;
 	box.step = step;
 	box.totalSteps = totalSteps;
@@ -225,7 +227,7 @@ export async function showMultiStepQuickPick<T extends QuickPickItem2>(
  * Convert model object to a UiItem array
  */
 export function toItems<T extends IUiItems>(
-	model: any,
+	model: LeafBridgeElement,
 	ItemClass: new (id: string, properties: any | undefined) => T,
 	parent?: TreeItem2
 ): T[] {

@@ -1,12 +1,17 @@
 'use strict';
 
-import { TaskDefinitionType } from '../commons/identifiers';
-import { EnvVars } from '../commons/utils';
-import { DisposableBag } from '../commons/manager';
-import { PoliteSequencer, Scheduler } from '../commons/scheduler';
-import { LeafBridge, LeafBridgeElement, LeafBridgeCommands } from './bridge';
-import { ProcessLauncher, OutputChannelProcessLauncher, TaskProcessLauncher, ProcessLauncherOptions } from '../commons/process';
+import { TaskDefinitionType } from '../../commons/identifiers';
+import { EnvVars } from '../../commons/utils';
+import { DisposableBag } from '../../commons/manager';
+import { PoliteSequencer, Scheduler } from '../../commons/scheduler';
+import { ProcessLauncher, OutputChannelProcessLauncher, TaskProcessLauncher, ProcessLauncherOptions } from '../../commons/process';
+import { getWorkspaceFolderPath } from '../../commons/files';
 
+/**
+ * Process can be launch in these modes
+ * Task mode is used when a user interaction may be needed
+ * OutputChannel is used for read_only processes
+ */
 export const enum ExecKind {
     Task,
     OutputChannel
@@ -15,13 +20,10 @@ export const enum ExecKind {
 /**
  * Take care of IO operation from/to Leaf
  */
-export class LeafIOManager extends DisposableBag {
+export class LeafProcessLauncher extends DisposableBag {
 
     // Use sequencer to ensure only one command is send to leaf at a time
     private readonly sequencer: Scheduler;
-
-    // Leaf Bridge
-    private readonly bridge: LeafBridge;
 
     // Leaf output channel process launcher
     private readonly outputChannelProcessLauncher: OutputChannelProcessLauncher;
@@ -30,20 +32,19 @@ export class LeafIOManager extends DisposableBag {
     private readonly taskProcessLauncher: TaskProcessLauncher;
 
     /**
-     * @param cwd the path where to execute the processes
+     * Create sequencer and launchers
      */
-    public constructor(private readonly cwd: string) {
+    public constructor() {
         super();
         this.sequencer = new PoliteSequencer('Leaf');
-        this.bridge = this.toDispose(new LeafBridge());
         let options: ProcessLauncherOptions = {
-            defaultCwd: cwd,
+            defaultCwd: getWorkspaceFolderPath(),
             scheduler: this.sequencer,
             envProvider: this.getEnv,
             thisArg: this
         };
         this.outputChannelProcessLauncher = this.toDispose(new OutputChannelProcessLauncher('Leaf', options));
-        this.taskProcessLauncher = this.toDispose(new TaskProcessLauncher(TaskDefinitionType.Leaf, options));
+        this.taskProcessLauncher = new TaskProcessLauncher(TaskDefinitionType.Leaf, options);
     }
 
     /**
@@ -51,7 +52,7 @@ export class LeafIOManager extends DisposableBag {
      */
     private getEnv(): Promise<EnvVars> {
         let env = process.env as EnvVars;
-        env["LEAF_WORKSPACE"] = this.cwd;
+        env["LEAF_WORKSPACE"] = getWorkspaceFolderPath();
         return Promise.resolve(env);
     }
 
@@ -81,13 +82,5 @@ export class LeafIOManager extends DisposableBag {
      */
     public executeProcess(kind: ExecKind, name: string, ...cmdArray: string[]): Promise<void> {
         return this.getLauncher(kind).executeProcess(name, cmdArray);
-    }
-
-    /**
-     * Send a command to the Leaf Bridge
-     * @return a promise that is resolved when the Bridge give an answer
-     */
-    public sendToBridge(cmd: LeafBridgeCommands): Promise<LeafBridgeElement | undefined> {
-        return this.bridge.send(cmd);
     }
 }

@@ -305,7 +305,7 @@
                 "category": "Legato/Device"
             },
             {
-                "command": "cmd.legato.tm.ip",
+                "command": "cmd.legato.tm.set.ip",
                 "title": "Set IP address",
                 "category": "Legato/Device"
             },

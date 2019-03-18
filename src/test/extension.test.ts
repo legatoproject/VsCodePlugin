@@ -6,11 +6,12 @@
 // The module 'assert' provides assertion methods from node
 import * as assert from 'assert';
 import { Task, TaskExecution, TaskProcessEndEvent, tasks, Uri, workspace } from 'vscode';
-import { LeafManager, LEAF_TASKS } from '../leaf/core';
-import { LegatoManager, LEGATO_MKTOOLS } from '../legato/core';
+import { LeafManager, LEAF_TASKS } from '../leaf/api/core';
+import { LegatoManager } from '../legato/api/core';
 import { ITestCallbackContext } from 'mocha';
-import { listDefinitionFiles } from '../legato/files';
+import { listDefinitionFiles } from '../legato/api/files';
 import { extPromise } from '../extension';
+import { LegatoMkTools } from '../legato/api/mkBuild';
 
 const LEAF_TIMEOUT: number = 10000;
 // You can import and use all API from the 'vscode' module
@@ -22,23 +23,21 @@ suite("Leaf Tests", async function () {
     let leafManager: LeafManager = (await extPromise).leafManager;
 
     // Defines a Mocha unit test
-    test(`Check Leaf installation`, function () {
-        console.log(`WORKSPACE: ${process.env.CODE_TESTS_WORKSPACE}`);
-        leafManager.getLeafPath().then((path: string | undefined) => assert.ok(path, 'Leaf installation checked successfully')).catch((reason: any) =>
-            assert.fail(`Leaf is not installed`));
-    });
-
     test(`List profiles`, function (done) {
         this.timeout(LEAF_TIMEOUT);
-        leafManager.getProfiles().then(profiles => {
-            profiles = profiles ? Object.keys(profiles) : undefined;
-            console.log(`Found profiles: ${profiles}`);
-            assert.notEqual(profiles, undefined, `No profile found`);
+        leafManager.profiles.get().then(profiles => {
+            let profilesNames = Object.keys(profiles);
+            console.log(`Found profiles: ${profilesNames}`);
+            assert.notEqual(profilesNames.length, 0, `No profile found`);
             done();
         }).catch((reason) => {
             assert.fail(`Failed to get profiles - reason: ${reason}`);
         });
     });
+});
+
+suite("Legato Tests", async function () {
+    let legatoManager: LegatoManager = (await extPromise).legatoManager;
 
     const EXPECTED_IP_ADRESS = "10.0.0.1";
     test(`Set DEST_IP`, function (done) {
@@ -56,14 +55,13 @@ suite("Leaf Tests", async function () {
             }
         });
         this.slow(2000);
-        leafManager.setEnvValue("DEST_IP", EXPECTED_IP_ADRESS);
+        legatoManager.setDestIp(EXPECTED_IP_ADRESS);
     });
-
 
     test(`Get DEST_IP value`, function (done) {
         this.timeout(30000);
         this.slow(2000);
-        leafManager.getEnvValue("DEST_IP").then((ip: string | undefined) => {
+        legatoManager.destIp.get().then((ip: string | undefined) => {
             if (ip) {
                 console.log("DEST_IP=" + ip);
                 assert.equal(ip, EXPECTED_IP_ADRESS);
@@ -73,10 +71,6 @@ suite("Leaf Tests", async function () {
             console.log(`Failed to get IP - reason: ${reason}`);
         });
     });
-});
-
-suite("Legato Tests", async function () {
-    let legatoManager: LegatoManager = (await extPromise).legatoManager;
 
     test(`List def files`, function (done) {
         listDefinitionFiles().then((files) => {
@@ -92,7 +86,7 @@ suite("Legato Tests", async function () {
         buildActiveDefFile(this, (uri: Uri) => {
             return (uri !== undefined) ?
                 require('path').basename(uri.fsPath) === "test.sdef" : undefined;
-        }, LEGATO_MKTOOLS.mksys, done);
+        }, LegatoMkTools.mksys, done);
 
     });
 
@@ -101,7 +95,7 @@ suite("Legato Tests", async function () {
             if (uri) {
                 return require('path').basename(uri.fsPath) === "helloWorld.adef";
             }
-        }, LEGATO_MKTOOLS.mkapp, done);
+        }, LegatoMkTools.mkapp, done);
     });
 
     function buildActiveDefFile(testCallback: ITestCallbackContext, defFileFilter: any, expectedMktool: string, done: MochaDone) {

@@ -19,9 +19,19 @@ const VERSION_SEPARATOR: string = '.';
  * Manage upgrades, downgrades and give previous and current versions
  */
 export class VersionManager {
-    // Properties
+    /**
+     * This value is loaded from Memento at startup
+     */
     public readonly previousVersion: string | undefined;
+
+    /**
+     * The current version found in package.json
+     */
     public readonly currentVersion: string;
+
+    /**
+     * The change kind from previousVersion to currentVersion
+     */
     public readonly changeKind: VersionChangeKind;
 
     /**
@@ -35,6 +45,10 @@ export class VersionManager {
         this.changeKind = this.getChangeKind();
     }
 
+    /**
+     * Save current version in memento
+     * The execution of this method have no impact on this class properties
+     */
     public saveCurrentVersion() {
         Mementos.Common.PreviousVersion.update(this.context, this.currentVersion);
     }
@@ -102,6 +116,9 @@ export class VersionManager {
         throw new Error();
     }
 
+    /**
+     * Split by dot then convert each segment to number if possible
+     */
     private versionStringToTuple(version: string): (string | number)[] {
         return version
             .split(VERSION_SEPARATOR)

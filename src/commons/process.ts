@@ -1,15 +1,15 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { TaskDefinitionType } from '../commons/identifiers';
-import { EnvVars } from '../commons/utils';
+import { TaskDefinitionType } from './identifiers';
+import { EnvVars } from './utils';
 import { spawn, SpawnOptions, ChildProcess } from 'child_process';
-import { Scheduler, Immediate, Sequencer } from '../commons/scheduler';
-import { WaitingPromise } from '../commons/promise';
-import { DisposableBag } from './manager';
+import { Scheduler, Immediate, Sequencer } from './scheduler';
+import { WaitingPromise } from './promise';
 
 /**
  * Return the Error corresponding to the given return code
+ * Exported for test purpose
  * @param returnCode the return code of the process
  * @returns the corresponding error
  */
@@ -17,6 +17,10 @@ export function createReturnCodeError(returnCode: number) {
     return new Error(`Return code: ${returnCode}`);
 }
 
+/**
+ * Process Launcher options
+ * Used by TaskProcessLauncher and OutputChannelProcessLauncher
+ */
 export interface ProcessLauncherOptions {
     /**
      * the path where to execute the processes.
@@ -32,7 +36,7 @@ export interface ProcessLauncherOptions {
     /**
      * A provider than can dynamically give the current env to use when executing a process
      */
-    readonly envProvider: () => Promise<EnvVars | undefined>;
+    readonly envProvider: () => Promise<EnvVars>;
 
     /**
      * The `this`-argument which will be used when calling the env vars provider.
@@ -44,17 +48,21 @@ export interface ProcessLauncherOptions {
 /**
  * Abstract parent of TaskProcessLauncher and OutputChannelProcessLauncher
  */
-export abstract class ProcessLauncher extends DisposableBag {
+export abstract class ProcessLauncher {
 
-    private readonly options: ProcessLauncherOptions;
+    /**
+     * The scheduler of this launcher
+     */
     private readonly scheduler: Scheduler;
 
     /**
+     * @param name launcher name used for logs and ui
      * @param options an instance of [ProcessLauncherOptions](#ProcessLauncherOptions)
      */
-    public constructor(public readonly name: string, options: ProcessLauncherOptions) {
-        super();
-        this.options = options;
+    public constructor(
+        public readonly name: string,
+        private readonly options: ProcessLauncherOptions
+    ) {
         this.scheduler = options.scheduler || this.getDefaultScheduler();
     }
 
@@ -69,11 +77,7 @@ export abstract class ProcessLauncher extends DisposableBag {
      * @return the env vars to use
      */
     protected async getEnv(): Promise<EnvVars> {
-        let env = await this.options.envProvider.apply(this.options.thisArg);
-        if (!env) {
-            throw new Error("No env available, execution canceled");
-        }
-        return env;
+        return this.options.envProvider.apply(this.options.thisArg);
     }
 
     /**
@@ -113,13 +117,24 @@ export abstract class ProcessLauncher extends DisposableBag {
  * Will never be resolved or rejected if [execute](#execute) is never called
  */
 class TaskPromise extends WaitingPromise<void> {
+
+    /**
+     * Listener that listen the end of the task process
+     */
     private readonly taskListener: vscode.Disposable;
+
+    /**
+     * @param taskPromise the promise that resolve to a new task
+     */
     constructor(private readonly taskPromise: Promise<vscode.Task>) {
+        // Give the promise executor to the parent constructor (resolve task and execute it)
         super(async () => {
             let task = await this.taskPromise;
             console.log(`[TaskProcessLauncher] Start task: ${task.name}`);
             vscode.tasks.executeTask(task);
         });
+
+        // Listen the end of the task process
         this.taskListener = vscode.tasks.onDidEndTaskProcess(this.onDidEndTask, this);
     }
 
@@ -205,7 +220,10 @@ export class TaskProcessLauncher extends ProcessLauncher {
 /**
  * This class can launch a process as and show its output on a dedicated channel
  */
-export class OutputChannelProcessLauncher extends ProcessLauncher {
+export class OutputChannelProcessLauncher extends ProcessLauncher implements vscode.Disposable {
+    /**
+     * The output channel created by this launcher
+     */
     private channel: vscode.OutputChannel;
 
     /**
@@ -219,7 +237,7 @@ export class OutputChannelProcessLauncher extends ProcessLauncher {
     ) {
         super(name, options);
         console.log(`[OutputChannelProcessLauncher][${this.name}] Create channel`);
-        this.channel = this.toDispose(vscode.window.createOutputChannel(this.name));
+        this.channel = vscode.window.createOutputChannel(this.name);
     }
 
     /**
@@ -262,5 +280,12 @@ export class OutputChannelProcessLauncher extends ProcessLauncher {
                 }
             });
         });
+    }
+
+    /**
+     * Dispose the created channel
+     */
+    public dispose() {
+        this.channel.dispose();
     }
 }

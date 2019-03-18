@@ -2,10 +2,11 @@
 
 import * as vscode from 'vscode';
 import * as fs from 'fs-extra';
-import { View, Command } from '../commons/identifiers';
-import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../commons/uiUtils';
+import { View, Command } from '../../commons/identifiers';
+import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../../commons/uiUtils';
 import { RemoteQuickPickItem, RemoteTreeItem } from './uiComponents';
-import { LeafManager, LeafEvent } from './core';
+import { LeafManager } from '../api/core';
+import { LeafBridgeElement } from '../../commons/utils';
 
 
 /**
@@ -20,7 +21,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 */
 	constructor(private readonly leafManager: LeafManager) {
 		super(View.LeafRemotes);
-		this.leafManager.addListener(LeafEvent.RemotesChanged, this.refresh, this);
+		this.leafManager.remotes.addListener(this.refresh, this);
 		this.createCommand(Command.LeafRemotesAdd, this.addRemote);
 		this.createCommand(Command.LeafRemotesRemove, this.removeRemote);
 		this.createCommand(Command.LeafRemotesEnable, node => this.enableRemote(node));
@@ -45,7 +46,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Ask user for alias and url the add it
 	 */
 	private async addRemote(): Promise<void> {
-		let remotes = await this.leafManager.getRemotes();
+		let remotes = await this.leafManager.remotes.get();
 		let title = "Add new remote";
 		let step = 1;
 		let totalSteps = 2;
@@ -79,7 +80,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * - no spaces
 	 * - no already used profile name
 	 */
-	private validateAlias(remotes: any, value: string) {
+	private validateAlias(remotes: LeafBridgeElement, value: string) {
 		if (value in remotes) {
 			return 'This remote alias is already used';
 		}
@@ -128,7 +129,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Ask user to select a remote from existing ones
 	 */
 	private async askRemoteToUser(title: string): Promise<RemoteQuickPickItem | undefined> {
-		let remotes = await this.leafManager.getRemotes();
+		let remotes = await this.leafManager.remotes.get();
 		let items = toItems(remotes, RemoteQuickPickItem);
 		return showMultiStepQuickPick(title, undefined, undefined, "Please select the remote", items);
 	}
@@ -137,7 +138,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 * Return root elements in remotes tree view
 	 */
 	async getRootElements(): Promise<TreeItem2[]> {
-		let remotes = await this.leafManager.getRemotes();
+		let remotes = await this.leafManager.remotes.get();
 		return toItems(remotes, RemoteTreeItem);
 	}
 }

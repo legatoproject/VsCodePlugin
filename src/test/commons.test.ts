@@ -187,9 +187,10 @@ async function processLaunchers(this: ITestCallbackContext): Promise<any> {
         envProvider: () => Promise.resolve({ [envName]: envValue }),
         defaultCwd: defaultCwd
     };
+    let channel = new OutputChannelProcessLauncher('Unit tests output channel', options);
     let launchers: ProcessLauncher[] = [
         new TaskProcessLauncher(TaskDefinitionType.Tests, options),
-        new OutputChannelProcessLauncher('Unit tests output channel', options)
+        channel
     ];
 
     // List of promises launched in parralels
@@ -215,4 +216,7 @@ async function processLaunchers(this: ITestCallbackContext): Promise<any> {
         let processPromise = launcher.executeProcess('Test executeProcess - return code', ['bash', '-c', `exit ${customReturnCode}`]);
         await assert.rejects(processPromise, expectedError);
     }
+
+    // Dispose channel
+    channel.dispose();
 }

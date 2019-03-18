@@ -1,12 +1,12 @@
 'use strict';
 
-import { Command, View, Context } from '../commons/identifiers';
-import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../commons/uiUtils';
+import { Command, View, Context } from '../../commons/identifiers';
+import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../../commons/uiUtils';
 import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, AvailablePackagesContainerTreeItem, InstalledPackagesContainerTreeItem } from './uiComponents';
-import { LeafManager, LeafEvent } from './core';
+import { LeafManager } from '../api/core';
 import * as vscode from 'vscode';
-import { LeafBridgeElement } from './bridge';
-import { Mementos } from '../commons/memento';
+import { LeafBridgeElement } from '../../commons/utils';
+import { Mementos } from '../../commons/memento';
 
 /**
  * Packages view and commands
@@ -38,7 +38,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	) {
 		super(View.LeafPackages);
 		this.loadFilters();
-		this.leafManager.addListener(LeafEvent.PackagesChanged, this.refresh, this);
+		this.leafManager.packages.addListener(this.refresh, this);
 		this.createCommand(Command.LeafPackagesAddFilter, this.addFilter);
 		this.createCommand(Command.LeafPackagesRemoveFilter, this.removeFilter);
 		this.createCommand(Command.LeafPackagesAddToProfile, this.addToProfile);
@@ -98,16 +98,15 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private async addFilter() {
 		// Create quick pick
-		let box: vscode.QuickPick<TagQuickPickItem> = vscode.window.createQuickPick();
+		let box = vscode.window.createQuickPick<TagQuickPickItem>();
 		box.placeholder = "regex or '@tag'";
 
 		// Create tag quick pick items
-		let tags: { [key: string]: number } = await this.leafManager.getTags();
+		let tags: { [key: string]: number } = await this.leafManager.tags.get();
 		let tagItems = Object.keys(tags).map(tag => new TagQuickPickItem(tag, tags[tag]));
 
 		// Get packages
-		let availPacks = await this.leafManager.getAvailablePackages();
-		let instPacks = await this.leafManager.getInstalledPackages();
+		let allPacks = await this.leafManager.packages.get();
 
 		// Update items and title on value change
 		let boxValueChangedListener = async (value: string) => {
@@ -117,8 +116,8 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			} else if (value.length > 0) {
 				box.items = [];
 			}
-			let availCount = this.countMatchingPackages(availPacks, newFilter);
-			let instCount = this.countMatchingPackages(instPacks, newFilter);
+			let availCount = this.countMatchingPackages(allPacks.availablePackages, newFilter);
+			let instCount = this.countMatchingPackages(allPacks.installedPackages, newFilter);
 			box.title = `Add filter (regex or @tag): ${availCount} available${availCount > 1 ? 's' : ''} and ${instCount} installed`;
 		};
 		box.onDidChangeValue(boxValueChangedListener);
@@ -168,7 +167,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	/**
 	 * Remove filter from filter list
 	 */
-	private async removeFilter(item: UserFilter | undefined) {
+	private removeFilter(item: UserFilter | undefined) {
 		if (!item) {
 			// No selection, lo and exit
 			console.log("[LeafPackagesView] Remove filter command called without item");
@@ -176,7 +175,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		}
 		this.userFilters.splice(this.userFilters.indexOf(item), 1);
 		this.refresh();
-		this.saveUserFilters();
+		return this.saveUserFilters();
 	}
 
 	/**
@@ -197,7 +196,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		}
 
 		// Profile
-		let profiles = await this.leafManager.getProfiles();
+		let profiles = await this.leafManager.profiles.get();
 		let result = await this.askForProfile(title, selectedPackage, profiles);
 		if (!result) {
 			return; // User cancellation
@@ -225,9 +224,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private async askForPackage(title: string): Promise<PackageQuickPickItem | undefined> {
 		// Do not await. We want showMultiStepQuickPick to handle this long running operation while showing a busy box.
-		let itemsPromise = this.leafManager
-			.getMergedPackages()
-			.then(packs => toItems(packs, PackageQuickPickItem));
+		let itemsPromise = this.leafManager.mergedPackages.get().then(packs => toItems(packs, PackageQuickPickItem));
 		return showMultiStepQuickPick(title, 1, 2, "Please select the package to add", itemsPromise);
 	}
 
@@ -236,7 +233,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private async askForProfile(
 		title: string, node: PackageTreeItem | PackageQuickPickItem,
-		profiles: any | undefined
+		profiles: LeafBridgeElement
 	): Promise<ProfileQuickPickItem | undefined> {
 		let createProfileItem: ProfileQuickPickItem = {
 			id: "",
@@ -248,7 +245,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		};
 
 		// If no profiles exist, let return the "Create profile" item right now
-		if (!profiles || Object.keys(profiles).length === 0) {
+		if (Object.keys(profiles).length === 0) {
 			return createProfileItem;
 		}
 
@@ -347,13 +344,19 @@ class BuiltinFilter extends Filter {
 }
 
 /**
- * Parent of user filters
+ * Abstract parent of user filters
  */
 abstract class UserFilter extends Filter {
 	constructor(value: string) {
 		super(value, Context.LeafPackagesUserFilter);
 	}
 
+	/**
+	 * Abstract method to check if this filter match the given package
+	 * @param packId the id of the package to test
+	 * @param packProperties the properties of the package to test
+	 * @returns true if this filter match the package
+	 */
 	public abstract match(packId: string, packProperties: any): boolean;
 }
 
@@ -364,6 +367,10 @@ class RegexFilter extends UserFilter {
 	constructor(value: string) {
 		super(value);
 	}
+
+	/**
+	 * Try to match packid with regex value. If not, try to match description
+	 */
 	public match(packId: string, packProperties: any): boolean {
 		// It's a regex, lets look at the pack id
 		if (packId.search(this.value) > -1) {
@@ -386,6 +393,10 @@ class TagFilter extends UserFilter {
 	constructor(value: string) {
 		super(value);
 	}
+
+	/**
+	 * Match package if one of it's tags start with the filter value
+	 */
 	public match(_packId: string, packProperties: any): boolean {
 		return packProperties.info.tags.some((tag: string) => tag.startsWith(this.value.substring(1)));
 	}

@@ -1,13 +1,11 @@
 'use strict';
 
 import { Terminal, window } from "vscode";
-import { LeafManager, LeafEvent } from './core';
-import { Command } from '../commons/identifiers';
-import { ACTION_LABELS } from '../commons/uiUtils';
-import { CommandRegister } from '../commons/manager';
-import { EnvVars } from "../commons/utils";
-
-const LEAF_SHELL_LABEL = `Leaf shell`;
+import { LeafManager } from '../api/core';
+import { Command } from '../../commons/identifiers';
+import { ACTION_LABELS } from '../../commons/uiUtils';
+import { CommandRegister } from '../../commons/manager';
+import { EnvVars } from "../../commons/utils";
 
 /**
  * Leaf Terminal
@@ -27,27 +25,25 @@ export class LeafTerminalManager extends CommandRegister {
     super();
 
     // On profile change
-    this.leafManager.addListener(LeafEvent.CurrentProfileChanged, this.onEnvVarsOrCurrentProfileChanged, this);
+    this.leafManager.profileName.addListener(this.onEnvVarsOrCurrentProfileChanged, this);
 
     // On env change
-    this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsChange, this);
-    this.leafManager.addListener(LeafEvent.EnvVarsChanged, this.onEnvVarsOrCurrentProfileChanged, this);
+    this.leafManager.envVars
+      .addListener(this.onEnvVarsChange, this)
+      .addListener(this.onEnvVarsOrCurrentProfileChanged, this);
 
     // Also, let's add leaf commands
-    this.createCommand(Command.LeafTerminalOpenLeaf, this.showTerminal);
+    this.createCommand(Command.LeafTerminalOpenLeaf, this.showTerminal, this);
 
     // Listen to terminal closing (by user) and launch terminal
     this.toDispose(window.onDidCloseTerminal(this.onCloseTerminal, this));
-
-    // Set current profile
-    this.onEnvVarsOrCurrentProfileChanged();
   }
 
   /**
    * EnVars have been modified
    */
-  private async onEnvVarsChange(oldEnvVars: EnvVars | undefined, _newEnvVars: EnvVars | undefined) {
-    if (this.leafTerminal && oldEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
+  private async onEnvVarsChange(newEnvVars: EnvVars, oldEnvVars: EnvVars) {
+    if (this.leafTerminal && oldEnvVars && oldEnvVars !== newEnvVars && ACTION_LABELS.APPLY === await window.showWarningMessage(
       "Leaf environment has changed; Click to update the Leaf shell terminal.",
       ACTION_LABELS.CANCEL,
       ACTION_LABELS.APPLY)) {
@@ -64,18 +60,18 @@ export class LeafTerminalManager extends CommandRegister {
       return; // Already created
     }
 
-    let currentProfileName = await this.leafManager.getCurrentProfileName();
+    let currentProfileName = await this.leafManager.profileName.get();
     if (!currentProfileName) {
       return; // No current profile, do nothing
     }
 
-    let enVars = await this.leafManager.getEnvVars();
-    if (!enVars) {
-      return; // No envars, profile out of sync, do nothing
+    let outOfSync = await this.leafManager.outOfSync.get();
+    if (!outOfSync) {
+      return; // Profile out of sync, do nothing
     }
 
-    let profiles = await this.leafManager.getProfiles();
-    if (!profiles) {
+    let profiles = await this.leafManager.profiles.get();
+    if (Object.keys(profiles).length === 0) {
       return; // No profiles, do nothing
     }
 
@@ -92,12 +88,12 @@ export class LeafTerminalManager extends CommandRegister {
   /**
    * Create and show terminal
    */
-  private async showTerminal() {
+  private showTerminal() {
     this.terminalCreated = true;
     if (!this.leafTerminal) {
-      console.log(`[LeafTerminal] Create Leaf shell named \'${LEAF_SHELL_LABEL}\'`);
-      let leafBinPath = await this.leafManager.getLeafPath();
-      this.leafTerminal = window.createTerminal(LEAF_SHELL_LABEL, leafBinPath, ["shell"]);
+      let shellName = 'Leaf shell';
+      console.log(`[LeafTerminal] Create Leaf shell named \'${shellName}\'`);
+      this.leafTerminal = window.createTerminal(shellName, this.leafManager.leafPath, ["shell"]);
     }
     this.leafTerminal.show();
   }
@@ -106,8 +102,8 @@ export class LeafTerminalManager extends CommandRegister {
    * Dispose terminal on user close action
    */
   private onCloseTerminal(closedTerminal: Terminal): void {
-    if (closedTerminal.name === LEAF_SHELL_LABEL) {
-      closedTerminal.dispose();
+    if (closedTerminal === this.leafTerminal) {
+      this.leafTerminal.dispose();
       this.leafTerminal = undefined;
     }
   }
@@ -121,6 +117,7 @@ export class LeafTerminalManager extends CommandRegister {
     if (this.leafTerminal) {
       this.leafTerminal.hide();
       this.leafTerminal.dispose();
+      this.leafTerminal = undefined;
     }
   }
 }

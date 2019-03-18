@@ -1,39 +1,32 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { join } from 'path';
-import { LeafTerminalManager } from './leaf/terminal';
-import { LeafProfileStatusBar } from './leaf/profiles';
-import { LeafManager } from './leaf/core';
-import { LegatoManager } from './legato/core';
-import { LegatoUiManager } from './legato/assist';
-import { LeafPackagesView } from './leaf/packages';
-import { LeafRemotesView } from './leaf/remotes';
-import { TargetUiManager } from './tm/assist';
-import { LegatoLanguageManager } from './legato/language';
 import { ConfigurationChecker } from './commons/configuration';
-import { VersionManager } from './commons/version';
 import { DisposableBag } from './commons/manager';
 import { DelayedPromise } from './commons/promise';
-import { SnippetsManager } from './legato/snippets';
+import { VersionManager } from './commons/version';
 import { WelcomePageManager } from './commons/welcome';
-import { LegatoSystemTreeview } from './legato/system';
-
-/**
- * Folder names of extension resources
- */
-export const enum ExtensionPaths {
-    Resources = 'resources',
-    Vscode = '.vscode',
-    WelcomePage = 'webview/welcomepage',
-    ChangeLog = 'CHANGELOG.md'
-}
+import { LeafManager } from './leaf/api/core';
+import { LeafPackagesView } from './leaf/extension/packages';
+import { LeafProfileStatusBar } from './leaf/extension/profiles';
+import { LeafRemotesView } from './leaf/extension/remotes';
+import { LeafTerminalManager } from './leaf/extension/terminal';
+import { LegatoLanguageManager } from './legato/api/language';
+import { LegatoManager } from './legato/api/core';
+import { LegatoStatusBar } from './legato/extension/statusBar';
+import { SnippetsManager } from './legato/extension/snippets';
+import { LegatoSystemTreeview } from './legato/extension/system';
+import { DeviceStatusBar } from './tm/extension/statusBar';
+import { DeviceManager } from './tm/api/device';
+import { ResourcesManager } from './commons/resources';
+import { LegatoBuildTasks } from './legato/extension/buildtasks';
 
 /**
  * Manage the entire extension life-cycle
  */
 class Extension extends DisposableBag {
     // Common managers
+    public readonly resourcesManager: ResourcesManager;
     private readonly confChecker: ConfigurationChecker = this.toDispose(new ConfigurationChecker());
 
     // Leaf manager
@@ -42,6 +35,7 @@ class Extension extends DisposableBag {
     // Legato managers
     public readonly legatoManager: LegatoManager;
     public readonly legatoLanguageManager: LegatoLanguageManager;
+    public readonly deviceManager: DeviceManager;
 
     /**
      * Instanciates managers
@@ -51,9 +45,11 @@ class Extension extends DisposableBag {
     public constructor(public readonly context: vscode.ExtensionContext, leafPath: string, versionManager: VersionManager) {
         super();
 
+        this.resourcesManager = new ResourcesManager(context);
+
         // Check Leaf installation, create LeafManager and dispose it on deactivate
         // We use then because we want to store read-only promise in constructor
-        this.leafManager = this.toDispose(new LeafManager(leafPath));
+        this.leafManager = this.toDispose(new LeafManager(leafPath, this.resourcesManager));
 
         // Check vscode configuration
         this.confChecker.launch();
@@ -62,9 +58,10 @@ class Extension extends DisposableBag {
         // We use then because we want to store read-only promise in constructor
         this.legatoManager = this.toDispose(new LegatoManager(this.leafManager));
         this.legatoLanguageManager = this.toDispose(new LegatoLanguageManager(this.leafManager, this.legatoManager));
+        this.deviceManager = this.toDispose(new DeviceManager(this.leafManager, this.legatoManager));
 
         // Everything is fine, let's manage welcome page
-        this.toDispose(new WelcomePageManager(versionManager));
+        this.toDispose(new WelcomePageManager(versionManager, this.resourcesManager));
     }
 
     /**
@@ -75,8 +72,6 @@ class Extension extends DisposableBag {
         this.initLegatoComponnents();
     }
 
-    // Leaf
-
     /**
      * Launch leaf components
      */
@@ -86,49 +81,34 @@ class Extension extends DisposableBag {
         this.toDispose(new LeafRemotesView(this.leafManager));
 
         // Launch/Dispose on In/Out of LeafWorkspace
-        this.toDispose(await this.leafManager.onLeafWorkspace({ onWillEnable: this.enteringLeafWorkspace }, this));
+        this.leafManager.workspaceReady.onEvent({
+            onWillEnable: () => [
+                new LeafTerminalManager(this.leafManager),
+                new LeafProfileStatusBar(this.leafManager)
+            ]
+        }, this);
     }
-
-    /**
-     * Called when the workspace become leaf compatible
-     */
-    private async enteringLeafWorkspace(): Promise<vscode.Disposable[]> {
-        return [
-            new LeafTerminalManager(this.leafManager),
-            new LeafProfileStatusBar(this.leafManager)
-        ];
-    }
-
-    // Legato
 
     /**
      * Launch Legato components
      */
     private async initLegatoComponnents() {
         // Launch/Dispose on In/Out of LegatoWorkspace
-        this.toDispose(await this.legatoManager.onLegatoWorkspace({ onWillEnable: this.enteringLegatoWorkspace }, this));
-    }
+        this.legatoManager.workspaceReady.onEvent({
+            onWillEnable: () => [
+                new DeviceStatusBar(this.legatoManager, this.deviceManager),
+                new LegatoStatusBar(this.legatoManager),
+                new LegatoBuildTasks(this.leafManager, this.legatoManager),
+                new SnippetsManager(this.legatoManager)
+            ]
+        }, this);
 
-    /**
-     * Called when the workspace become legato compatible
-     */
-    private async enteringLegatoWorkspace(): Promise<vscode.Disposable[]> {
-        return [
-            new TargetUiManager(this.leafManager),
-            new LegatoUiManager(this.leafManager, this.legatoManager),
-            new SnippetsManager(this.leafManager),
-            new LegatoSystemTreeview(this.leafManager, this.legatoManager, this.legatoLanguageManager)
-        ];
-    }
-
-    /**
-     * Get the absolute path of a resource contained in the extension.
-     *
-     * @param path A relative path to a resource contained in the extension.
-     * @return The absolute path of the resource.
-     */
-    public getExtensionPath(...path: string[]) {
-        return this.context.asAbsolutePath(join(...path));
+        // Launch/Dispose on In/Out of LSP Workspace
+        this.legatoLanguageManager.workspaceReady.onEvent({
+            onWillEnable: () => [
+                new LegatoSystemTreeview(this.legatoManager, this.legatoLanguageManager)
+            ]
+        }, this);
     }
 }
 

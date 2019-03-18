@@ -11,6 +11,13 @@ export interface EnvVars {
 }
 
 /**
+ * Interface for result returned by leaf bridge
+ */
+export interface LeafBridgeElement {
+    [key: string]: any;
+}
+
+/**
  * Execute in a default shell and return a promise
  */
 export async function executeInShell(command: string): Promise<string> {
@@ -88,4 +95,42 @@ export function* newIdGenerator(): IterableIterator<number> {
     while (true) {
         yield id++;
     }
+}
+
+/**
+ * Clone an object by converting it to json then converting back to object
+ * @param object the object to clone
+ */
+export function deepClone<T>(object: T): T {
+    return JSON.parse(JSON.stringify(object));
+}
+
+/**
+ * Compare json of 2 objects
+ * @returns true if both object have the same json equivalent
+ */
+export function deepEquals(a: any, b: any): boolean {
+    return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Limit used by toStringPartial
+ */
+const LIMIT: number = 30;
+
+/**
+ * Used to log a part of the json of any object
+ * @param x the object to stringify
+ * @returns the first chars of the json of the give object
+ */
+export function toStringPartial(x: any) {
+    let out = JSON.stringify(x);
+    if (out) {
+        if (out.length > LIMIT) {
+            out = out.substr(0, LIMIT) + '...';
+        }
+    } else {
+        out = '';
+    }
+    return out;
 }

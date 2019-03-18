@@ -21,12 +21,34 @@ type PromiseExecutor<T> = (resolve: (value?: T | PromiseLike<T>) => void, reject
  * A promise that execute nothing but can be resolved or rejected anytime
  */
 export class DelayedPromise<T> implements Promise<T> {
-    private static readonly idGenerator: IterableIterator<number> = newIdGenerator(); // task id generator
-    public readonly id: number = DelayedPromise.idGenerator.next().value; // Add id for debug purpose
-    private callback: PromiseCallback<T> | undefined = undefined; // The callback of the actual promise
-    private readonly actualPromise: Promise<T>; // The promise that is instanciated in constructor
-    readonly [Symbol.toStringTag]: "Promise"; // Needed to extend Promise
+    /**
+     * task id generator
+     */
+    private static readonly idGenerator: IterableIterator<number> = newIdGenerator();
 
+    /**
+     * Add id for debug purpose
+     */
+    public readonly id: number = DelayedPromise.idGenerator.next().value;
+
+    /**
+     * The callback of the actual promise
+     */
+    private callback: PromiseCallback<T> | undefined = undefined;
+
+    /**
+     * The promise that is instanciated in constructor
+     */
+    private readonly actualPromise: Promise<T>;
+
+    /**
+     * Needed to extend Promise
+     */
+    readonly [Symbol.toStringTag]: "Promise";
+
+    /**
+     * Create the actual promise without resolving it
+     */
     constructor() {
         // Juste store callbacks for later call
         this.actualPromise = new Promise<T>((resolve, reject) => this.callback = new PromiseCallback(resolve, reject));

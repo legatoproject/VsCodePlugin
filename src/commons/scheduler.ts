@@ -2,7 +2,7 @@
 
 import * as vscode from "vscode";
 import { ACTION_LABELS } from './uiUtils';
-import { WaitingPromise } from '../commons/promise';
+import { WaitingPromise } from './promise';
 
 /**
  * Internal enum used to process waiting queue
@@ -24,6 +24,9 @@ export interface Scheduler {
  * Execute right now
  */
 export class Immediate implements Scheduler {
+    /**
+     * Very simple implementation, just log and execute it
+     */
     public async schedule<T>(operation: WaitingPromise<T>): Promise<T> {
         console.log('[Scheduler][Immediate] Execute operation');
         return operation.execute();
@@ -34,9 +37,20 @@ export class Immediate implements Scheduler {
  * Ensure than all scheduled operations are executed one after the other
  */
 export class Sequencer implements Scheduler {
+    /**
+     * This queue is where all scheduled operation are stacked
+     */
     private waitingQueue: WaitingPromise<any>[] = [];
-    protected runningOperation: WaitingPromise<any> | undefined = undefined;
+
+    /**
+     * When the operation is scheduled, it is moved from waitingQueue to executionQueue
+     */
     private executionQueue: WaitingPromise<any>[] = [];
+
+    /**
+     * The currently running operation
+     */
+    protected runningOperation: WaitingPromise<any> | undefined = undefined;
 
     /**
      * resourceName the name of the resource that need a Sequencer
@@ -140,7 +154,9 @@ export class Sequencer implements Scheduler {
  * If an operation is already running when another is requested, ask if the operation must be forgotten or queued
  */
 export class PoliteSequencer extends Sequencer {
-    // Current visible queuing popup if any
+    /**
+     * Current visible queuing popup if any
+     */
     private currentQueueingPopup: Thenable<string | undefined> | undefined = undefined;
 
     /**

@@ -4,23 +4,34 @@ import * as marked from 'marked';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { CommandRegister } from './manager';
-import { extPromise, ExtensionPaths } from '../extension';
 import { Command } from './identifiers';
 import { Configuration } from './configuration';
 import { VersionManager, VersionChangeKind } from './version';
+import { ResourcesManager, ExtensionPaths } from './resources';
 
 /**
  * Manage Welcome page command and auto display
  */
 export class WelcomePageManager extends CommandRegister {
+    /**
+     * Current opened Welcome page if any
+     */
     private currentWelcomePage: vscode.WebviewPanel | undefined = undefined;
-    private readonly htmlChangeLogProvider = new HtmlChangeLogProvider();
+
+    /**
+     * Read changelog (markdown) and return it as html
+     */
+    private readonly htmlChangeLogProvider: HtmlChangeLogProvider;
 
     /**
      * Show welcome page if necessary
      */
-    public constructor(private versionManager: VersionManager) {
+    public constructor(
+        private readonly version: VersionManager,
+        private readonly resources: ResourcesManager
+    ) {
         super();
+        this.htmlChangeLogProvider = new HtmlChangeLogProvider(resources);
         this.createCommand(Command.LegatoCommonShowWelcomePage, this.showWelcomePage, this);
         this.showWelcomePageIfNecessary();
     }
@@ -29,7 +40,7 @@ export class WelcomePageManager extends CommandRegister {
      * Show welcome page if this is a first install or a major upgrade, show a popup about welcome page it's an upgrade
      */
     private showWelcomePageIfNecessary() {
-        switch (this.versionManager.changeKind) {
+        switch (this.version.changeKind) {
 
             // First time install
             case VersionChangeKind.FirstInstall:
@@ -70,8 +81,7 @@ export class WelcomePageManager extends CommandRegister {
         }
 
         // Create Webview Panel 
-        let ext = await extPromise;
-        let welcomeFolder = ext.getExtensionPath(ExtensionPaths.WelcomePage);
+        let welcomeFolder = this.resources.getExtensionPath(ExtensionPaths.WelcomePage);
         let column = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.viewColumn : undefined;
         this.currentWelcomePage = vscode.window.createWebviewPanel('WelcomePage', 'Welcome to Legato', column || vscode.ViewColumn.One, {
             enableScripts: true,
@@ -80,7 +90,7 @@ export class WelcomePageManager extends CommandRegister {
                 vscode.Uri.file(welcomeFolder)
             ]
         });
-        this.currentWelcomePage.iconPath = vscode.Uri.file(ext.getExtensionPath(ExtensionPaths.Resources, 'legato.png'));
+        this.currentWelcomePage.iconPath = vscode.Uri.file(this.resources.getExtensionPath(ExtensionPaths.Resources, 'legato.png'));
         this.currentWelcomePage.onDidDispose(() => this.currentWelcomePage = undefined);
 
         // Read html file
@@ -99,7 +109,7 @@ export class WelcomePageManager extends CommandRegister {
         const action: vscode.MessageItem = { title: "Show welcome page" };
 
         const result = await vscode.window.showInformationMessage(
-            `LegatoExtension has been updated to v${this.versionManager.currentVersion} — check out what's new!`,
+            `LegatoExtension has been updated to v${this.version.currentVersion} — check out what's new!`,
             action);
 
         if (result === action) {
@@ -118,7 +128,7 @@ class HtmlChangeLogProvider extends marked.Renderer {
     /**
      * Just call super constructor
      */
-    constructor() {
+    constructor(private readonly resources: ResourcesManager) {
         super();
     }
 
@@ -133,7 +143,7 @@ class HtmlChangeLogProvider extends marked.Renderer {
      * Read changelog.md and convert it from markdown to html
      */
     public async getChangeLogAsHtml(): Promise<string> {
-        let changeLogPath = (await extPromise).getExtensionPath(ExtensionPaths.ChangeLog);
+        let changeLogPath = this.resources.getExtensionPath(ExtensionPaths.ChangeLog);
         let changeLogContent = readFileSync(changeLogPath).toString();
         // Remove first line (title)
         changeLogContent = changeLogContent.substring(changeLogContent.indexOf('\n'));

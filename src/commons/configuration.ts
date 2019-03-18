@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import { DisposableBag } from './manager';
 import { TerminalKind } from './terminal';
-import { LEAF_FILES } from '../commons/files';
+import { LEAF_FILES } from './files';
 
 /**
  * Represent one configuration section (setting)

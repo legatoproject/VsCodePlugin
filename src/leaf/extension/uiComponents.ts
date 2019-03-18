@@ -1,9 +1,9 @@
 'use strict';
 import * as vscode from 'vscode';
-import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../commons/uiUtils';
-import { Context, Command } from '../commons/identifiers';
-import { LeafManager } from './core';
-import { LeafBridgeElement } from './bridge';
+import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../../commons/uiUtils';
+import { Context, Command } from '../../commons/identifiers';
+import { LeafManager } from '../api/core';
+import { LeafBridgeElement } from '../../commons/utils';
 
 // This module is used to declare model/ui mappings using vscode items
 
@@ -101,7 +101,8 @@ export class AvailablePackagesContainerTreeItem extends PackagesContainerTreeIte
 	}
 
 	public async getPackages(): Promise<LeafBridgeElement | undefined> {
-		return this.leafManager.getAvailablePackages();
+		let allPackages = await this.leafManager.packages.get();
+		return allPackages.availablePackages;
 	}
 }
 
@@ -116,7 +117,8 @@ export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeIte
 	}
 
 	public async getPackages(): Promise<LeafBridgeElement | undefined> {
-		return this.leafManager.getInstalledPackages();
+		let allPackages = await this.leafManager.packages.get();
+		return allPackages.installedPackages;
 	}
 }
 
@@ -199,7 +201,7 @@ export class ProfileTreeItem extends TreeItem2 {
 
 	public async getChildren(): Promise<TreeItem2[]> {
 		// Find package properties
-		let packs = await this.leafManager.getMergedPackages();
+		let packs = await this.leafManager.mergedPackages.get();
 		let model: { [key: string]: any } = {};
 		if (packs) {
 			for (let packId of this.properties.packages) {

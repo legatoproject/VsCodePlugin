@@ -1,9 +1,9 @@
 'use strict';
 
 import * as vscode from "vscode";
-import { Configuration } from '../commons/configuration';
+import { Configuration } from './configuration';
 import { spawn } from 'child_process';
-import { DisposableBag } from '../commons/manager';
+import { DisposableBag } from './manager';
 
 /**
  * List kind of terminals
@@ -14,12 +14,14 @@ export const enum TerminalKind {
 }
 
 /**
- * This class is a base used to launch a a command in a shell of a new terminal.
+ * This class is a base used to launch a command in a shell of a new terminal.
  * This terminal can be integrated or external according to the returned value of [getKind](#ReSpawnableTerminal.getKind)
  * [show](#ReSpawnableTerminal.show) is the unique method of this class
  */
 export abstract class ReSpawnableTerminal extends DisposableBag {
-    // Integrated terminal in a promise if any
+    /**
+     * Integrated terminal in a promise if any
+     */
     private integratedPromise: Promise<vscode.Terminal> | undefined;
 
     /**
@@ -50,7 +52,7 @@ export abstract class ReSpawnableTerminal extends DisposableBag {
     /**
      * Will show the result of the command ether in:
      * - an integrated terminal: if already exist, it will be reused. If not, will be created and shown.
-     * - an external termina: a new system terminal will be launched whenever this method is called.
+     * - an external terminal: a new system terminal will be launched whenever this method is called.
      */
     public async show(): Promise<void> {
         switch (await this.getKind()) {
@@ -66,8 +68,7 @@ export abstract class ReSpawnableTerminal extends DisposableBag {
                 break;
             case TerminalKind.External:
                 // Launch a new system terminal on each call
-                this.showNewExternalTerminal();
-                break;
+                return this.showNewExternalTerminal();
         }
     }
 
