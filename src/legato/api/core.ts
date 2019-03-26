@@ -4,9 +4,9 @@ import { getWorkspaceFolderPath } from "../../commons/files";
 import { DisposableBag } from '../../commons/manager';
 import { ModelElement, StateModelElement } from "../../commons/model";
 import { LeafEnvScope, LeafManager } from "../../leaf/api/core";
-import { LEGATO_FILES_PATTERNS } from "./files";
 import { MkBuildManager, LegatoMkTools } from "./mkBuild";
 import { MkEditManager, MkEditOptions } from './mkEdit';
+import { DefFileWatcher } from "./filewatcher";
 
 /**
  * List of env vars used by Legato
@@ -36,7 +36,7 @@ export class LegatoManager extends DisposableBag {
     /**
      * Listen to def files creation/deletion
      */
-    private readonly defFileWatcher: vscode.FileSystemWatcher;
+    private readonly defFileWatcher: DefFileWatcher;
 
     /**
      * Provide current mktool, build and install commands
@@ -61,9 +61,10 @@ export class LegatoManager extends DisposableBag {
     public constructor(private readonly leafManager: LeafManager) {
         super();
         // Listen def files creation/deletion
-        this.defFileWatcher = this.toDispose(vscode.workspace.createFileSystemWatcher(LEGATO_FILES_PATTERNS.DEFINITIONS_FILES, false, true, false));
-        this.defFileWatcher.onDidCreate(this.onDefFileCreation, this, this);
-        this.defFileWatcher.onDidDelete(this.onDefFileDeletion, this, this);
+        this.defFileWatcher = this.toDispose(new DefFileWatcher());
+        this.defFileWatcher.created.addListener(this.onDefFileCreated, this);
+        this.defFileWatcher.renamed.addListener(this.onDefFileRenamed, this);
+        this.defFileWatcher.deleted.addListener(this.onDefFileDeleted, this);
 
         // Create tools managers
         let options: MkEditOptions = {
@@ -98,7 +99,7 @@ export class LegatoManager extends DisposableBag {
      * Called when a new def file is created
      * If it's the first, set it as active one
      */
-    private async onDefFileCreation(defFile: vscode.Uri) {
+    private async onDefFileCreated(defFile: vscode.Uri) {
         let currentDefFile = await this.defFile.get();
         if (!currentDefFile) {
             this.saveActiveDefFile(defFile);
@@ -106,10 +107,21 @@ export class LegatoManager extends DisposableBag {
     }
 
     /**
-     * Called when a def file is deleted
-     * If it's the current one, let's update it in bar and envvar
+     * Called when a new def file is renamed
+     * If it's the current one, set it's new name in envvar
      */
-    private async onDefFileDeletion(defFile: vscode.Uri) {
+    private async onDefFileRenamed(newFile: vscode.Uri, oldFile: vscode.Uri) {
+        let currentDefFile = await this.defFile.get();
+        if (currentDefFile && currentDefFile.toString() === oldFile.toString()) {
+            this.saveActiveDefFile(newFile);
+        }
+    }
+
+    /**
+     * Called when a def file is deleted
+     * If it's the current one, let's update it in envvar
+     */
+    private async onDefFileDeleted(defFile: vscode.Uri) {
         let currentDefFile = await this.defFile.get();
         if (currentDefFile && currentDefFile.toString() === defFile.toString()) {
             this.saveActiveDefFile(undefined);

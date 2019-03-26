@@ -7,9 +7,27 @@ import { DelayedPromise } from './promise';
 import { deepEquals, toStringPartial } from "./utils";
 
 /**
- * A listenable event
+ * Type of listeners that can be added to Listenable
  */
-export class Listenable extends DisposableBag {
+type Listener = (...args: any[]) => void;
+
+/**
+ * Conditional types that return the parameters of a given LISTENER
+ * 
+ * Conditional types in typescript allow us to introduce type variables into the expression in a rather dynamic way.
+ * Notice the 'infer' keyword. That says to TypeScript: "I want to take whatever TypeScript infers to be at this position and assign it to the name ARGS".
+ * It just so happens that the thing at that position is the arguments of a given listener, that we have called LISTENER.
+ * 
+ * This is used to ensure than Listenable#emit take the same arguments than the listeners
+ */
+type ListenerParameters<LISTENER extends Listener> =
+    LISTENER extends (...args: infer ARGS) => void ? ARGS : never;
+
+/**
+ * A listenable event
+ * @argument LISTENER_TYPE the type of listener that can be added to this Listenable. Default as listener without arguments
+ */
+export class Listenable<LISTENER_TYPE extends Listener = () => void> extends DisposableBag {
     /**
      * The symbol used to identify event
      */
@@ -23,8 +41,13 @@ export class Listenable extends DisposableBag {
     /**
      * @param name The name of the event
      * @param disposables the disposable array to register to
+     * @param callOnSubscribe if true, when a listener is added, it is called immediately without parameters (default: true)
      */
-    public constructor(protected readonly name: string, disposables: vscode.Disposable[]) {
+    public constructor(
+        protected readonly name: string,
+        disposables: vscode.Disposable[],
+        private readonly callOnSubscribe = true
+    ) {
         super();
         this.event = Symbol(name); // We use symbols to ensure than each ModelElement have it's own event
         disposables.push(this);
@@ -37,12 +60,12 @@ export class Listenable extends DisposableBag {
      * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
      */
     public addListener(
-        listener: (...args: any[]) => void,
+        listener: LISTENER_TYPE,
         thisArg?: any,
         disposables?: DisposableBag
     ): this {
         // Ensure the listener is call from the given thisArg
-        let listenerAsFn = listener.bind(thisArg);
+        let listenerAsFn = listener.bind(thisArg) as LISTENER_TYPE;
 
         this.emitter.addListener(this.event, listenerAsFn);
         let removeThisListenerFn = this.emitter.removeListener.bind(this.emitter, this.event, listenerAsFn);
@@ -54,7 +77,9 @@ export class Listenable extends DisposableBag {
         }
 
         // Initial call
-        this.initialListenerCall(listenerAsFn);
+        if (this.callOnSubscribe) {
+            this.initialListenerCall(listenerAsFn);
+        }
         return this;
     }
 
@@ -63,7 +88,7 @@ export class Listenable extends DisposableBag {
      * Overriden by subclass
      * @param listener the listener to call
      */
-    protected async initialListenerCall(listener: (...args: any[]) => void) {
+    protected async initialListenerCall(listener: LISTENER_TYPE) {
         listener();
     }
 
@@ -71,7 +96,7 @@ export class Listenable extends DisposableBag {
      * Emit event using given args
      * @param args the arg to pass to listeners when calling its
      */
-    public emit(...args: any[]): boolean {
+    public emit(...args: ListenerParameters<LISTENER_TYPE>): boolean {
         return this.emitter.emit(this.event, ...args);
     }
 
@@ -92,7 +117,7 @@ export type ModelListener<VALUE_TYPE> = (newValue: VALUE_TYPE, oldValue: VALUE_T
 /**
  * A model value that can be get, set and listened
  */
-export class ModelElement<VALUE_TYPE> extends Listenable {
+export class ModelElement<VALUE_TYPE> extends Listenable<ModelListener<VALUE_TYPE>> {
     /**
      * Initial value of the model element: a promise not yet resolved
      */
@@ -109,21 +134,6 @@ export class ModelElement<VALUE_TYPE> extends Listenable {
      */
     public constructor(name: string, disposables: vscode.Disposable[]) {
         super(name, disposables);
-    }
-
-    /**
-     * Same than super implementation except than listener must be a ModelListener
-     * @param listener the listener to add
-     * @param thisArg The `this`-argument which will be used when calling the listener (used as disposable if is a DisposableBag)
-     * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
-     * @returns this (let user chain calls)
-     */
-    public addListener(
-        listener: ModelListener<VALUE_TYPE>,
-        thisArg?: any,
-        disposables?: DisposableBag
-    ): this {
-        return super.addListener(listener, thisArg, disposables);
     }
 
     /**
