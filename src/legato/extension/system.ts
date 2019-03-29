@@ -4,6 +4,7 @@ import { Command, Context, View } from "../../commons/identifiers";
 import { TreeDataProvider2, TreeItem2, ACTION_LABELS } from "../../commons/uiUtils";
 import { LegatoManager } from "../api/core";
 import { LegatoLanguageManager } from "../api/language";
+import { showHint } from '../../commons/hints';
 
 export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private symbols: DocumentSymbol | undefined;
@@ -36,6 +37,40 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	}
 
 	/**
+	 * Hint to create an application
+	 * Shown when a system is created without application
+	 */
+	private async showCreateAppHint() {
+		let result = await showHint(
+			"Do you want to create a new app in the system?",
+			"Create app...");
+		if (result) {
+			vscode.commands.executeCommand(Command.LegatoSystemCreateApplication);
+		}
+	}
+
+	/**
+	 * Hint to create an system
+	 * Shown when a no system is selected as aactive def file
+	 */
+	private async showCreateSystemHint() {
+		const selectExistingSystem = 'Select system...';
+		const createAction = 'Create system...';
+		let result = await showHint(
+			'No Legato definition file selected yet; you can either select an existing one or create a new system.',
+			selectExistingSystem, createAction);
+		switch (result) {
+			case selectExistingSystem:
+				vscode.commands.executeCommand(Command.LegatoBuildPickDefFile);
+				break;
+			case createAction:
+				await vscode.commands.executeCommand(Command.LegatoSystemCreate);
+				this.showCreateAppHint();
+				break;
+		}
+	}
+
+	/**
 	 * On active def file change, request the language server the corresponding system map
 	 * @param newActiveDeFile 
 	 * @param oldActiveDeFile o
@@ -52,14 +87,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 				}
 			} else {
 				// No def file selected, let's suggest creating a new system
-				let selectExistingSysyem = 'Select system...';
-				let createAction = 'Create system...';
-				let result = await vscode.window.showInformationMessage('No Legato definition file selected yet; you can either select an existing one or create a new system.', selectExistingSysyem, createAction);
-				if (result === selectExistingSysyem) {
-					vscode.commands.executeCommand(Command.LegatoBuildPickDefFile);
-				} else if (result === createAction) {
-					vscode.commands.executeCommand(Command.LegatoSystemCreate);
-				}
+				this.showCreateSystemHint();
 			}
 		}
 	}

@@ -481,6 +481,12 @@
                     "description": "Specifies whether to show What's New after upgrading to new feature releases",
                     "scope": "window"
                 },
+                "leaf.common.showHints": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Specifies whether to show hint popups",
+                    "scope": "window"
+                },
                 "legato.tm.terminal.kind": {
                     "type": "string",
                     "enum": [

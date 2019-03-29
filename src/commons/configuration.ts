@@ -25,8 +25,9 @@ class Section<T> {
         if (!sectionInfo) {
             throw new Error(`Section ${name} is not defined in 'package.json' file`);
         }
-        if (!defaultValue && !sectionInfo.defaultValue) {
-            throw new Error(`Default value of section ${name} must be defined in 'package.json' file`);
+        // Compare to undefined instead of '!defaultValue' because it can be a boolean
+        if (defaultValue === undefined && sectionInfo.defaultValue === undefined) {
+            throw new Error(`Missing default value of section ${name}`);
         }
     }
 
@@ -83,6 +84,7 @@ export namespace Configuration {
      */
     export namespace Common {
         export const showWhatsNewAfterUpgrades = new Section<boolean>("leaf.common.showWhatsNewAfterUpgrades");
+        export const showHints = new Section<boolean>("leaf.common.showHints");
     }
 
     /**

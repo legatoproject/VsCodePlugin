@@ -42,6 +42,7 @@ This extension provides the following features to ease Legato development in VS 
 
 - editors for Legato files (**\*.api/\*.adef/\*.cdef/\*.mdef/\*.sdef**)
 - snippets for Legato files
+- hint messages to create system and app on empty workspace
 
 #### Hierarchical view
 
@@ -79,6 +80,11 @@ This extension provides the following features to ease Legato development in VS 
 This extension updates the following default settings for a better integration of leaf and Legato into VS Code workflows:
 
 - `files.watcherExclude`: the extension makes sure that `**/leaf-data/**` folders are excluded from file watching
+
+### Miscenaleous
+
+- `leaf.common.showHints`: enable hint messages
+- `leaf.common.showWhatsNewAfterUpgrades`: enable "What's New" messages and welcome page display after extension upgrade
 
 ### Target Management
 

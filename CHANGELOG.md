@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.6.0
+
+- Add hint message to create an app in an empty system
+- Add setting to disable hint messages
+
 ## 0.5.0
 - New settings to launch device shell/logs either in integrated or external terminal
 - Check minimum leaf version (1.7)
