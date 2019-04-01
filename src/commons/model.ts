@@ -46,12 +46,22 @@ export class Listenable<LISTENER_TYPE extends Listener = () => void> extends Dis
      * @param callOnSubscribe if true, when a listener is added, it is called immediately without parameters (default: true)
      */
     public constructor(
-        protected readonly name: string,
-        disposables: vscode.Disposable[],
+        public readonly name: string,
+        disposables: DisposableBag,
         private readonly callOnSubscribe = true
     ) {
         super();
-        this.event = Symbol(name); // We use symbols to ensure than each ModelElement have it's own event
+
+        // Listenable is the base of model mangement of this app so a bunch of listener is added to each emitter
+        // setMaxListeners is used to set the number of listener above which a warning is logged
+        // This feature exist to detect memory leak (typically listener which are not removed on dispose)
+        // Default value is 10, which is not enough in our case, 20 is working for now
+        this.emitter.setMaxListeners(20);
+
+        // We use symbols to ensure than each ModelElement have it's own event
+        this.event = Symbol(name);
+
+        // Register for dispose
         disposables.push(this);
     }
 
@@ -134,8 +144,17 @@ export class ModelElement<VALUE_TYPE> extends Listenable<ModelListener<VALUE_TYP
      * @param name the name of this model element (used for event and logs)
      * @param disposables the disposable array to register to
      */
-    public constructor(name: string, disposables: vscode.Disposable[]) {
+    public constructor(name: string, disposables: DisposableBag) {
         super(name, disposables);
+        this.logInitialValue();
+    }
+
+    /**
+     * Wait for initial value to be resolved then log value
+     */
+    private async logInitialValue() {
+        let value = await this.initialValue;
+        console.log(`[ModelElement] Initialisation of ${this.name} to '${toStringPartial(value)}'`);
     }
 
     /**
@@ -153,26 +172,29 @@ export class ModelElement<VALUE_TYPE> extends Listenable<ModelListener<VALUE_TYP
      * @returns a promise of boolean to wait for event and listeners (true if the value change)
      */
     public async set(newValuePromise: Promise<VALUE_TYPE> | VALUE_TYPE): Promise<boolean> {
-        // Resolve new value
-        let newValue = await newValuePromise;
-
         // Resolve initial promise if this is the first set, so waiting users get theirs initial value
         if (this.currentValuePromise === this.initialValue) {
-            console.log(`[ModelElement] Initialisation of ${this.name} to '${toStringPartial(newValue)}'`);
-            this.initialValue.resolve(newValue);
+            this.initialValue.resolve(newValuePromise);
         }
 
-        // Resolve old value
-        let oldValue = await this.currentValuePromise;
-
         // Update current value promise
+        let oldValuePromise = this.currentValuePromise;
         this.currentValuePromise = newValuePromise instanceof Promise ? newValuePromise : Promise.resolve(newValuePromise);
 
-        // if value changed, emit event
-        if (!deepEquals(newValue, oldValue) && this.emit(newValue, oldValue)) {
-            // then log it
-            console.log(`[ModelElement] Value of ${this.name} changed from '${toStringPartial(oldValue)}' to '${toStringPartial(newValue)}'`);
-            return true;
+        try {
+            // Resolve new value
+            let newValue = await newValuePromise;
+            // Resolve old value
+            let oldValue = await oldValuePromise;
+
+            // if value changed, emit event
+            if (!deepEquals(newValue, oldValue) && this.emit(newValue, oldValue)) {
+                // then log it
+                console.log(`[ModelElement] Value of ${this.name} changed from '${toStringPartial(oldValue)}' to '${toStringPartial(newValue)}'`);
+                return true;
+            }
+        } catch (reason) {
+            console.error(`[ModelElement] Value of ${this.name} failed to be resolved: '${reason}'`);
         }
         return false;
     }
@@ -185,103 +207,138 @@ export class ModelElement<VALUE_TYPE> extends Listenable<ModelListener<VALUE_TYP
     }
 
     /**
+     * @returns current value as a promise
+     * @throws an error if the value is undefined
+     */
+    public async getMandatory(): Promise<VALUE_TYPE extends undefined ? never : VALUE_TYPE> {
+        let out: any = await this.currentValuePromise;
+        if (out !== undefined) {
+            return out;
+        }
+        throw new Error(`${this.name} not available`);
+    }
+
+    /**
      * Add another ModelElement as a dependency to this one
-     * @param dependency the ModelElement computed fom this one
+     * @param name the name of this model element (used for event and logs)
+     * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
      * @param converter a function that convert value from this VALUE_TYPE to DEPENDENCY_TYPE
      * @param thisArg The `this`-argument which will be used when calling the converter (used as disposable if is a DisposableBag)
-     * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
      * @returns this (let user chain calls)
      */
-    public addDependency<DEPENDENCY_TYPE>(
-        dependency: ModelElement<DEPENDENCY_TYPE>,
+    public subModel<DEPENDENCY_TYPE>(
+        name: string,
+        disposables: DisposableBag,
         converter: (newValue: VALUE_TYPE) => DEPENDENCY_TYPE | Promise<DEPENDENCY_TYPE>,
-        thisArg?: any,
-        disposables?: DisposableBag
-    ): this {
+        thisArg?: any
+    ): ModelElement<DEPENDENCY_TYPE> {
+        let dependency = new ModelElement<DEPENDENCY_TYPE>(name, disposables);
         let newListener: ModelListener<VALUE_TYPE> = (newValue: VALUE_TYPE) =>
             dependency.set(converter.apply(thisArg, [newValue]));
-        return this.addListener(newListener, thisArg, disposables);
+        this.addListener(newListener, undefined, disposables);
+        return dependency;
     }
 }
 
 /**
- * A boolean model element that can be listened for both values
+ * Call callbacks when entering/exiting event
+ * Immediately call enable/disable from current value
+ * @param state the boolean model element to listen
+ * @param activator.onWillEnable callback called when the event return true to wait for component creation
+ * @param activator.onDidDisable callback called when the event return false after disposing components
+ * @param thisArg The `this`-argument which will be used when calling the activator (used as disposable if is a DisposableBag)
+ * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
+ * @returns this (let user chain calls)
  */
-export class StateModelElement extends ModelElement<boolean> {
+export function onEvent(
+    state: ModelElement<boolean>,
+    activator: {
+        onWillEnable: () => vscode.Disposable[],
+        onDidDisable?: (components: vscode.Disposable[]) => any
+    },
+    thisArg?: any,
+    disposables?: DisposableBag
+): void {
 
-    /**
-     * Call callbacks when entering/exiting event
-     * Immediately call enable/disable from current value
-     * @param activator.onWillEnable callback called when the event return true to wait for component creation
-     * @param activator.onDidDisable callback called when the event return false after disposing components
-     * @param thisArg The `this`-argument which will be used when calling the activator (used as disposable if is a DisposableBag)
-     * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
-     * @returns this (let user chain calls)
-     */
-    public onEvent(
-        activator: {
-            onWillEnable: () => vscode.Disposable[],
-            onDidDisable?: (components: vscode.Disposable[]) => any
-        },
-        thisArg?: any,
-        disposables?: DisposableBag
-    ): this {
+    // Call onDidDisable callback when necessary
+    let currentUndisposedComponents: vscode.Disposable[] = [];
+    let disposeCurrentComponents = () => currentUndisposedComponents.forEach(comp => comp.dispose());
+    let notifyDidDisable = () => activator.onDidDisable ? activator.onDidDisable.apply(thisArg, [currentUndisposedComponents]) : undefined;
 
-        // Call onDidDisable callback when necessary
-        let currentUndisposedComponents: vscode.Disposable[] = [];
-        let disposeCurrentComponents = () => currentUndisposedComponents.forEach(comp => comp.dispose());
-        let notifyDidDisable = () => activator.onDidDisable ? activator.onDidDisable.apply(thisArg, [currentUndisposedComponents]) : undefined;
-
-        // Call onWillEnable callback when necessary
-        let listener = async (newValue: boolean) => {
-            disposeCurrentComponents();
-            if (newValue) {
-                currentUndisposedComponents = activator.onWillEnable.apply(thisArg);
-            } else {
-                notifyDidDisable();
-                currentUndisposedComponents = [];
-            }
-        };
-        this.addListener(listener, this, disposables);
-
-        // Return disposable which, upon dispose, will dispose all provided disposables and event listener
-        let removeThisListenerFn = () => {
-            disposeCurrentComponents(); // Dispose current component if any
-            notifyDidDisable(); // Notify disabling
-        };
-        this.onDispose(removeThisListenerFn);
-        if (disposables) {
-            disposables.onDispose(removeThisListenerFn);
-        } else if (thisArg instanceof DisposableBag) {
-            thisArg.onDispose(removeThisListenerFn);
+    // Call onWillEnable callback when necessary
+    let listener = async (newValue: boolean) => {
+        disposeCurrentComponents();
+        if (newValue) {
+            currentUndisposedComponents = activator.onWillEnable.apply(thisArg);
+        } else {
+            notifyDidDisable();
+            currentUndisposedComponents = [];
         }
-        return this;
+    };
+    state.addListener(listener, undefined, disposables);
+
+    // Return disposable which, upon dispose, will dispose all provided disposables and event listener
+    let removeThisListenerFn = () => {
+        disposeCurrentComponents(); // Dispose current component if any
+        notifyDidDisable(); // Notify disabling
+    };
+    state.onDispose(removeThisListenerFn);
+    if (disposables) {
+        disposables.onDispose(removeThisListenerFn);
+    } else if (thisArg instanceof DisposableBag) {
+        thisArg.onDispose(removeThisListenerFn);
     }
 }
 
-export class EnvVarModelElement<VALUE_TYPE> extends ModelElement<VALUE_TYPE> {
-    constructor(private readonly envVars: ModelElement<EnvVars>, public readonly envVarName: string, disposables: vscode.Disposable[], converter: (env: EnvVars) => any = (env: EnvVars) => env[envVarName]) {
-        super(envVarName, disposables);
-        this.envVars.addDependency(this, converter, disposables);
-    }
+/**
+ * Create new string or undefined model element from a specific env var
+ * @param envVars the envvars model element
+ * @param name the key of the env var to listen
+ * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
+ */
+export function fromEnvVarString(
+    envVars: ModelElement<EnvVars>,
+    name: string,
+    disposables: DisposableBag
+): ModelElement<string | undefined> {
+    return fromEnvVar<string>(envVars, name, disposables, value => value);
+}
 
-    public getEvalExpression(): string {
-        return "${".concat(this.envVarName, "}");
-    }
-
-    /**
-     * @returns full path from the env var; if the variable value is identified as relative, the workspace folder is prepended
-     */
-    public async getResolvedPath() {
-        const envValue = await this.get();
-
-        let fullPath = undefined;
-        if (typeof envValue === "string") {
-            fullPath = isAbsolute(envValue) ? envValue : getWorkspaceFolderPath(envValue);
-        } else if (envValue instanceof vscode.Uri) {
-            fullPath = envValue.fsPath;
+/**
+ * Create new model element of any type from a specific env var
+ * @param envVars the envvars model element
+ * @param name the key of the env var to listen
+ * @param disposables the array when to add listeners' disposes (not used if thisArg is a already DisposableBag)
+ * @param converter a function that convert value from string to VALUE_TYPE
+ * @param thisArg The `this`-argument which will be used when calling the converter
+ */
+export function fromEnvVar<VALUE_TYPE>(
+    envVars: ModelElement<EnvVars>,
+    name: string,
+    disposables: DisposableBag,
+    converter: (value: string) => VALUE_TYPE,
+    thisArg?: any,
+): ModelElement<VALUE_TYPE | undefined> {
+    return envVars.subModel<VALUE_TYPE | undefined>(name, disposables, env => {
+        let out = env[name];
+        if (out) {
+            return converter.apply(thisArg, [out]);
         }
-        return fullPath;
-    }
+        return undefined;
+    });
+}
 
+/**
+ * @returns a string containing ${envVarName} for further evaluation
+ */
+export function getEvalExpression(elt: ModelElement<any>): string {
+    return `\${${elt.name}}`;
+}
+
+/**
+ * Resolve relative path to an absolute one base on workspace directory
+ * @param value an absolute path
+ */
+export function resolvePath(value: string): string {
+    return isAbsolute(value) ? value : getWorkspaceFolderPath(value);
 }

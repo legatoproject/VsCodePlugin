@@ -11,7 +11,8 @@ export const enum ExtensionPaths {
     Vscode = '.vscode',
     WelcomePage = 'webview/welcomepage',
     ChangeLog = 'CHANGELOG.md',
-    bridge = 'python-src/leaf-bridge.py'
+    Bridge = 'python-src/leaf-bridge.py',
+    DebugSshWrapper = 'bash-src/sshWrapper.sh'
 }
 
 /**

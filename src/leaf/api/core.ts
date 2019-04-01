@@ -3,9 +3,8 @@
 import * as vscode from "vscode";
 import { Command } from '../../commons/identifiers';
 import { CommandRegister } from '../../commons/manager';
-import { ModelElement, StateModelElement } from "../../commons/model";
 import { ACTION_LABELS } from '../../commons/uiUtils';
-import { deepClone, executeInShell, removeDuplicates, EnvVars, LeafBridgeElement } from '../../commons/utils';
+import { deepClone, executeInShell, removeDuplicates, LeafBridgeElement, EnvVars } from '../../commons/utils';
 import { VersionManager } from "../../commons/version";
 import { AllPackages, LeafInterface } from "./interface";
 import { ExecKind, LeafProcessLauncher } from './process';
@@ -52,7 +51,7 @@ export class LeafManager extends CommandRegister {
   /**
    * Leaf Bridge and file watcher
    */
-  private readonly interface: LeafInterface;
+  private readonly interface = this.toDispose(new LeafInterface(this.resourcesManager));
 
   /**
    * Launch processes as tasks or output channel
@@ -60,16 +59,16 @@ export class LeafManager extends CommandRegister {
   private readonly processLauncher: LeafProcessLauncher;
 
   // Exposed Model
-  public readonly packages = new ModelElement<AllPackages>("leaf.packages", this);
-  public readonly mergedPackages = new ModelElement<LeafBridgeElement>("leaf.packages.merged", this);
-  public readonly tags = new ModelElement<Tags>("leaf.packages.tags", this);
-  public readonly profileName = new ModelElement<string | undefined>("leaf.profile.name", this);
-  public readonly profiles = new ModelElement<LeafBridgeElement>("leaf.profile.list", this);
-  public readonly workspaceReady = new StateModelElement("leaf.workspace.state", this);
-  public readonly remotes = new ModelElement<LeafBridgeElement>("leaf.remotes", this);
-  public readonly envVars = new ModelElement<EnvVars>("leaf.envvars", this);
+  public readonly packages = this.interface.packages.subModel<AllPackages>("leaf.packages", this, this.markInstalledAndMergeCustomTags, this);
+  public readonly mergedPackages = this.packages.subModel<LeafBridgeElement>("leaf.packages.merged", this, this.mergePackages, this);
+  public readonly tags = this.packages.subModel<Tags>("leaf.packages.tags", this, this.listAndCountTags, this);
+  public readonly profileName = this.interface.workspace.subModel<string | undefined>("leaf.profile.name", this, this.getCurrentProfileNameFrom, this);
+  public readonly profiles = this.interface.workspace.subModel<LeafBridgeElement>("leaf.profile.list", this, w => w && w.profiles ? w.profiles : {});
+  public readonly workspaceReady = this.interface.workspace.subModel<boolean>("leaf.workspace.state", this, this.isLeafWorkspace, this);
+  public readonly remotes = this.interface.remotes.subModel<LeafBridgeElement>("leaf.remotes", this, rem => rem || {});
+  public readonly envVars = this.interface.envVars.subModel<EnvVars>("leaf.envvars", this, env => env || {});
   // Exposed model deleguated to interface
-  public readonly outOfSync: ModelElement<boolean>;
+  public readonly outOfSync = this.interface.outOfSync;
 
   /**
    * Check leaf installation, ask user to install it then check again
@@ -122,31 +121,17 @@ export class LeafManager extends CommandRegister {
   /**
    * Initialize model infos and start watching leaf files
    */
-  public constructor(public readonly leafPath: string, resourcesManager: ResourcesManager) {
+  public constructor(public readonly leafPath: string, private readonly resourcesManager: ResourcesManager) {
     super();
-    this.interface = this.toDispose(new LeafInterface(resourcesManager));
-    this.outOfSync = this.interface.outOfSync;
 
     // Get leaf path
     this.processLauncher = this.toDispose(new LeafProcessLauncher());
 
-    // Subscribe to interface model to update leaf model
-    this.interface.envVars
-      .addDependency(this.envVars, env => env || {});
-    this.interface.remotes
-      .addDependency(this.remotes, rem => rem || {});
-    this.interface.workspace
-      .addDependency(this.profileName, this.getCurrentProfileNameFrom, this)
-      .addDependency(this.profiles, w => w && w.profiles ? w.profiles : {})
-      .addDependency(this.workspaceReady, this.isLeafWorkspace, this);
-    this.interface.packages
-      .addDependency(this.packages, this.markInstalledAndMergeCustomTags, this);
-    this.packages
-      .addDependency(this.mergedPackages, this.mergePackages, this)
-      .addDependency(this.tags, this.listAndCountTags, this);
-
     // Create fetch command
     this.createCommand(Command.LeafPackagesFetch, this.fetchRemote);
+
+    // Synchronize leaf env with current running process
+    this.envVars.addListener(env => Object.entries(env).forEach(([key, value]) => process.env[key] = value), this);
   }
 
   /**

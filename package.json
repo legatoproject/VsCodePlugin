@@ -532,7 +532,64 @@
                     "scope": "window"
                 }
             }
-        }
+        },
+        "debuggers": [
+            {
+                "type": "cppdbg",
+                "configurationSnippets": [
+                    {
+                        "label": "Debug Legato application (attach)",
+                        "description": "A new configuration for attaching to a running legato application.",
+                        "body": {
+                            "name": "Debug Legato application (attach)",
+                            "type": "legato",
+                            "request": "attach",
+                            "application": "myNewApp",
+                            "executable": "myNewAppComponentExe"
+                        }
+                    }
+                ]
+            },
+            {
+                "type": "legato",
+                "label": "Legato",
+                "configurationAttributes": {
+                    "attach": {
+                        "type": "object",
+                        "default": {},
+                        "required": [
+                            "application",
+                            "executable"
+                        ],
+                        "properties": {
+                            "application": {
+                                "type": "string",
+                                "description": "Name of the Legato application to debug"
+                            },
+                            "executable": {
+                                "type": "string",
+                                "description": "Name of the Legato executable to debug"
+                            },
+                            "localPort": {
+                                "type": "number",
+                                "description": "The port to use on the host",
+                                "default": 2000
+                            },
+                            "remotePort": {
+                                "type": "number",
+                                "description": "The port to use on the Legato device",
+                                "default": 2000
+                            },
+                            "deviceIp": {
+                                "type": "string",
+                                "description": "The IP of the device to debug on",
+                                "default": "${env:DEST_IP}"
+                            }
+                        }
+                    }
+                }
+            }
+        ]
     },
     "main": "./out/extension",
     "scripts": {

@@ -116,7 +116,7 @@ export function deepEquals(a: any, b: any): boolean {
 /**
  * Limit used by toStringPartial
  */
-const LIMIT: number = 30;
+const LIMIT: number = 100;
 
 /**
  * Used to log a part of the json of any object
@@ -124,7 +124,7 @@ const LIMIT: number = 30;
  * @returns the first chars of the json of the give object
  */
 export function toStringPartial(x: any) {
-    let out = JSON.stringify(x);
+    let out = typeof x === 'string' ? x : JSON.stringify(x);
     if (out) {
         if (out.length > LIMIT) {
             out = out.substr(0, LIMIT) + '...';

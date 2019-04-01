@@ -3,9 +3,10 @@
 ## 0.7.0
 
 - Update minimum leaf version to 1.9
-- Build using **LEGATO_OUTPUT_DIR** and **LEGATO_OBJECT_DIR** on the command line
+- Build using **LEGATO_OUTPUT_DIR**, **LEGATO_OBJECT_DIR** and **LEGATO_DEBUG_DIR** on the command line
 - Add clean task
 - Add task to generate Legato image from system build
+- Support Legato configuration for Debug attach (allows to attach to a running Legato app process)
 
 ## 0.6.0
 

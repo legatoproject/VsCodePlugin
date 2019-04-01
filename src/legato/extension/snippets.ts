@@ -6,8 +6,7 @@ import { getWorkspaceFolderPath, WorkspaceResource } from "../../commons/files";
 import { join } from "path";
 import { LegatoManager } from "../api/core";
 
-// Consntants list
-const SNIPPETS_PATHS_SEPARATOR = ':';
+// Constants list
 const SNIPPETS_EXTENSION = '.code-snippets';
 const SNIPPETS_PREFIX = 'legato-';
 
@@ -32,18 +31,12 @@ export class SnippetsManager extends DisposableBag {
      * Check LEGATO_SNIPPETS envar change
      * Populate/Clear .vscode/Snippets if LEGATO_SNIPPETS is available
      */
-    private async onNewSnippets(newLegatoSnippets: string | undefined): Promise<void> {
+    private async onNewSnippets(legatoSnippetsFolders: string[] | undefined): Promise<void> {
         await this.deleteExistingSnippets();
-        if (newLegatoSnippets) { // Get legato snippet folders list
-            let legatoSnippetsFolders = newLegatoSnippets
-                .split(SNIPPETS_PATHS_SEPARATOR) // Split on ':'
-                .filter(path => path.length > 0); // Exclude empty string
-
-            // If there is something to copy
-            if (legatoSnippetsFolders.length > 0) {
-                // Ensure destination is created
-                await fs.ensureDir(this.destination);
-            }
+        // If there is something to copy
+        if (legatoSnippetsFolders && legatoSnippetsFolders.length > 0) {
+            // Ensure destination is created
+            await fs.ensureDir(this.destination);
 
             // Copy all snippet folders in parralel
             await Promise.all(legatoSnippetsFolders.map(this.copySnippetsFrom, this));

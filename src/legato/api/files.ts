@@ -9,6 +9,15 @@ import { LEAF_FILES } from '../../commons/files';
 const EXCLUDED_FOLDER = `**/${LEAF_FILES.DATA_FOLDER}/*`;
 
 /**
+ * Xdef files extensions
+ */
+export const enum LegatoFileExtension {
+  cdef = ".cdef",
+  adef = ".adef",
+  sdef = ".sdef"
+}
+
+/**
  * Patterns for Legato files
  */
 export const LEGATO_FILES_PATTERNS = {

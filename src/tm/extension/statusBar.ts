@@ -201,7 +201,7 @@ class RemoteShellTerminal extends ReSpawnableTerminal {
    * Connect to device using ssh
    */
   protected async createCommand(): Promise<string> {
-    return this.deviceManager.remoteShellCmd.get();
+    return this.deviceManager.getRemoteShellCmd();
   }
 
   /**
@@ -224,7 +224,7 @@ class RemoteLogsTerminal extends ReSpawnableTerminal {
    * Execute '/sbin/logread -f' via ssh
    */
   protected async createCommand(): Promise<string> {
-    return this.deviceManager.remoteLogsCmd.get();
+    return this.deviceManager.getRemoteLogsCmd();
   }
 
   /**

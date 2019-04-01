@@ -4,7 +4,7 @@ import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptio
 import { DefinitionObject } from '../../@types/legato-languages';
 import { getWorkspaceFolder } from '../../commons/files';
 import { DisposableBag } from "../../commons/manager";
-import { ModelElement, StateModelElement } from '../../commons/model';
+import { ModelElement } from '../../commons/model';
 import { DelayedPromise } from '../../commons/promise';
 import { EnvVars, toStringPartial } from '../../commons/utils';
 import { LeafManager } from "../../leaf/api/core";
@@ -32,7 +32,7 @@ export class LegatoLanguageManager extends DisposableBag {
     public languageClient: LanguageClient | undefined = undefined;
 
     // Exposed Model
-    public readonly workspaceReady = new StateModelElement("legato.lsp.ready", this);
+    public readonly workspaceReady = new ModelElement<boolean>("legato.lsp.ready", this);
     public readonly defFileModel = new ModelElement<DefinitionObject>("legato.lsp.defFileModel", this);
 
     public constructor(private readonly leafManager: LeafManager, private readonly legatoManager: LegatoManager) {

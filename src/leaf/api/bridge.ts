@@ -55,7 +55,7 @@ export class LeafBridge implements vscode.Disposable {
      */
     public constructor(resources: ResourcesManager) {
         // Launch bridge
-        let pathToExec = resources.getExtensionPath(ExtensionPaths.bridge);
+        let pathToExec = resources.getExtensionPath(ExtensionPaths.Bridge);
 
         // Copy system env vars
         let env: NodeJS.ProcessEnv = deepClone(process.env);

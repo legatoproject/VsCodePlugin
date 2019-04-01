@@ -2,8 +2,7 @@
 import * as vscode from "vscode";
 import { getWorkspaceFolderPath } from "../../commons/files";
 import { DisposableBag } from '../../commons/manager';
-import { EnvVarModelElement, StateModelElement } from "../../commons/model";
-import { EnvVars } from "../../commons/utils";
+import { fromEnvVarString, fromEnvVar, resolvePath } from "../../commons/model";
 import { LeafEnvScope, LeafManager } from "../../leaf/api/core";
 import { DefFileWatcher } from "./filewatcher";
 import { MkBuildManager } from "./mkBuild";
@@ -16,26 +15,22 @@ import { MkEditManager, MkEditOptions } from './mkEdit';
 const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
     DEST_IP: "DEST_IP",
-    LEGATO_DEF_FILE: "LEGATO_DEF_FILE",
-    LEGATO_SNIPPETS: "LEGATO_SNIPPETS",
-    LEGATO_LANGUAGE_SERVER: "LEGATO_LANGUAGE_SERVER",
+    DEF_FILE: "LEGATO_DEF_FILE",
+    SNIPPETS: "LEGATO_SNIPPETS",
+    LANGUAGE_SERVER: "LEGATO_LANGUAGE_SERVER",
 
     // Known options leveraging custom build
-    LEGATO_TARGET: "LEGATO_TARGET",
-    LEGATO_OUTPUT_DIR: "LEGATO_OUTPUT_DIR",
-    LEGATO_OBJECT_DIR: "LEGATO_OBJECT_DIR",
-    LEGATO_DEBUG_DIR: "LEGATO_DEBUG_DIR",
-    LEGATO_UPDATE_FILE: "LEGATO_UPDATE_FILE"
+    TARGET: "LEGATO_TARGET",
+    OUTPUT_DIR: "LEGATO_OUTPUT_DIR",
+    OBJECT_DIR: "LEGATO_OBJECT_DIR",
+    DEBUG_DIR: "LEGATO_DEBUG_DIR",
+    UPDATE_FILE: "LEGATO_UPDATE_FILE"
 };
 
 /**
- * Xdef files extensions
+ * The char used to split snippet env var value to a list of path
  */
-export const enum LegatoFileExtension {
-    cdef = ".cdef",
-    adef = ".adef",
-    sdef = ".sdef"
-}
+const SNIPPETS_PATHS_SEPARATOR = ':';
 
 /**
  * Manage Legato API and model
@@ -50,22 +45,19 @@ export class LegatoManager extends DisposableBag {
     public readonly mkEdit: MkEditManager;
 
     // Exposed Model
-    public readonly workspaceReady = new StateModelElement("legato.workspace.state", this);
-    public readonly rootPath = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_ROOT, this);
-    public readonly destIp = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.DEST_IP, this);
-    public readonly defFile = new EnvVarModelElement<vscode.Uri | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_DEF_FILE, this, (env: EnvVars) => {
-        let defFile = env[LEGATO_ENV.LEGATO_DEF_FILE];
-        return defFile ? vscode.Uri.file(defFile) : undefined;
-    });
-    public readonly snippets = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_SNIPPETS, this);
-    public readonly languageServer = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_LANGUAGE_SERVER, this);
+    public readonly rootPath = fromEnvVarString(this.leafManager.envVars, LEGATO_ENV.LEGATO_ROOT, this);
+    public readonly workspaceReady = this.rootPath.subModel<boolean>("legato.workspace.state", this, path => path !== undefined);
+    public readonly destIp = fromEnvVarString(this.leafManager.envVars, LEGATO_ENV.DEST_IP, this);
+    public readonly defFile = fromEnvVar<vscode.Uri | undefined>(this.leafManager.envVars, LEGATO_ENV.DEF_FILE, this, vscode.Uri.file);
+    public readonly snippets = fromEnvVar<string[]>(this.leafManager.envVars, LEGATO_ENV.SNIPPETS, this, this.resolveSnippets, this);
+    public readonly languageServer = fromEnvVarString(this.leafManager.envVars, LEGATO_ENV.LANGUAGE_SERVER, this);
+    public readonly target = fromEnvVarString(this.leafManager.envVars, LEGATO_ENV.TARGET, this);
+    public readonly objectDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.OBJECT_DIR, this, resolvePath);
+    public readonly outputDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.OUTPUT_DIR, this, resolvePath);
+    public readonly debugDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.DEBUG_DIR, this, resolvePath);
+    public readonly updateFile = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.UPDATE_FILE, this, resolvePath);
 
-    public readonly legatoTarget = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_TARGET, this);
-    public readonly legatoObjectDir = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_OBJECT_DIR, this);
-    public readonly legatoOutputDir = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_OUTPUT_DIR, this);
-    public readonly legatoDebugDir = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_DEBUG_DIR, this);
-    public readonly legatoUpdateFile = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_UPDATE_FILE, this);
-
+    // Exposed API
     public readonly mkBuild: MkBuildManager;
 
     public constructor(private readonly leafManager: LeafManager) {
@@ -85,9 +77,17 @@ export class LegatoManager extends DisposableBag {
         };
         this.mkEdit = new MkEditManager(options);
         this.mkBuild = this.toDispose(new MkBuildManager(this));
+    }
 
-        // Implement model of this manager
-        this.rootPath.addDependency(this.workspaceReady, path => path !== undefined, this);
+    /**
+     * Create a list of absolute path from the snipet env var
+     * @param snippetsFromEnvVar the value of the snippet env var
+     */
+    private resolveSnippets(snippetsFromEnvVar: string): string[] {
+        return snippetsFromEnvVar
+            .split(SNIPPETS_PATHS_SEPARATOR) // Split on ':'
+            .filter(path => path.length > 0) // Exclude empty string
+            .map(resolvePath) as string[]; // Resolve to absolute path
     }
 
     /**
@@ -128,7 +128,7 @@ export class LegatoManager extends DisposableBag {
      */
     public saveActiveDefFile(uri: vscode.Uri | undefined): Promise<void> {
         let value = uri ? `\${LEAF_WORKSPACE}/${vscode.workspace.asRelativePath(uri)}` : undefined;
-        return this.leafManager.setEnvValue(LEGATO_ENV.LEGATO_DEF_FILE, value, LeafEnvScope.Workspace);
+        return this.leafManager.setEnvValue(LEGATO_ENV.DEF_FILE, value, LeafEnvScope.Workspace);
     }
 
     /**

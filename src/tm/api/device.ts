@@ -7,7 +7,6 @@ import { DisposableBag } from '../../commons/manager';
 import { TaskDefinitionType } from '../../commons/identifiers';
 import { TaskProcessLauncher, ProcessLauncherOptions } from '../../commons/process';
 import { getWorkspaceFolderPath } from '../../commons/files';
-import { ModelElement } from '../../commons/model';
 
 /**
  * Manage device ip and remote shell/logs commands 
@@ -17,11 +16,6 @@ export class DeviceManager extends DisposableBag {
      * Used to launch update, fwupdate and swiflash commands
      */
     private readonly processLauncher: TaskProcessLauncher;
-
-    // Exposed model
-    private readonly destIp = new ModelElement<string>("legato.tm.destip", this);
-    public readonly remoteShellCmd = new ModelElement<string>("legato.tm.cmd.shell", this);
-    public readonly remoteLogsCmd = new ModelElement<string>("legato.tm.cmd.logs", this);
 
     /**
      * Need 2 managers
@@ -39,24 +33,35 @@ export class DeviceManager extends DisposableBag {
             thisArg: this.leafManager.envVars
         };
         this.processLauncher = new TaskProcessLauncher(TaskDefinitionType.LegatoTm, options);
-
-        // Listen to env changes to update destip
-        this.legatoManager.destIp.addDependency(this.destIp, this.errorIfUndefined, this);
-
-        // Listen dest ip to update shell/logs cmds
-        this.destIp
-            .addDependency(this.remoteShellCmd, destIp => `ssh root@${destIp}`, this)
-            .addDependency(this.remoteLogsCmd, destIp => `ssh root@${destIp} /sbin/logread -f`, this);
     }
 
     /**
-     * Throw error of no dest ip is set
+     * Used by getRemoteShellCmd and getRemoteLogsCmd
+     * @returns dest ip if set
+     * @throws an error if dest ip is not set
      */
-    private errorIfUndefined(destIp: string | undefined): string {
+    private async getMandatoryDestIp(): Promise<string> {
+        let destIp = await this.legatoManager.destIp.get();
         if (!destIp) {
             throw Error('Cannot launch this command, $DEST_IP is not set');
         }
         return destIp;
+    }
+
+    /**
+     * @return the command to launch remote shell
+     * @throws an error if dest ip is not set
+     */
+    public async getRemoteShellCmd(): Promise<string> {
+        return `ssh root@${await this.getMandatoryDestIp()}`;
+    }
+
+    /**
+     * @return the command to launch remote logs
+     * @throws an error if dest ip is not sets
+     */
+    public async getRemoteLogsCmd(): Promise<string> {
+        return `ssh root@${await this.getMandatoryDestIp()} /sbin/logread -f`;
     }
 
     /**

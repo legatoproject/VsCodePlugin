@@ -20,6 +20,9 @@ import { LegatoStatusBar } from './legato/extension/statusBar';
 import { LegatoSystemTreeview } from './legato/extension/system';
 import { DeviceManager } from './tm/api/device';
 import { DeviceStatusBar } from './tm/extension/statusBar';
+import { LegatoToolchainManager } from './legato/api/toolchain';
+import { LegatoDebugManager } from './legato/extension/debug';
+import { onEvent } from './commons/model';
 
 /**
  * Manage the entire extension life-cycle
@@ -34,6 +37,7 @@ class Extension extends DisposableBag {
 
     // Legato managers
     public readonly legatoManager: LegatoManager;
+    public readonly legatoToolchainManager: LegatoToolchainManager;
     public readonly legatoLanguageManager: LegatoLanguageManager;
     public readonly deviceManager: DeviceManager;
 
@@ -57,6 +61,7 @@ class Extension extends DisposableBag {
         // Create LegatoManager using LeafManager and dispose it on deactivate
         // We use then because we want to store read-only promise in constructor
         this.legatoManager = this.toDispose(new LegatoManager(this.leafManager));
+        this.legatoToolchainManager = new LegatoToolchainManager(this.leafManager, this.legatoManager);
         this.legatoLanguageManager = this.toDispose(new LegatoLanguageManager(this.leafManager, this.legatoManager));
         this.deviceManager = this.toDispose(new DeviceManager(this.leafManager, this.legatoManager));
 
@@ -81,7 +86,7 @@ class Extension extends DisposableBag {
         this.toDispose(new LeafRemotesView(this.leafManager));
 
         // Launch/Dispose on In/Out of LeafWorkspace
-        this.leafManager.workspaceReady.onEvent({
+        onEvent(this.leafManager.workspaceReady, {
             onWillEnable: () => [
                 new LeafTerminalManager(this.leafManager),
                 new LeafProfileStatusBar(this.leafManager)
@@ -94,17 +99,18 @@ class Extension extends DisposableBag {
      */
     private async initLegatoComponnents() {
         // Launch/Dispose on In/Out of LegatoWorkspace
-        this.legatoManager.workspaceReady.onEvent({
+        onEvent(this.legatoManager.workspaceReady, {
             onWillEnable: () => [
                 new DeviceStatusBar(this.legatoManager, this.deviceManager),
                 new LegatoStatusBar(this.legatoManager),
                 new LegatoBuildTasks(this.leafManager, this.legatoManager),
-                new SnippetsManager(this.legatoManager)
+                new SnippetsManager(this.legatoManager),
+                new LegatoDebugManager(this.resourcesManager, this.legatoManager, this.legatoToolchainManager)
             ]
         }, this);
 
         // Launch/Dispose on In/Out of LSP Workspace
-        this.legatoLanguageManager.workspaceReady.onEvent({
+        onEvent(this.legatoLanguageManager.workspaceReady, {
             onWillEnable: () => [
                 new LegatoSystemTreeview(this.legatoManager, this.legatoLanguageManager)
             ]
