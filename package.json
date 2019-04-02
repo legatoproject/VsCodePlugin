@@ -3,13 +3,23 @@
     "displayName": "Legato",
     "description": "Legato plugin for Visual Studio Code",
     "version": "0.0.0",
-    "publisher": "SWIR",
+    "preview": true,
+    "icon": "resources/legato-icon.png",
+    "publisher": "legato",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/legatoproject/"
+    },
+    "license": "MPL-2.0",
+    "categories": [
+        "Programming Languages",
+        "Snippets",
+        "Debuggers"
+    ],
+    "homepage": "https://legato.io",
     "engines": {
         "vscode": "^1.32.1"
     },
-    "categories": [
-        "Other"
-    ],
     "activationEvents": [
         "*"
     ],

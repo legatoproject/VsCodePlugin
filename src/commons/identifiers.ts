@@ -1,6 +1,6 @@
 'use strict';
 
-export const extensionQualifiedId = 'SWIR.legato-plugin';
+export const extensionQualifiedId = 'legato.legato-plugin';
 
 // This module centralize all ids used in package.json
 export const enum Command { // (cmd)
@@ -24,18 +24,18 @@ export const enum Command { // (cmd)
     LeafRemotesRemove = "cmd.leaf.rmt.remove",
     LeafRemotesEnable = "cmd.leaf.rmt.enable",
     LeafRemotesDisable = "cmd.leaf.rmt.disable",
- //SYSTEM
- LegatoSystemCreate = "cmd.legato.system.create",
- LegatoSystemOpenFile = "cmd.legato.system.openFile",
- LegatoSystemCreateApplication = "cmd.legato.system.createApp",
- LegatoSystemAddApplication ="cmd.legato.system.addApp",
- LegatoSystemRename = "cmd.legato.system.rename",
- LegatoAppRename =  "cmd.legato.app.rename",
- LegatoAppRemove =  "cmd.legato.app.remove",
- LegatoAppAddComponent =  "cmd.legato.app.addComponent",
- LegatoAppNewComponent =  "cmd.legato.app.newComponent",
- LegatoComponentRename =  "cmd.legato.component.rename",
- LegatoComponentRemove =  "cmd.legato.component.remove",
+    //SYSTEM
+    LegatoSystemCreate = "cmd.legato.system.create",
+    LegatoSystemOpenFile = "cmd.legato.system.openFile",
+    LegatoSystemCreateApplication = "cmd.legato.system.createApp",
+    LegatoSystemAddApplication = "cmd.legato.system.addApp",
+    LegatoSystemRename = "cmd.legato.system.rename",
+    LegatoAppRename = "cmd.legato.app.rename",
+    LegatoAppRemove = "cmd.legato.app.remove",
+    LegatoAppAddComponent = "cmd.legato.app.addComponent",
+    LegatoAppNewComponent = "cmd.legato.app.newComponent",
+    LegatoComponentRename = "cmd.legato.component.rename",
+    LegatoComponentRemove = "cmd.legato.component.remove",
     // #### LEGATO (.legato) ####
     // COMMON (.common)
     LegatoCommonShowWelcomePage = "cmd.legato.common.showwelcomepage",
@@ -67,15 +67,15 @@ export const enum Context { // (context)
     // PROFILES (-prf)
     LeafProfileCurrent = "context-leaf-prf-current",
     LeafProfileOther = "context-leaf-prf-other",
-    
-     // #### LEGATO (-legato) ####
-     LegatoSystemEnabled = "context-legato-system-enabled",
-     LegatoSystemSelected = "context-legato-system-selected",
-     LegatoMdefSelected = "context-legato-mdef-selected",
-     LegatoAppsSelected = "context-legato-apps-selected",
-     LegatoAppCurrent = "context-legato-app-current",
-     LegatoComponentsSelected = "context-legato-components-selected",
-     LegatoComponentCurrent = "context-legato-component-current"
+
+    // #### LEGATO (-legato) ####
+    LegatoSystemEnabled = "context-legato-system-enabled",
+    LegatoSystemSelected = "context-legato-system-selected",
+    LegatoMdefSelected = "context-legato-mdef-selected",
+    LegatoAppsSelected = "context-legato-apps-selected",
+    LegatoAppCurrent = "context-legato-app-current",
+    LegatoComponentsSelected = "context-legato-components-selected",
+    LegatoComponentCurrent = "context-legato-component-current"
 }
 
 export const enum View { // (view)

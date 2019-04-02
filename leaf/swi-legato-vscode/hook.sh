@@ -37,7 +37,7 @@ elif test "$action" = "uninstall"; then
     # Just trigger uninstall
 
     # Look for installed version
-    installedExt="$("$codePath" --list-extensions --show-versions | grep SWIR.legato-plugin || true)"
+    installedExt="$("$codePath" --list-extensions --show-versions | grep legato.legato-plugin || true)"
     if test -n "$installedExt" -a "${installedExt#*@}" = "$(basename -s .vsix "$vsixPath" | sed -e "s/legato-plugin-//")"; then
         # Trigger uninstall only if there is an exact match with current package
         "$codePath" --uninstall-extension "$vsixPath"

@@ -2,6 +2,7 @@
 
 ## 0.6.0
 
+- First publish on the market place
 - Add hint message to create an app in an empty system
 - Add setting to disable hint messages
 
@@ -10,7 +11,7 @@
 - Check minimum leaf version (1.7)
 - Automatically import Legato snippets from leaf packages
 - Add welcome page
-- Add profile sync informatin in status bar + fix action
+- Add profile sync information in status bar + fix action
 - Add new Legato hierarchical view
 - Add actions to create/rename/remove apps and systems
 - Invite user to select or create a system when active definition file is not set in a Legato workspace
