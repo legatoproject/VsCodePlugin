@@ -2,11 +2,12 @@
 import * as vscode from "vscode";
 import { getWorkspaceFolderPath } from "../../commons/files";
 import { DisposableBag } from '../../commons/manager';
-import { ModelElement, StateModelElement } from "../../commons/model";
+import { EnvVarModelElement, StateModelElement } from "../../commons/model";
+import { EnvVars } from "../../commons/utils";
 import { LeafEnvScope, LeafManager } from "../../leaf/api/core";
-import { MkBuildManager, LegatoMkTools } from "./mkBuild";
-import { MkEditManager, MkEditOptions } from './mkEdit';
 import { DefFileWatcher } from "./filewatcher";
+import { MkBuildManager } from "./mkBuild";
+import { MkEditManager, MkEditOptions } from './mkEdit';
 
 /**
  * List of env vars used by Legato
@@ -17,7 +18,14 @@ const LEGATO_ENV = {
     DEST_IP: "DEST_IP",
     LEGATO_DEF_FILE: "LEGATO_DEF_FILE",
     LEGATO_SNIPPETS: "LEGATO_SNIPPETS",
-    LEGATO_LANGUAGE_SERVER: "LEGATO_LANGUAGE_SERVER"
+    LEGATO_LANGUAGE_SERVER: "LEGATO_LANGUAGE_SERVER",
+
+    // Known options leveraging custom build
+    LEGATO_TARGET: "LEGATO_TARGET",
+    LEGATO_OUTPUT_DIR: "LEGATO_OUTPUT_DIR",
+    LEGATO_OBJECT_DIR: "LEGATO_OBJECT_DIR",
+    LEGATO_DEBUG_DIR: "LEGATO_DEBUG_DIR",
+    LEGATO_UPDATE_FILE: "LEGATO_UPDATE_FILE"
 };
 
 /**
@@ -38,25 +46,27 @@ export class LegatoManager extends DisposableBag {
      */
     private readonly defFileWatcher: DefFileWatcher;
 
-    /**
-     * Provide current mktool, build and install commands
-     */
-    private readonly mkBuild: MkBuildManager;
-
     // Exposed APIs
     public readonly mkEdit: MkEditManager;
 
     // Exposed Model
     public readonly workspaceReady = new StateModelElement("legato.workspace.state", this);
-    public readonly rootPath = new ModelElement<string | undefined>("legato.root", this);
-    public readonly destIp = new ModelElement<string | undefined>("legato.destip", this);
-    public readonly defFile = new ModelElement<vscode.Uri | undefined>("legato.deffile", this);
-    public readonly snippets = new ModelElement<string | undefined>("legato.snippets", this);
-    public readonly languageServer = new ModelElement<string | undefined>("legato.lsp", this);
-    // Exposed model deleguated to mkBuild
-    public readonly mkTool: ModelElement<LegatoMkTools | undefined>;
-    public readonly buildCommand: ModelElement<string | undefined>;
-    public readonly buildAndInstallCommand: ModelElement<string | undefined>;
+    public readonly rootPath = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_ROOT, this);
+    public readonly destIp = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.DEST_IP, this);
+    public readonly defFile = new EnvVarModelElement<vscode.Uri | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_DEF_FILE, this, (env: EnvVars) => {
+        let defFile = env[LEGATO_ENV.LEGATO_DEF_FILE];
+        return defFile ? vscode.Uri.file(defFile) : undefined;
+    });
+    public readonly snippets = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_SNIPPETS, this);
+    public readonly languageServer = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_LANGUAGE_SERVER, this);
+
+    public readonly legatoTarget = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_TARGET, this);
+    public readonly legatoObjectDir = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_OBJECT_DIR, this);
+    public readonly legatoOutputDir = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_OUTPUT_DIR, this);
+    public readonly legatoDebugDir = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_DEBUG_DIR, this);
+    public readonly legatoUpdateFile = new EnvVarModelElement<string | undefined>(this.leafManager.envVars, LEGATO_ENV.LEGATO_UPDATE_FILE, this);
+
+    public readonly mkBuild: MkBuildManager;
 
     public constructor(private readonly leafManager: LeafManager) {
         super();
@@ -74,25 +84,10 @@ export class LegatoManager extends DisposableBag {
             thisArg: this.leafManager.envVars
         };
         this.mkEdit = new MkEditManager(options);
-        this.mkBuild = this.toDispose(new MkBuildManager(this.defFile));
-
-        // Expose tool model
-        this.mkTool = this.mkBuild.mkTool;
-        this.buildCommand = this.mkBuild.buildCommand;
-        this.buildAndInstallCommand = this.mkBuild.buildAndInstallCommand;
+        this.mkBuild = this.toDispose(new MkBuildManager(this));
 
         // Implement model of this manager
-        this.leafManager.envVars
-            .addDependency(this.rootPath, env => env[LEGATO_ENV.LEGATO_ROOT], this)
-            .addDependency(this.destIp, env => env[LEGATO_ENV.DEST_IP], this)
-            .addDependency(this.defFile, env => {
-                let defFile = env[LEGATO_ENV.LEGATO_DEF_FILE];
-                return defFile ? vscode.Uri.file(defFile) : undefined;
-            }, this)
-            .addDependency(this.snippets, env => env[LEGATO_ENV.LEGATO_SNIPPETS], this)
-            .addDependency(this.languageServer, env => env[LEGATO_ENV.LEGATO_LANGUAGE_SERVER], this);
-        this.rootPath
-            .addDependency(this.workspaceReady, path => path !== undefined, this);
+        this.rootPath.addDependency(this.workspaceReady, path => path !== undefined, this);
     }
 
     /**

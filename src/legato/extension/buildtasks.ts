@@ -1,8 +1,8 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { CommandRegister } from '../../commons/manager';
 import { TaskDefinitionType } from '../../commons/identifiers';
+import { CommandRegister } from '../../commons/manager';
 import { LeafManager } from '../../leaf/api/core';
 import { LegatoManager } from '../api/core';
 
@@ -11,13 +11,16 @@ import { LegatoManager } from '../api/core';
  */
 enum LegatoTasks {
     Build = "Build",
-    BuildAndInstall = "Build and install"
+    BuildAndInstall = "Build and install",
+    Clean = "Clean",
+    SysToImage = "Generate image"
 }
 
 /**
  * Expose build commands as build tasks
  */
 export class LegatoBuildTasks extends CommandRegister {
+
     /**
      * Need 2 managers
      */
@@ -37,9 +40,9 @@ export class LegatoBuildTasks extends CommandRegister {
     }
 
     /**
-     * Create a build task 
+     * Create a build task
      */
-    private async createTask(type: TaskDefinitionType, taskName: LegatoTasks, command: string): Promise<vscode.Task> {
+    private async createTask(type: TaskDefinitionType, taskName: LegatoTasks, command: string, group = vscode.TaskGroup.Build): Promise<vscode.Task> {
         let kind: vscode.TaskDefinition = {
             type: type
         };
@@ -47,7 +50,7 @@ export class LegatoBuildTasks extends CommandRegister {
             env: await this.leafManager.envVars.get()
         };
         let task = new vscode.Task(kind, vscode.TaskScope.Workspace, taskName, 'Legato', new vscode.ShellExecution(command, shellOptions));
-        task.group = vscode.TaskGroup.Build;
+        task.group = group;
         task.problemMatchers = ['$legato'];
         task.presentationOptions = {
             reveal: vscode.TaskRevealKind.Always,
@@ -62,18 +65,29 @@ export class LegatoBuildTasks extends CommandRegister {
     private async getBuildTasks(): Promise<vscode.Task[]> {
         let out: vscode.Task[] = [];
 
+        // Clean
+        let cleanCommand = await this.legatoManager.mkBuild.getCleanCommand();
+        if (cleanCommand) {
+            out.push(await this.createTask(TaskDefinitionType.LegatoClean, LegatoTasks.Clean, cleanCommand, vscode.TaskGroup.Clean));
+        }
+
         // Build
-        let buildCommand = await this.legatoManager.buildCommand.get();
+        let buildCommand = await this.legatoManager.mkBuild.getBuildCommand();
         if (buildCommand) {
             out.push(await this.createTask(TaskDefinitionType.LegatoBuild, LegatoTasks.Build, buildCommand));
         }
 
         // Build and install
-        let buildAndInstallCommand = await this.legatoManager.buildAndInstallCommand.get();
+        let buildAndInstallCommand = await this.legatoManager.mkBuild.getBuildAndInstallCommand();
         if (buildAndInstallCommand) {
             out.push(await this.createTask(TaskDefinitionType.LegatoInstall, LegatoTasks.BuildAndInstall, buildAndInstallCommand));
         }
 
+        // Generate image
+        const generateImageCommand = await this.legatoManager.mkBuild.generateImage();
+        if (generateImageCommand) {
+            out.push(await this.createTask(TaskDefinitionType.LegatoSysToImage, LegatoTasks.SysToImage, generateImageCommand));
+        }
         return out;
     }
 }

@@ -1,5 +1,11 @@
 # Change Log
 
+## 0.7.0
+
+- Build using **LEGATO_OUTPUT_DIR** and **LEGATO_OBJECT_DIR** on the command line
+- Add clean task
+- Add task to generate Legato image from system build
+
 ## 0.6.0
 
 - First publish on the market place

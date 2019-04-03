@@ -1,7 +1,7 @@
 'use strict';
 import * as path from 'path';
 import * as vscode from "vscode";
-import { ModelElement } from "../../commons/model";
+import { ModelElement, EnvVarModelElement } from "../../commons/model";
 import { TaskProcessLauncher, ProcessLauncherOptions } from "../../commons/process";
 import { TaskDefinitionType } from "../../commons/identifiers";
 
@@ -9,7 +9,7 @@ import { TaskDefinitionType } from "../../commons/identifiers";
  * Same as ProcessLauncherOptions with deffile model element
  */
 export interface MkEditOptions extends ProcessLauncherOptions {
-    readonly defFile: ModelElement<vscode.Uri | undefined>;
+    readonly defFile: EnvVarModelElement<vscode.Uri | undefined>;
 }
 
 /**

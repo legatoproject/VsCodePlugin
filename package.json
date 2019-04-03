@@ -458,6 +458,12 @@
                 "type": "Legato Build"
             },
             {
+                "type": "Legato Generate image"
+            },
+            {
+                "type": "Legato Clean"
+            },
+            {
                 "type": "Legato Install"
             },
             {

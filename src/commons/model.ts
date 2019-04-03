@@ -1,10 +1,12 @@
 'use strict';
 
 import { EventEmitter } from "events";
+import { isAbsolute } from "path";
 import * as vscode from 'vscode';
+import { getWorkspaceFolderPath } from "./files";
 import { DisposableBag } from './manager';
 import { DelayedPromise } from './promise';
-import { deepEquals, toStringPartial } from "./utils";
+import { deepEquals, EnvVars, toStringPartial } from "./utils";
 
 /**
  * Type of listeners that can be added to Listenable
@@ -13,11 +15,11 @@ type Listener = (...args: any[]) => void;
 
 /**
  * Conditional types that return the parameters of a given LISTENER
- * 
+ *
  * Conditional types in typescript allow us to introduce type variables into the expression in a rather dynamic way.
  * Notice the 'infer' keyword. That says to TypeScript: "I want to take whatever TypeScript infers to be at this position and assign it to the name ARGS".
  * It just so happens that the thing at that position is the arguments of a given listener, that we have called LISTENER.
- * 
+ *
  * This is used to ensure than Listenable#emit take the same arguments than the listeners
  */
 type ListenerParameters<LISTENER extends Listener> =
@@ -168,7 +170,7 @@ export class ModelElement<VALUE_TYPE> extends Listenable<ModelListener<VALUE_TYP
 
         // if value changed, emit event
         if (!deepEquals(newValue, oldValue) && this.emit(newValue, oldValue)) {
-            // then log it 
+            // then log it
             console.log(`[ModelElement] Value of ${this.name} changed from '${toStringPartial(oldValue)}' to '${toStringPartial(newValue)}'`);
             return true;
         }
@@ -209,7 +211,7 @@ export class StateModelElement extends ModelElement<boolean> {
 
     /**
      * Call callbacks when entering/exiting event
-     * Immediatly call enable/disable from current value
+     * Immediately call enable/disable from current value
      * @param activator.onWillEnable callback called when the event return true to wait for component creation
      * @param activator.onDidDisable callback called when the event return false after disposing components
      * @param thisArg The `this`-argument which will be used when calling the activator (used as disposable if is a DisposableBag)
@@ -255,4 +257,31 @@ export class StateModelElement extends ModelElement<boolean> {
         }
         return this;
     }
+}
+
+export class EnvVarModelElement<VALUE_TYPE> extends ModelElement<VALUE_TYPE> {
+    constructor(private readonly envVars: ModelElement<EnvVars>, public readonly envVarName: string, disposables: vscode.Disposable[], converter: (env: EnvVars) => any = (env: EnvVars) => env[envVarName]) {
+        super(envVarName, disposables);
+        this.envVars.addDependency(this, converter, disposables);
+    }
+
+    public getEvalExpression(): string {
+        return "${".concat(this.envVarName, "}");
+    }
+
+    /**
+     * @returns full path from the env var; if the variable value is identified as relative, the workspace folder is prepended
+     */
+    public async getResolvedPath() {
+        const envValue = await this.get();
+
+        let fullPath = undefined;
+        if (typeof envValue === "string") {
+            fullPath = isAbsolute(envValue) ? envValue : getWorkspaceFolderPath(envValue);
+        } else if (envValue instanceof vscode.Uri) {
+            fullPath = envValue.fsPath;
+        }
+        return fullPath;
+    }
+
 }

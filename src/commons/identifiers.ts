@@ -41,6 +41,7 @@ export const enum Command { // (cmd)
     LegatoCommonShowWelcomePage = "cmd.legato.common.showwelcomepage",
     // BUILD (.build)
     LegatoBuildPickDefFile = "cmd.legato.build.pickDefFile",
+    LegatoBuildCommand = "legato.build",
     // TM (.tm)
     LegatoTmCommandPalette = "_cmd.legato.tm.availablecommands", // internal
     LegatoTmShell = "cmd.legato.tm.shell",
@@ -97,6 +98,8 @@ export const enum TaskDefinitionType { //
 
     // #### LEGATO ####
     LegatoBuild = "Legato Build",
+    LegatoSysToImage = "Legato Generate image",
+    LegatoClean = "Legato Clean",
     LegatoInstall = "Legato Install",
     LegatoTm = "Legato TM",
 

@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { ConfigurationChecker } from './commons/configuration';
 import { DisposableBag } from './commons/manager';
 import { DelayedPromise } from './commons/promise';
+import { ResourcesManager } from './commons/resources';
 import { VersionManager } from './commons/version';
 import { WelcomePageManager } from './commons/welcome';
 import { LeafManager } from './leaf/api/core';
@@ -11,15 +12,14 @@ import { LeafPackagesView } from './leaf/extension/packages';
 import { LeafProfileStatusBar } from './leaf/extension/profiles';
 import { LeafRemotesView } from './leaf/extension/remotes';
 import { LeafTerminalManager } from './leaf/extension/terminal';
-import { LegatoLanguageManager } from './legato/api/language';
 import { LegatoManager } from './legato/api/core';
-import { LegatoStatusBar } from './legato/extension/statusBar';
-import { SnippetsManager } from './legato/extension/snippets';
-import { LegatoSystemTreeview } from './legato/extension/system';
-import { DeviceStatusBar } from './tm/extension/statusBar';
-import { DeviceManager } from './tm/api/device';
-import { ResourcesManager } from './commons/resources';
+import { LegatoLanguageManager } from './legato/api/language';
 import { LegatoBuildTasks } from './legato/extension/buildtasks';
+import { SnippetsManager } from './legato/extension/snippets';
+import { LegatoStatusBar } from './legato/extension/statusBar';
+import { LegatoSystemTreeview } from './legato/extension/system';
+import { DeviceManager } from './tm/api/device';
+import { DeviceStatusBar } from './tm/extension/statusBar';
 
 /**
  * Manage the entire extension life-cycle

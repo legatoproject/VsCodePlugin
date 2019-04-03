@@ -61,6 +61,9 @@ This extension provides the following features to ease Legato development in VS 
 - build tasks (available on `Ctrl+Shift+B`):
   - `Legato: build`: invokes `mksys`|`mkapp` on the active definition file
   - `Legato: build and install`: as above + triggers install on device
+  - `Legato: generate image`: invokes `systoimg` to generate e Legato image from current system build output
+- clean tasls:
+  - `Legato: clean`: removes build directory and generated artifact
 - errors parsing from both `mksys`|`mkapp` and C/C++ compilation
 
 #### Target Management

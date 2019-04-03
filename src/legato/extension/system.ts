@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { DocumentSymbol, Range, SymbolKind } from "vscode-languageclient";
-import { DefinitionObject } from '../../@types/legato-languages';
-import { showHint } from '../../commons/hints';
 import { Command, Context, View } from "../../commons/identifiers";
 import { ACTION_LABELS, TreeDataProvider2, TreeItem2 } from "../../commons/uiUtils";
 import { LegatoManager } from "../api/core";
+import { showHint } from '../../commons/hints';
 import { LegatoLanguageManager, LegatoLanguageRequest } from "../api/language";
+import { DefinitionObject } from '../../@types/legato-languages';
 
 export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private symbols: DefinitionObject | undefined;

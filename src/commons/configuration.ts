@@ -99,6 +99,7 @@ export namespace Configuration {
      * Legato settings
      */
     export namespace Legato {
+
         /**
          * Target Management settings
          */
