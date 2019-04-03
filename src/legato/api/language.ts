@@ -1,28 +1,39 @@
 import * as fs from 'fs-extra';
 import * as vscode from 'vscode';
-import { DidChangeConfigurationNotification, DocumentSymbol, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { DidChangeConfigurationNotification, LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient';
+import { DefinitionObject } from '../../@types/legato-languages';
+import { getWorkspaceFolder } from '../../commons/files';
 import { DisposableBag } from "../../commons/manager";
+import { ModelElement, StateModelElement } from '../../commons/model';
 import { DelayedPromise } from '../../commons/promise';
+import { EnvVars, toStringPartial } from '../../commons/utils';
 import { LeafManager } from "../../leaf/api/core";
 import { LegatoManager } from "./core";
-import { EnvVars, toStringPartial } from '../../commons/utils';
-import { ModelElement, StateModelElement } from '../../commons/model';
-import { getWorkspaceFolder } from '../../commons/files';
 
-enum LegatoLanguageRequest {
-    LegatoSystemView = "le_GetLogicalView"
+/**
+ * Custom requests specific to Legato
+ */
+export enum LegatoLanguageRequest {
+    LanguageGetProtocolVersion = "le_GetExtensionProtocolVersion",
+    LanguageSetProtocolVersion = "le_SetClientExtensionProtocolVersion", // the LSP client can say it supports a specific version
+    LegatoRegisterModelUpdates = "le_registerModelUpdates", // since v0.2
+    LegatoUnregisterModelUpdates = "le_unregisterModelUpdates", // since v0.2    
 }
 
-enum LegatoLanguageNotification {
+/**
+ * Custom notification
+ */
+export enum LegatoLanguageNotification {
+    // to be notified about system view update
     LegatoSystemViewUpdated = "le_UpdateLogicalView"
 }
 
 export class LegatoLanguageManager extends DisposableBag {
-    private lspClient: LanguageClient | undefined = undefined;
+    public languageClient: LanguageClient | undefined = undefined;
 
     // Exposed Model
     public readonly workspaceReady = new StateModelElement("legato.lsp.ready", this);
-    public readonly lspData = new ModelElement<any>("legato.lsp.data", this);
+    public readonly defFileModel = new ModelElement<DefinitionObject>("legato.lsp.defFileModel", this);
 
     public constructor(private readonly leafManager: LeafManager, private readonly legatoManager: LegatoManager) {
         super();
@@ -39,20 +50,17 @@ export class LegatoLanguageManager extends DisposableBag {
      */
     private async stopAndStartLegatoLanguageServer() {
         let start = (await this.legatoManager.rootPath.get()) !== undefined;
-
-        if (this.lspClient) {
+        if (this.languageClient) {
             this.workspaceReady.set(false);
-            await this.lspClient.stop();
+            await this.languageClient.stop();
         }
         if (start) {
             // Wait for client to start and store instance
-            this.lspClient = await this.startLegatoServer();
-            await this.lspClient.onReady();
+            this.languageClient = await this.startLegatoServer();
+            await this.languageClient.onReady();
             this.workspaceReady.set(true);
-
-            this.lspClient.onNotification(LegatoLanguageNotification.LegatoSystemViewUpdated, (data: any) => {
-                //the received data does not fit DocumentSymbol class
-                this.lspData.set(data);
+            this.languageClient.onNotification(LegatoLanguageNotification.LegatoSystemViewUpdated, (data: DefinitionObject) => {
+                this.defFileModel.set(data);
             });
         } else {
             this.workspaceReady.set(false);
@@ -62,20 +70,9 @@ export class LegatoLanguageManager extends DisposableBag {
 
     private async notifyLeafEnvToLanguageServer(newEnv: EnvVars) {
         console.log(`[LegatoLanguageManager] Leaf env change triggered to LSP: ${toStringPartial(newEnv)}`);
-        if (this.lspClient) {
-            await this.lspClient.onReady();
-            this.lspClient.sendNotification(DidChangeConfigurationNotification.type, newEnv as any);
-        }
-    }
-
-    public async requestLegatoActiveDefFileOutline(activeDefFile: vscode.Uri): Promise<DocumentSymbol> {
-        if (this.lspClient) {
-            //active definition file URI in its deep dive version
-            console.log(`Going to request listSystemInterfaces`);
-            await this.lspClient.onReady();
-            return this.lspClient.sendRequest<DocumentSymbol>(LegatoLanguageRequest.LegatoSystemView);
-        } else {
-            throw new Error("No Legato language server found to request symbols");
+        if (this.languageClient) {
+            await this.languageClient.onReady();
+            this.languageClient.sendNotification(DidChangeConfigurationNotification.type, newEnv as any);
         }
     }
 
@@ -119,11 +116,14 @@ export class LegatoLanguageManager extends DisposableBag {
                     // Notify the server about file changes to '.clientrc files contained in the workspace
                     fileEvents: vscode.workspace.createFileSystemWatcher('**/.clientrc')
                 },
-                initializationOptions: await this.leafManager.envVars.get(),
+                initializationOptions: {
+                    env: await this.leafManager.envVars.get(),
+                    supportsModelUpdates: true
+                },
                 workspaceFolder: getWorkspaceFolder()
             };
             // Create the language client and start the client.
-            let lspClient = new LanguageClient(
+            const languageClient = new LanguageClient(
                 'legatoServer',
                 'Legato Language Server',
                 serverOptions,
@@ -132,11 +132,11 @@ export class LegatoLanguageManager extends DisposableBag {
 
             if (!debug) {
                 // Start the client. This will also launch the server
-                this.toDispose(lspClient.start());
+                this.toDispose(languageClient.start());
             }
 
             // Return new client
-            return lspClient;
+            return languageClient;
         } catch (reason) {
             let errMsg = `Failed to start the Legato Language server - reason: ${reason}`;
             console.error(errMsg);

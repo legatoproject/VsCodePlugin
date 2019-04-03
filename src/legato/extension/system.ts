@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 import { DocumentSymbol, Range, SymbolKind } from "vscode-languageclient";
-import { Command, Context, View } from "../../commons/identifiers";
-import { TreeDataProvider2, TreeItem2, ACTION_LABELS } from "../../commons/uiUtils";
-import { LegatoManager } from "../api/core";
-import { LegatoLanguageManager } from "../api/language";
+import { DefinitionObject } from '../../@types/legato-languages';
 import { showHint } from '../../commons/hints';
+import { Command, Context, View } from "../../commons/identifiers";
+import { ACTION_LABELS, TreeDataProvider2, TreeItem2 } from "../../commons/uiUtils";
+import { LegatoManager } from "../api/core";
+import { LegatoLanguageManager, LegatoLanguageRequest } from "../api/language";
 
 export class LegatoSystemTreeview extends TreeDataProvider2 {
-	private symbols: DocumentSymbol | undefined;
+	private symbols: DefinitionObject | undefined;
 
 	/**
 	 * Register TreeDataProvider
@@ -33,7 +34,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		this.createCommand(Command.LegatoComponentRemove, this.removeComponent, this);
 
 		this.legatoManager.defFile.addListener(this.onLegatoDefFileChange, this);
-		this.legatoLanguageManager.lspData.addListener(this.onLogicalViewRefresh, this);
+		this.legatoLanguageManager.defFileModel.addListener(this.onLogicalViewRefresh, this);
 	}
 
 	/**
@@ -81,9 +82,8 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			vscode.commands.executeCommand(Command.VscodeSetContext, Context.LegatoSystemEnabled, newActiveDeFile !== undefined);
 			if (newActiveDeFile) {
 				console.log(`LEGATO_DEF_FILE changed from ${oldActiveDeFile} to ${newActiveDeFile.toString()}`);
-				this.symbols = await this.legatoLanguageManager.requestLegatoActiveDefFileOutline(newActiveDeFile);
-				if (this.symbols) {
-					this.refresh();
+				if (this.legatoLanguageManager.languageClient) {
+					this.legatoLanguageManager.languageClient.sendRequest(LegatoLanguageRequest.LegatoRegisterModelUpdates);
 				}
 			} else {
 				// No def file selected, let's suggest creating a new system
@@ -231,11 +231,6 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	}
 
 	public async getRootElements(): Promise<TreeItem2[]> {
-		if (!this.symbols) {
-			let activeDefFile = await this.legatoManager.defFile.get();
-			this.onLegatoDefFileChange(undefined, activeDefFile);
-		}
-
 		if (this.symbols) {
 			if (DocumentSymbol.is(this.symbols)) {
 				return [new DocumentSymbolTreeItem(this.symbols, undefined)];
@@ -245,7 +240,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	}
 }
 
-enum LegatoType {
+export enum LegatoType {
 	Sdef,
 	Mdef,
 	AppsSection,
@@ -255,7 +250,7 @@ enum LegatoType {
 	Api,
 	Function
 }
-const symbolsKindToLegato: Map<SymbolKind, LegatoType> = new Map([
+export const symbolsKindToLegato: Map<SymbolKind, LegatoType> = new Map([
 	[SymbolKind.File, LegatoType.Sdef],
 	[SymbolKind.Module, LegatoType.Mdef],
 	[SymbolKind.Namespace, LegatoType.AppsSection],
@@ -316,10 +311,10 @@ function processId(symbolParent: TreeItem2 | undefined, symbolName: string): str
 
 
 class DocumentSymbolTreeItem extends TreeItem2 {
-	symbol: any;
-	constructor(symbol: DocumentSymbol, parent: DocumentSymbolTreeItem | undefined) {
+	symbol: DefinitionObject;
+	constructor(symbol: DefinitionObject, parent: DocumentSymbolTreeItem | undefined) {
 		super(processId(parent, symbol.name), undefined, symbol.name, "", "",
-			vscode.TreeItemCollapsibleState.Expanded,
+			(<any>symbol).defaultCollapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded,
 			context(symbol.kind, symbol.name),
 			legatoTypesToIcon.get(symbol.kind));
 		this.symbol = symbol;
@@ -328,14 +323,14 @@ class DocumentSymbolTreeItem extends TreeItem2 {
 		this.setInitialState(symbol);
 	}
 
-	private async setInitialState(symbol: DocumentSymbol) {
-		this.command = await showInFileCommand((<string>this.symbol["defPath"]), symbol.range);
+	private async setInitialState(symbol: DefinitionObject) {
+		this.command = await showInFileCommand((this.symbol.defPath), symbol.range);
 	}
 
 	public async getChildren(): Promise<TreeItem2[]> {
 		if (this.symbol.children) {
 			return Promise.resolve(this.symbol.children.map((value: DocumentSymbol) => {
-				return new DocumentSymbolTreeItem(value, this);
+				return new DocumentSymbolTreeItem((<DefinitionObject>value), this);
 			}
 			));
 		} else {
