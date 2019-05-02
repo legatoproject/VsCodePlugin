@@ -6,6 +6,7 @@ import { LegatoManager } from "../api/core";
 import { showHint } from '../../commons/hints';
 import { LegatoLanguageManager, LegatoLanguageRequest } from "../api/language";
 import { DefinitionObject } from '../../@types/legato-languages';
+import { pathExists } from 'fs-extra';
 
 export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private symbols: DefinitionObject | undefined;
@@ -54,11 +55,11 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	 * Hint to create an system
 	 * Shown when a no system is selected as aactive def file
 	 */
-	private async showCreateSystemHint() {
+	private async showCreateSystemHint(hintMessage: string) {
 		const selectExistingSystem = 'Select system...';
 		const createAction = 'Create system...';
 		let result = await showHint(
-			'No Legato definition file selected yet; you can either select an existing one or create a new system.',
+			hintMessage,
 			selectExistingSystem, createAction);
 		switch (result) {
 			case selectExistingSystem:
@@ -73,7 +74,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 
 	/**
 	 * On active def file change, request the language server the corresponding system map
-	 * @param newActiveDeFile 
+	 * @param newActiveDeFile
 	 * @param oldActiveDeFile o
 	 */
 	private async onLegatoDefFileChange(newActiveDeFile: vscode.Uri | undefined, oldActiveDeFile: vscode.Uri | undefined) {
@@ -81,13 +82,17 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		if (await this.legatoManager.languageServer.get()) {
 			vscode.commands.executeCommand(Command.VscodeSetContext, Context.LegatoSystemEnabled, newActiveDeFile !== undefined);
 			if (newActiveDeFile) {
-				console.log(`LEGATO_DEF_FILE changed from ${oldActiveDeFile} to ${newActiveDeFile.toString()}`);
-				if (this.legatoLanguageManager.languageClient) {
-					this.legatoLanguageManager.languageClient.sendRequest(LegatoLanguageRequest.LegatoRegisterModelUpdates);
+				if (!pathExists(newActiveDeFile.fsPath)) {
+					this.showCreateSystemHint('The selected Legato definition file does not exist anymore; you can either select an existing one or create a new system.');
+				} else {
+					console.log(`LEGATO_DEF_FILE changed from ${oldActiveDeFile} to ${newActiveDeFile.toString()}`);
+					if (this.legatoLanguageManager.languageClient) {
+						this.legatoLanguageManager.languageClient.sendRequest(LegatoLanguageRequest.LegatoRegisterModelUpdates);
+					}
 				}
 			} else {
 				// No def file selected, let's suggest creating a new system
-				this.showCreateSystemHint();
+				this.showCreateSystemHint('No Legato definition file selected yet; you can either select an existing one or create a new system.');
 			}
 		}
 	}
@@ -290,7 +295,7 @@ function context(symbolKind: SymbolKind, symbolName: string): Context {
 }
 
 /**
-* Define a namespaced ID by using the parent hierarchy. 
+* Define a namespaced ID by using the parent hierarchy.
 **/
 function processId(symbolParent: TreeItem2 | undefined, symbolName: string): string {
 	const cleanName = (symbolName: string) => {
