@@ -200,7 +200,7 @@ class InfoHandler(LeafHandler):
         out["version"] = __version__
         out["configFolder"] = str(pm.configuration_folder)
         out["cacheFolder"] = str(pm.cache_folder)
-        out["packageFolder"] = str(pm.get_install_folder())
+        out["packageFolder"] = str(pm.install_folder)
         return out
 
 
