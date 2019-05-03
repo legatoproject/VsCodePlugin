@@ -1,6 +1,6 @@
 'use strict';
 
-import { window, StatusBarItem, StatusBarAlignment } from 'vscode';
+import { window, StatusBarItem, StatusBarAlignment, commands } from 'vscode';
 import { LeafManager } from '../api/core';
 import { Command, View } from '../../commons/identifiers';
 import { ProfileQuickPickItem, ProfileTreeItem, PackageTreeItem } from './uiComponents';
@@ -99,7 +99,8 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
 
     // User picked a profile to switch to
     result = result as ProfileQuickPickItem;
-    return this.leafManager.switchProfile(result.id);
+    await this.leafManager.switchProfile(result.id);
+    return commands.executeCommand(Command.LeafTerminalOpenLeaf);
   }
 
 	/**

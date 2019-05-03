@@ -269,9 +269,9 @@ export class LeafManager extends CommandRegister {
    */
   public async switchProfile(profile: string): Promise<void> {
     return this.processLauncher.executeProcess(
-      ExecKind.OutputChannel,
+      ExecKind.Task,
       `Switching to profile ${profile}`,
-      'leaf', 'profile', 'switch', profile);
+      'leaf', 'select', profile);
   }
 
   /**
