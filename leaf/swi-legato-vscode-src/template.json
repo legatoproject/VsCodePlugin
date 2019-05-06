@@ -2,17 +2,6 @@
   "info": {
     "description": "Source code for VS Code Legato extension",
     "leafMinVersion": "1.2",
-    "features": {
-      "legato-vscode-src": {
-        "key": "LEGATO_VSCODE_SRC",
-        "description": "Source mode for VS Code Legato extension",
-        "values": {
-          "binary": null,
-          "source": "tag",
-          "source-master": "master"
-        }
-      }
-    },
     "depends": [
       "swi-cloneutils_latest"
     ]

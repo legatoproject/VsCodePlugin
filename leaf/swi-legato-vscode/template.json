@@ -5,6 +5,17 @@
     "master": true,
     "upgrade": true
   },
+  "settings": {
+    "source.mode": {
+      "key": "LEGATO_VSCODE_SRC",
+      "description": "Source mode for VS Code Legato extension",
+      "regex": "(tag|master)"
+    },
+    "source.dir": {
+      "key": "LEGATO_VSCODE_CLONE",
+      "description": "Directory where to clone VS Code Legato extension source code"
+    }
+  },
   "install": [
     {
       "command": [

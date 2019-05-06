@@ -10,14 +10,8 @@ DATE=$(shell test -f $(INPUT_PACKAGE) && date -uR -r $(INPUT_PACKAGE))
 
 # Names and version
 VERSION ?= $(shell git describe --tags)
-RELEASE_VERSION := $(shell echo $(VERSION) | grep -v "\-g" || true)
-ifneq ($(RELEASE_VERSION),)
 NAMES := swi-legato-vscode swi-legato-vscode-src
 SRCDEP = `if $(IS_MAIN_PACK); then echo "--depends swi-legato-vscode-src_$(VERSION)(LEGATO_VSCODE_SRC)"; fi`
-else
-NAMES := swi-legato-vscode
-SRCDEP =
-endif
 PACKAGES := $(foreach NAME,$(NAMES),$(OUTPUT)/$(NAME)_$(VERSION).leaf)
 MANIFESTS := $(foreach NAME,$(NAMES),$(OUTPUT)/$(NAME)_$(VERSION)/manifest.json)
 TEMPLATES := $(foreach NAME,$(NAMES),$(NAME)/template.json)
