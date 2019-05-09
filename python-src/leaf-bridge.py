@@ -14,6 +14,7 @@ import subprocess
 import sys
 import traceback
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from pathlib import Path
 
 from leaf import __version__
@@ -157,29 +158,46 @@ class VariablesHandler(LeafHandler):
     def get_name(self):
         return "resolveVariables"
 
+    def lines_to_dict(self, lines):
+        out = OrderedDict()
+        for line in lines:
+            if "=" in line:
+                i = line.index("=")
+                out[line[:i]] = line[i + 1 :]
+        return out
+
+    def build_shell_command(self, *args, env=None):
+        # In shell mode, env is evaluated in the command line
+        exports = []
+        if isinstance(env, dict):
+            for k, v in env.items():
+                exports.append(Environment.tostring_export(k, v))
+        elif isinstance(env, Environment):
+            env.activate(
+                kv_consumer=lambda k, v: exports.append(Environment.tostring_export(k, v)), file_consumer=lambda f: exports.append(Environment.tostring_file(f))
+            )
+        shell_command = "".join(exports)
+        for a in args:
+            shell_command += ' "{0}"'.format(a)
+        return ["bash", "-c", shell_command]
+
     def execute(self, **kwargs):
-        out = {}
         wm = WorkspaceManager(self.get_ws_folder(**kwargs))
         if not wm.is_initialized:
             raise WorkspaceNotInitializedException()
         profile = wm.get_profile(kwargs["profile"] if "profile" in kwargs else wm.current_profile_name)
         wm.is_profile_sync(profile, raise_if_not_sync=True)
-
         pf_env = wm.build_full_environment(profile)
-        command = ""
-        for key, value in pf_env.tolist():
-            command += Environment.tostring_export(key, value)
-        command += " env"
 
-        lines = subprocess.check_output(["sh", "-c", command]).decode().splitlines()
+        env_before = self.lines_to_dict(subprocess.check_output(self.build_shell_command("env")).decode().splitlines())
+        env_after = self.lines_to_dict(subprocess.check_output(self.build_shell_command("env", env=pf_env)).decode().splitlines())
 
-        def find_value(key, lines):
-            for line in lines:
-                if line.startswith(key + "="):
-                    return line[len(key) + 1 :]
-
-        for k in kwargs.get("keys", pf_env.keys()):
-            out[k] = find_value(k, lines)
+        out = OrderedDict()
+        keys = kwargs.get("keys")
+        for k in sorted(env_after.keys()):
+            if k not in env_before or env_after[k] != env_before[k]:
+                if keys is None or k in keys:
+                    out[k] = env_after[k]
         return out
 
 

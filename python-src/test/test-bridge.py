@@ -134,5 +134,4 @@ class TestLeafCodeInterface(unittest.TestCase):
             outs, errs = proc.communicate(input=(COMMAND_VARIABLES__ws_var.format(ws=workspace, key="FOO")).encode())
             result = json.loads(outs.decode())
             self.assertIsNone(result.get("error"))
-            self.assertEqual(1, len(result["result"]))
-            self.assertEqual(None, result["result"]["FOO"])
+            self.assertEqual(0, len(result["result"]))
