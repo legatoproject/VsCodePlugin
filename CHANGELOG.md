@@ -2,6 +2,7 @@
 
 ## 0.7.0
 
+- Update minimum leaf version to 1.9
 - Build using **LEGATO_OUTPUT_DIR** and **LEGATO_OBJECT_DIR** on the command line
 - Add clean task
 - Add task to generate Legato image from system build
