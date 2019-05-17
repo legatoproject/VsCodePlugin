@@ -204,7 +204,8 @@ export class ProfileTreeItem extends TreeItem2 {
 		let packs = await this.leafManager.mergedPackages.get();
 		let model: { [key: string]: any } = {};
 		if (packs) {
-			for (let packId of this.properties.packages) {
+			for (let [packName, packVersion] of Object.entries(this.properties.packages)) {
+				let packId = packName + '_' + packVersion;
 				model[packId] = packs[packId];
 			}
 		}
