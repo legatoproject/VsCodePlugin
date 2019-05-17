@@ -4,6 +4,9 @@ import { DisposableBag } from '../../commons/manager';
 import { LegatoToolchainManager } from '../api/toolchain';
 import { ResourcesManager, ExtensionPaths } from '../../commons/resources';
 import { LegatoManager } from '../api/core';
+import { RemoteDeviceManager, AppStatus } from '../../tm/api/remote';
+import { LeafManager, LeafEnvScope } from '../../leaf/api/core';
+import { LegatoBuildTasks } from './buildtasks';
 
 /**
  * This configuration is automatically added to the launch.json created when the user try to launch
@@ -28,8 +31,11 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
      */
     public constructor(
         private readonly resourcesManager: ResourcesManager,
+        private readonly leafManager: LeafManager,
         private readonly legatoManager: LegatoManager,
-        private readonly toolchainManager: LegatoToolchainManager
+        private readonly legatoBuildTasks: LegatoBuildTasks,
+        private readonly toolchainManager: LegatoToolchainManager,
+        private readonly remoteDeviceManager: RemoteDeviceManager
     ) {
         super();
         this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato", this));
@@ -70,13 +76,34 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         if (!legatoDebugConf.name) {
             return null;
         }
+
+        // Check debug dir
+        let symbolsFolder = await this.legatoManager.debugDir.get();
+        if (!symbolsFolder) {
+            let action = 'Toggle the build in debug mode';
+            let result = await vscode.window.showInformationMessage(
+                'Debug symbols not found. Do you want to toggle the build in debug mode?',
+                action);
+            if (result === action) {
+                await this.leafManager.setEnvValue(this.legatoManager.debugDir.name, '.debug', LeafEnvScope.Workspace);
+                let task = await this.legatoBuildTasks.createBuildAndInstallTask();
+                if (task) {
+                    await vscode.tasks.executeTask(task);
+                    return;
+                }
+            } else {
+                // Use Cancellation
+                return;
+            }
+        }
+
+        // Provision config
         let confName = legatoDebugConf.name;
         let localPort: number = legatoDebugConf.localPort || 2000;
         let remotePort: number = legatoDebugConf.remotePort || 2000;
         let applicationName: string = legatoDebugConf.application;
         let executableName: string = legatoDebugConf.executable;
         let sysroot = await this.toolchainManager.getSysroot();
-        let symbolsFolder = await this.legatoManager.debugDir.getMandatory();
         let soLibPaths = await this.toolchainManager.getSOLibPaths(applicationName);
         let sshWrapper = this.resourcesManager.getExtensionPath(ExtensionPaths.DebugSshWrapper);
         let appStagging = await this.toolchainManager.getAppStaging(applicationName);
@@ -84,6 +111,25 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         let gdbClient = await this.toolchainManager.getGdb();
         let gdbServer = this.toolchainManager.gdbServerPath;
         let deviceIp = legatoDebugConf.deviceIp || await this.legatoManager.destIp.get() || "192.168.2.2";
+
+        // Check DevModeInstalled
+        let installedApps = await this.remoteDeviceManager.getInstalledApps();
+        if (!('devMode' in installedApps)) {
+            throw new Error('devMode app is not installed on device');
+        }
+
+        // Check debugged app is installed
+        if (!(applicationName in installedApps)) {
+            throw new Error(`${applicationName} app is not installed on device`);
+        }
+
+        // Check debugged app is launched
+        let appState = installedApps[applicationName];
+        if (appState === AppStatus.Stopped) {
+            await this.remoteDeviceManager.startApp(applicationName);
+        }
+
+        // Launch debug session
         return {
             name: confName,
             type: "cppdbg",

@@ -60,33 +60,73 @@ export class LegatoBuildTasks extends CommandRegister {
     }
 
     /**
+     * @returns the clean task or undefined if not available
+     */
+    public async createCleanTask(): Promise<vscode.Task | undefined> {
+        let cleanCommand = await this.legatoManager.mkBuild.getCleanCommand();
+        if (cleanCommand) {
+            return this.createTask(TaskDefinitionType.LegatoClean, LegatoTasks.Clean, cleanCommand, vscode.TaskGroup.Clean);
+        }
+    }
+
+    /**
+     * @returns the build task or undefined if not available
+     */
+    public async createBuildTask(): Promise<vscode.Task | undefined> {
+        let buildCommand = await this.legatoManager.mkBuild.getBuildCommand();
+        if (buildCommand) {
+            return this.createTask(TaskDefinitionType.LegatoBuild, LegatoTasks.Build, buildCommand);
+        }
+    }
+
+    /**
+     * @returns the build and install task or undefined if not available
+     */
+    public async createBuildAndInstallTask(): Promise<vscode.Task | undefined> {
+        let buildAndInstallCommand = await this.legatoManager.mkBuild.getBuildAndInstallCommand();
+        if (buildAndInstallCommand) {
+            return this.createTask(TaskDefinitionType.LegatoInstall, LegatoTasks.BuildAndInstall, buildAndInstallCommand);
+        }
+    }
+
+    /**
+     * @returns the generate image task or undefined if not available
+     */
+    public async createGenerateImageTask(): Promise<vscode.Task | undefined> {
+        let generateImageCommand = await this.legatoManager.mkBuild.generateImage();
+        if (generateImageCommand) {
+            return this.createTask(TaskDefinitionType.LegatoSysToImage, LegatoTasks.SysToImage, generateImageCommand);
+        }
+    }
+
+    /**
      * Create and returns build tasks
      */
     private async getBuildTasks(): Promise<vscode.Task[]> {
         let out: vscode.Task[] = [];
 
         // Clean
-        let cleanCommand = await this.legatoManager.mkBuild.getCleanCommand();
-        if (cleanCommand) {
-            out.push(await this.createTask(TaskDefinitionType.LegatoClean, LegatoTasks.Clean, cleanCommand, vscode.TaskGroup.Clean));
+        let cleanTask = await this.createCleanTask();
+        if (cleanTask) {
+            out.push(cleanTask);
         }
 
         // Build
-        let buildCommand = await this.legatoManager.mkBuild.getBuildCommand();
-        if (buildCommand) {
-            out.push(await this.createTask(TaskDefinitionType.LegatoBuild, LegatoTasks.Build, buildCommand));
+        let buildTask = await this.createBuildTask();
+        if (buildTask) {
+            out.push(buildTask);
         }
 
         // Build and install
-        let buildAndInstallCommand = await this.legatoManager.mkBuild.getBuildAndInstallCommand();
-        if (buildAndInstallCommand) {
-            out.push(await this.createTask(TaskDefinitionType.LegatoInstall, LegatoTasks.BuildAndInstall, buildAndInstallCommand));
+        let buildAndInstallTask = await this.createBuildAndInstallTask();
+        if (buildAndInstallTask) {
+            out.push(buildAndInstallTask);
         }
 
         // Generate image
-        const generateImageCommand = await this.legatoManager.mkBuild.generateImage();
-        if (generateImageCommand) {
-            out.push(await this.createTask(TaskDefinitionType.LegatoSysToImage, LegatoTasks.SysToImage, generateImageCommand));
+        const generateImageTask = await this.createGenerateImageTask();
+        if (generateImageTask) {
+            out.push(generateImageTask);
         }
         return out;
     }

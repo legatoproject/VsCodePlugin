@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.8.0
+
+- Added verification steps before debug (debug symbols built, devMode app present, application started)
+
 ## 0.7.0
 
 - Update minimum leaf version to 1.9.2

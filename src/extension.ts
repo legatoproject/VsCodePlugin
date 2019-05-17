@@ -23,6 +23,7 @@ import { DeviceStatusBar } from './tm/extension/statusBar';
 import { LegatoToolchainManager } from './legato/api/toolchain';
 import { LegatoDebugManager } from './legato/extension/debug';
 import { onEvent } from './commons/model';
+import { RemoteDeviceManager } from './tm/api/remote';
 
 /**
  * Manage the entire extension life-cycle
@@ -40,6 +41,7 @@ class Extension extends DisposableBag {
     public readonly legatoToolchainManager: LegatoToolchainManager;
     public readonly legatoLanguageManager: LegatoLanguageManager;
     public readonly deviceManager: DeviceManager;
+    public readonly remoteDeviceManager: RemoteDeviceManager;
 
     /**
      * Instanciates managers
@@ -64,6 +66,7 @@ class Extension extends DisposableBag {
         this.legatoToolchainManager = new LegatoToolchainManager(this.leafManager, this.legatoManager);
         this.legatoLanguageManager = this.toDispose(new LegatoLanguageManager(this.leafManager, this.legatoManager));
         this.deviceManager = this.toDispose(new DeviceManager(this.leafManager, this.legatoManager));
+        this.remoteDeviceManager = this.toDispose(new RemoteDeviceManager(this.legatoManager));
 
         // Everything is fine, let's manage welcome page
         this.toDispose(new WelcomePageManager(versionManager, this.resourcesManager));
@@ -100,13 +103,22 @@ class Extension extends DisposableBag {
     private async initLegatoComponnents() {
         // Launch/Dispose on In/Out of LegatoWorkspace
         onEvent(this.legatoManager.workspaceReady, {
-            onWillEnable: () => [
-                new DeviceStatusBar(this.legatoManager, this.deviceManager),
-                new LegatoStatusBar(this.legatoManager),
-                new LegatoBuildTasks(this.leafManager, this.legatoManager),
-                new SnippetsManager(this.legatoManager),
-                new LegatoDebugManager(this.resourcesManager, this.legatoManager, this.legatoToolchainManager)
-            ]
+            onWillEnable: () => {
+                let buildTasks = new LegatoBuildTasks(this.leafManager, this.legatoManager);
+                return [
+                    new DeviceStatusBar(this.legatoManager, this.deviceManager),
+                    new LegatoStatusBar(this.legatoManager),
+                    buildTasks,
+                    new SnippetsManager(this.legatoManager),
+                    new LegatoDebugManager(
+                        this.resourcesManager,
+                        this.leafManager,
+                        this.legatoManager,
+                        buildTasks,
+                        this.legatoToolchainManager,
+                        this.remoteDeviceManager)
+                ];
+            }
         }, this);
 
         // Launch/Dispose on In/Out of LSP Workspace
