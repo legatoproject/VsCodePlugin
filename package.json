@@ -922,6 +922,7 @@
         "fs-extra": "^7.0.1",
         "marked": "^0.7.0",
         "minimatch": "^3.0.4",
-        "vscode-languageclient": "^5.2.1"
+        "vscode-languageclient": "^5.2.1",
+        "vscode-cpptools": "^2.1.2"
     }
 }

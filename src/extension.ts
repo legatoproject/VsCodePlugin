@@ -25,6 +25,7 @@ import { LegatoDebugManager } from './legato/extension/debug';
 import { onEvent } from './commons/model';
 import { RemoteDeviceManager } from './tm/api/remote';
 import { LegatoHoverProvider } from './commons/hover';
+import { LegatoBuildConfigManager } from './legato/api/buildConfig';
 
 /**
  * Manage the entire extension life-cycle
@@ -39,6 +40,7 @@ class Extension extends DisposableBag {
 
     // Legato managers
     public readonly legatoManager: LegatoManager;
+    public readonly legatoBuildConfigManager: LegatoBuildConfigManager;
     public readonly legatoToolchainManager: LegatoToolchainManager;
     public readonly legatoLanguageManager: LegatoLanguageManager;
     public readonly deviceManager: DeviceManager;
@@ -64,6 +66,8 @@ class Extension extends DisposableBag {
         // Create LegatoManager using LeafManager and dispose it on deactivate
         // We use then because we want to store read-only promise in constructor
         this.legatoManager = this.toDispose(new LegatoManager(this.leafManager));
+        this.legatoBuildConfigManager = this.toDispose(
+            new LegatoBuildConfigManager(this.leafManager));
         this.legatoToolchainManager = new LegatoToolchainManager(this.leafManager, this.legatoManager);
         this.legatoLanguageManager = this.toDispose(new LegatoLanguageManager(this.leafManager, this.legatoManager));
         this.deviceManager = this.toDispose(new DeviceManager(this.leafManager, this.legatoManager));
