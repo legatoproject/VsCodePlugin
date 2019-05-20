@@ -8,7 +8,7 @@
     "publisher": "legato",
     "repository": {
         "type": "git",
-        "url": "https://github.com/legatoproject/"
+        "url": "https://github.com/legatoproject/VsCodePlugin.git"
     },
     "license": "MPL-2.0",
     "categories": [
