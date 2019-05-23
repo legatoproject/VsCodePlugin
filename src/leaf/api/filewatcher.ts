@@ -7,6 +7,7 @@ import { debounce } from '../../commons/utils';
 import { DisposableBag } from '../../commons/manager';
 import { LEAF_FILES, getWorkspaceFolderPath } from '../../commons/files';
 import { Listenable } from "../../commons/model";
+import { join } from "path";
 
 /**
  * Listen to leaf files and generate events
@@ -14,6 +15,9 @@ import { Listenable } from "../../commons/model";
 export class LeafFileWatcher extends DisposableBag {
     // leaf-data folder content watcher
     private leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
+
+    // remote folder (in cache folder) content watcher
+    private remotesContentWatcher: fs.FSWatcher | undefined = undefined;
 
     // Exposed events
     public readonly leafChanged = new Listenable("leafChanged", this);
@@ -58,9 +62,8 @@ export class LeafFileWatcher extends DisposableBag {
             this.watchLeafFolderByFsWatch(await this.configFolder, this.notifyFilesChanged);
 
             // Listen remotes.json in leaf cache folder
-            this.watchLeafFolderByFsWatch(
-                await this.cacheFolder,
-                filename => filename === LEAF_FILES.REMOTE_CACHE_FILE ? this.notifyPackagesChanged() : undefined);
+            this.watchLeafFolderByFsWatch(await this.cacheFolder, this.onCacheFolderEvent);
+            this.onCacheFolderEvent(LEAF_FILES.REMOTE_CACHE_FOLDER); // Start watching remote folder if exist
         } catch (reason) {
             // Catch and log because this method is never awaited
             console.error(reason);
@@ -101,6 +104,44 @@ export class LeafFileWatcher extends DisposableBag {
         if (this.leafDataContentWatcher) {
             this.leafDataContentWatcher.close();
             this.leafDataContentWatcher = undefined;
+        }
+    }
+
+    /**
+     * @returns Remote folder path
+     */
+    private async getRemotesFolder(): Promise<string> {
+        return join(await this.cacheFolder, LEAF_FILES.REMOTE_CACHE_FOLDER);
+    }
+
+    /**
+     * Start watching remotes folder content
+     */
+    private async startWatchingRemotesFolder() {
+        this.stopWatchingRemotesFolder(); // Close previous listener if any (should not)
+        let remotesFolder = await this.getRemotesFolder();
+        this.remotesContentWatcher = this.watchLeafFolderByFsWatch(remotesFolder, this.notifyPackagesChanged);
+    }
+
+    /**
+     * Stop watching remotes folder content
+     */
+    private stopWatchingRemotesFolder() {
+        if (this.remotesContentWatcher) {
+            this.remotesContentWatcher.close();
+            this.remotesContentWatcher = undefined;
+        }
+    }
+
+    /**
+     * Called on file creation and deletion in cache folder
+     * Check if the remote folder is created. If yes, listen its content.
+     * No need to watch remotes folder deletion because watcher is automatically closed by fs library
+     * @param filename the name of the created/deleted file
+     */
+    private async onCacheFolderEvent(filename: string) {
+        if (filename === LEAF_FILES.REMOTE_CACHE_FOLDER && fs.pathExists(await this.getRemotesFolder())) {
+            this.startWatchingRemotesFolder();
         }
     }
 
@@ -161,6 +202,7 @@ export class LeafFileWatcher extends DisposableBag {
      */
     public dispose() {
         this.stopWatchingLeafDataFolder();
+        this.stopWatchingRemotesFolder();
         super.dispose();
     }
 }

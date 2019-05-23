@@ -9,7 +9,7 @@ import { join, dirname, basename } from 'path';
 export const LEAF_FILES = {
     DATA_FOLDER: 'leaf-data',
     WORKSPACE_FILE: 'leaf-workspace.json',
-    REMOTE_CACHE_FILE: 'remotes.json'
+    REMOTE_CACHE_FOLDER: 'remotes'
 };
 
 /**
