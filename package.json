@@ -539,11 +539,22 @@
                 "configurationSnippets": [
                     {
                         "label": "Debug Legato application (attach)",
-                        "description": "A new configuration for attaching to a running legato application.",
+                        "description": "A new configuration to attach to a running legato application.",
                         "body": {
                             "name": "Debug Legato application (attach)",
-                            "type": "legato",
+                            "type": "legato-attach",
                             "request": "attach",
+                            "application": "myNewApp",
+                            "executable": "myNewAppComponentExe"
+                        }
+                    },
+                    {
+                        "label": "Debug Legato application (launch)",
+                        "description": "A new configuration to launch and debug a legato application from the first line.",
+                        "body": {
+                            "name": "Debug Legato application (launch)",
+                            "type": "legato-launch",
+                            "request": "launch",
                             "application": "myNewApp",
                             "executable": "myNewAppComponentExe"
                         }
@@ -551,10 +562,49 @@
                 ]
             },
             {
-                "type": "legato",
-                "label": "Legato",
+                "type": "legato-attach",
+                "label": "Legato (attach)",
                 "configurationAttributes": {
                     "attach": {
+                        "type": "object",
+                        "default": {},
+                        "required": [
+                            "application",
+                            "executable"
+                        ],
+                        "properties": {
+                            "application": {
+                                "type": "string",
+                                "description": "Name of the Legato application to debug"
+                            },
+                            "executable": {
+                                "type": "string",
+                                "description": "Name of the Legato executable to debug"
+                            },
+                            "localPort": {
+                                "type": "number",
+                                "description": "The port to use on the host",
+                                "default": 2000
+                            },
+                            "remotePort": {
+                                "type": "number",
+                                "description": "The port to use on the Legato device",
+                                "default": 2000
+                            },
+                            "deviceIp": {
+                                "type": "string",
+                                "description": "The IP of the device to debug on",
+                                "default": "${env:DEST_IP}"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "type": "legato-launch",
+                "label": "Legato (launch)",
+                "configurationAttributes": {
+                    "launch": {
                         "type": "object",
                         "default": {},
                         "required": [

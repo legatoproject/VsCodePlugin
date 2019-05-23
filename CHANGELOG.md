@@ -3,6 +3,7 @@
 ## 0.8.0
 
 - Added verification steps before debug (debug symbols built, devMode app present, application started)
+- Support **launch** mode for debug sessions
 
 ## 0.7.0
 

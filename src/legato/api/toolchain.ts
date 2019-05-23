@@ -9,11 +9,6 @@ import { LegatoManager } from "./core";
 export class LegatoToolchainManager {
 
     /**
-     * The path to the gdb server on the device
-     */
-    public readonly gdbServerPath = "/legato/systems/current/apps/devMode/read-only/bin/gdbserver";
-
-    /**
      * This manager need leaf and legato managers
      */
     public constructor(

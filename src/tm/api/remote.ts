@@ -3,6 +3,7 @@
 import { spawn } from 'child_process';
 import { DisposableBag } from '../../commons/manager';
 import { LegatoManager } from '../../legato/api/core';
+import { join } from 'path';
 
 /**
  * List of possible statuses of a Legato application
@@ -10,14 +11,9 @@ import { LegatoManager } from '../../legato/api/core';
 export const enum AppStatus {
     NotInstalled,
     Stopped,
-    Running
+    Running,
+    Paused
 }
-
-/**
- * Absolute path to Legato app tool
- * We need to use absolute path because root profile is not loaded in ssh calls
- */
-const App = '/legato/systems/current/bin/app';
 
 /**
  * Manage remote commands to device through ssh
@@ -25,7 +21,23 @@ const App = '/legato/systems/current/bin/app';
 export class RemoteDeviceManager extends DisposableBag {
 
     /**
-     * Need 1 managers
+     * Absolute path to current Legato system
+     */
+    private readonly currentSystemPath: string = '/legato/systems/current';
+
+    /**
+     * Absolute path to Legato app tool
+     * We need to use absolute path because root profile is not loaded in ssh calls
+     */
+    private readonly appTool: string = join(this.currentSystemPath, 'bin', 'app');
+
+    /**
+     * The path to the gdb server on the device
+     */
+    public readonly gdbServerPath: string = this.getExecutablePath('devMode', 'gdbserver');
+
+    /**
+     * Need 1 manager
      */
     public constructor(
         private readonly legatoManager: LegatoManager
@@ -45,6 +57,9 @@ export class RemoteDeviceManager extends DisposableBag {
         if (text === '[stopped]') {
             return AppStatus.Stopped;
         }
+        if (text === '[paused]') {
+            return AppStatus.Paused;
+        }
         return AppStatus.NotInstalled;
     }
 
@@ -53,7 +68,7 @@ export class RemoteDeviceManager extends DisposableBag {
      * @returns a map AppName/AppStatus representing installed Legato applications
      */
     public async getInstalledApps(): Promise<{ [key: string]: AppStatus }> {
-        let output = await this.execute(`${App} status`);
+        let output = await this.execute(`${this.appTool} status`);
         let lines = output.split('\n').filter(line => line.length > 0);
         let out: { [key: string]: AppStatus } = {};
         for (let line of lines) {
@@ -66,9 +81,22 @@ export class RemoteDeviceManager extends DisposableBag {
     /**
      * Start a Legato application on the remote device
      * @param appName the name of the application
+     * @param debug if specified, start the specified process stopped, ready to attach a debugger
      */
-    public async startApp(appName: string): Promise<void> {
-        await this.execute(`${App} start ${appName}`);
+    public async startApp(appName: string, ...debug: string[]): Promise<void> {
+        let cmd = `${this.appTool} start ${appName}`;
+        if (debug.length > 0) {
+            cmd += ` --debug=${debug.join(',')}`;
+        }
+        await this.execute(cmd);
+    }
+
+    /**
+     * Stop a Legato application on the remote device
+     * @param appName the name of the application
+     */
+    public async stopApp(appName: string): Promise<void> {
+        await this.execute(`${this.appTool} stop ${appName}`);
     }
 
     /**
@@ -101,5 +129,14 @@ export class RemoteDeviceManager extends DisposableBag {
                 }
             });
         });
+    }
+
+    /**
+     * @param applicationName the name of the Legato application
+     * @param executableName the name of the executable file
+     * @returns the absolute executable path
+     */
+    public getExecutablePath(applicationName: string, executableName: string): string {
+        return join(this.currentSystemPath, 'apps', applicationName, 'read-only', 'bin', executableName);
     }
 }

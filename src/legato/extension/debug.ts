@@ -14,7 +14,7 @@ import { LegatoBuildTasks } from './buildtasks';
  */
 const DEFAULT_ATTACH_CONF: vscode.DebugConfiguration = {
     name: "Debug Legato application (attach)",
-    type: "legato",
+    type: "legato-attach",
     request: "attach",
     application: "myNewApp",
     executable: "myNewAppComponentExe"
@@ -38,7 +38,8 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         private readonly remoteDeviceManager: RemoteDeviceManager
     ) {
         super();
-        this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato", this));
+        this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato-attach", this));
+        this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato-launch", this));
     }
 
     /**
@@ -107,9 +108,10 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         let soLibPaths = await this.toolchainManager.getSOLibPaths(applicationName);
         let sshWrapper = this.resourcesManager.getExtensionPath(ExtensionPaths.DebugSshWrapper);
         let appStagging = await this.toolchainManager.getAppStaging(applicationName);
-        let executablePath = await this.toolchainManager.getExecutablePath(applicationName, executableName);
+        let executablePathFromHost = await this.toolchainManager.getExecutablePath(applicationName, executableName);
+        let executablePathFromDevice = await this.remoteDeviceManager.getExecutablePath(applicationName, executableName);
         let gdbClient = await this.toolchainManager.getGdb();
-        let gdbServer = this.toolchainManager.gdbServerPath;
+        let gdbServer = this.remoteDeviceManager.gdbServerPath;
         let deviceIp = legatoDebugConf.deviceIp || await this.legatoManager.destIp.get() || "192.168.2.2";
 
         // Check DevModeInstalled
@@ -123,18 +125,34 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
             throw new Error(`${applicationName} app is not installed on device`);
         }
 
-        // Check debugged app is launched
-        let appState = installedApps[applicationName];
-        if (appState === AppStatus.Stopped) {
-            await this.remoteDeviceManager.startApp(applicationName);
+        // Check debugged app is launched with the right mode
+        let debugLaunchModeProcesses: string[];
+        let gdbserverArgs: string;
+        let stopAtEntry: boolean;
+        if (legatoDebugConf.request === 'attach') {
+            // Attach mode
+            debugLaunchModeProcesses = [];
+            gdbserverArgs = `--attach \$(pidof ${executableName})`;
+            stopAtEntry = false;
+        } else {
+            // Launch mode
+            debugLaunchModeProcesses = [executableName];
+            gdbserverArgs = executablePathFromDevice;
+            stopAtEntry = true;
         }
+        // Stop app if running or paused
+        if (installedApps[applicationName] !== AppStatus.Stopped) {
+            await this.remoteDeviceManager.stopApp(applicationName);
+        }
+        // Start app with the right mode
+        await this.remoteDeviceManager.startApp(applicationName, ...debugLaunchModeProcesses);
 
         // Launch debug session
         return {
             name: confName,
             type: "cppdbg",
             request: "launch",
-            stopAtEntry: false,
+            stopAtEntry: stopAtEntry,
             cwd: appStagging,
             externalConsole: false,
             setupCommands: [
@@ -153,7 +171,7 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
                 engineLogging: true,
                 trace: true
             },
-            program: executablePath,
+            program: executablePathFromHost,
             MIMode: "gdb",
             miDebuggerPath: gdbClient,
             miDebuggerServerAddress: `localhost:${localPort}`,
@@ -161,7 +179,7 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
             debugServerPath: sshWrapper,
             filterStderr: true,
             filterStdout: false,
-            debugServerArgs: `${remotePort} ${localPort} ${gdbServer} ${deviceIp} --attach \$(pidof ${executableName})`,
+            debugServerArgs: `${remotePort} ${localPort} ${gdbServer} ${deviceIp} ${gdbserverArgs}`,
             serverStarted: `Listening\\ on\\ port\\ ${remotePort}`,
             serverLaunchTimeout: 30000
         };
