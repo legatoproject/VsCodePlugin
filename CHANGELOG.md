@@ -2,7 +2,7 @@
 
 ## 0.7.0
 
-- Update minimum leaf version to 1.9
+- Update minimum leaf version to 1.9.2
 - Build using **LEGATO_OUTPUT_DIR**, **LEGATO_OBJECT_DIR** and **LEGATO_DEBUG_DIR** on the command line
 - Add clean task
 - Add task to generate Legato image from system build
@@ -41,7 +41,7 @@
 - Capability to queue leaf tasks when triggering new ones while leaf is already busy
 - Persist active def file in leaf environment
 - Clean useless notifications and keep silent (no status bar displayed) until a leaf workspace is created
-- Improve performances and latency time to detect profile/environmnent change
+- Improve performances and latency time to detect profile/environment change
 - Stopping and starting Language Server when switching between Legato versions
 - Push environment changes to Language Server when detected
 

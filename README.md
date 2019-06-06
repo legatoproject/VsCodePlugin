@@ -62,9 +62,18 @@ This extension provides the following features to ease Legato development in VS 
   - `Legato: build`: invokes `mksys`|`mkapp` on the active definition file
   - `Legato: build and install`: as above + triggers install on device
   - `Legato: generate image`: invokes `systoimg` to generate e Legato image from current system build output
-- clean tasls:
+- clean tasks:
   - `Legato: clean`: removes build directory and generated artifact
 - errors parsing from both `mksys`|`mkapp` and C/C++ compilation
+
+#### Debug
+
+- launch configuration support to debug Legato applications in attach mode:
+  - in `Add Configuration...` drop-down menu of **Debug** view
+  - snippet when editing `launch.json` configuration file
+- parameters to be configured in `launch.json`:
+  - the application name in the system
+  - the process name inside this application
 
 #### Target Management
 
@@ -84,7 +93,7 @@ This extension updates the following default settings for a better integration o
 
 - `files.watcherExclude`: the extension makes sure that `**/leaf-data/**` folders are excluded from file watching
 
-### Miscenaleous
+### Miscellaneous
 
 - `leaf.common.showHints`: enable hint messages
 - `leaf.common.showWhatsNewAfterUpgrades`: enable "What's New" messages and welcome page display after extension upgrade

@@ -14,7 +14,7 @@ import { ResourcesManager } from "../../commons/resources";
  * Lock the extension if leaf is older than that
  * Ask user to update
  */
-const LEAF_MIN_VERSION = '1.9';
+const LEAF_MIN_VERSION = '1.9.2';
 
 /**
  * Leaf scope used to set an envvar
