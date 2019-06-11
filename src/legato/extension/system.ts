@@ -318,12 +318,11 @@ function processId(symbolParent: TreeItem2 | undefined, symbolName: string): str
 class DocumentSymbolTreeItem extends TreeItem2 {
 	symbol: DefinitionObject;
 	constructor(symbol: DefinitionObject, parent: DocumentSymbolTreeItem | undefined) {
-		super(processId(parent, symbol.name), undefined, symbol.name, "", "",
+		super(processId(parent, symbol.name), parent, undefined, symbol.name, "", "",
 			(<any>symbol).defaultCollapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded,
 			context(symbol.kind, symbol.name),
 			legatoTypesToIcon.get(symbol.kind));
 		this.symbol = symbol;
-		this.parent = parent;
 
 		this.setInitialState(symbol);
 	}

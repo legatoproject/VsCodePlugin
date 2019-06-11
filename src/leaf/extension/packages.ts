@@ -103,7 +103,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 
 		// Create tag quick pick items
 		let tags: { [key: string]: number } = await this.leafManager.tags.get();
-		let tagItems = Object.keys(tags).map(tag => new TagQuickPickItem(tag, tags[tag]));
+		let tagItems = Object.keys(tags).map(tag => new TagQuickPickItem(tag, undefined, tags[tag]));
 
 		// Get packages
 		let allPacks = await this.leafManager.packages.get();
@@ -237,6 +237,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	): Promise<ProfileQuickPickItem | undefined> {
 		let createProfileItem: ProfileQuickPickItem = {
 			id: "",
+			parent: undefined,
 			properties: {},
 			label: "Create new profile...",
 			description: "You will be asked for a profile name",

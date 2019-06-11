@@ -4,7 +4,7 @@ import { window, StatusBarItem, StatusBarAlignment, commands } from 'vscode';
 import { LeafManager } from '../api/core';
 import { Command, View } from '../../commons/identifiers';
 import { ProfileQuickPickItem, ProfileTreeItem, PackageTreeItem } from './uiComponents';
-import { showMultiStepQuickPick, toItems, TreeDataProvider2, QuickPickItem2 } from '../../commons/uiUtils';
+import { showMultiStepQuickPick, toItems, TreeDataProvider2, QuickPickItem2, TreeItem2 } from '../../commons/uiUtils';
 
 // The icons used in status bar
 // Must be taken from the [octicon](https://octicons.github.com) icon set.
@@ -76,6 +76,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     let items: QuickPickItem2[] = toItems(profiles, ProfileQuickPickItem);
     let syncProfileItem: QuickPickItem2 = {
       id: "cmd",
+      parent: undefined,
       properties: undefined,
       label: "Fix profile",
       description: "Execute 'leaf profile sync'",
@@ -145,8 +146,8 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
   protected async getRootElements(): Promise<ProfileTreeItem[]> {
     let lm = this.leafManager;
     return toItems(await lm.profiles.get(), class extends ProfileTreeItem {
-      constructor(id: any, properties: any) {
-        super(lm, id, properties);
+      constructor(id: any, parent: TreeItem2 | undefined, properties: any) {
+        super(lm, id, parent, properties);
       }
     });
   }

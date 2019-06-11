@@ -26,9 +26,10 @@ export class RemoteQuickPickItem extends QuickPickItem2 {
 export class RemoteTreeItem extends TreeItem2 {
 	constructor(
 		alias: string,
+		parent: TreeItem2 | undefined,
 		properties: any
 	) {
-		super(alias, properties, // model data
+		super(alias, parent, properties, // model data
 			alias, // label
 			properties.url, // description
 			properties.url, // tooltip
@@ -45,9 +46,10 @@ export class RemoteTreeItem extends TreeItem2 {
 export class PackageQuickPickItem extends QuickPickItem2 {
 	constructor(
 		public readonly packId: string,
+		parent: TreeItem2 | undefined,
 		public readonly properties: any
 	) {
-		super(packId, properties,// model data
+		super(packId, parent, properties,// model data
 			packId, // label
 			properties.installed ? "[installed]" : "[available]", // description
 			properties.info.description); // details
@@ -56,10 +58,16 @@ export class PackageQuickPickItem extends QuickPickItem2 {
 
 abstract class PackagesContainerTreeItem extends TreeItem2 {
 	private children: TreeItem2[] = [];
-	constructor(id: string, label: string, icon: string,
+	constructor(
+		id: string,
+		parent: TreeItem2 | undefined,
+		label: string,
+		icon: string,
 		collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly filter: (packs: LeafBridgeElement) => LeafBridgeElement = (packs: LeafBridgeElement) => packs) {
+		public readonly filter: (packs: LeafBridgeElement) => LeafBridgeElement = (packs: LeafBridgeElement) => packs
+	) {
 		super(id, undefined, // model data
+			parent,
 			label, // label
 			'', // description (will be filled on refresh)
 			'', // tooltip (will be filled on refresh)
@@ -94,6 +102,7 @@ export class AvailablePackagesContainerTreeItem extends PackagesContainerTreeIte
 	constructor(protected readonly leafManager: LeafManager,
 		filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
 		super("AvailablePackageContainer", // id
+			undefined, // parent
 			`Available`, // label
 			"PackageAvailable.svg", // iconFileName
 			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
@@ -110,6 +119,7 @@ export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeIte
 	constructor(protected readonly leafManager: LeafManager,
 		filter?: (packs: LeafBridgeElement) => LeafBridgeElement) {
 		super("InstalledPackageContainer", // id
+			undefined, // parent
 			"Installed", // label
 			"PackageInstalled.svg", // iconFileName
 			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
@@ -125,9 +135,10 @@ export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeIte
 export class PackageTreeItem extends TreeItem2 {
 	constructor(
 		public readonly packId: string,
+		parent: TreeItem2 | undefined,
 		properties: any | undefined
 	) {
-		super(PackageTreeItem.getId(packId, properties), properties, // model data
+		super(PackageTreeItem.getId(packId, properties), parent, properties, // model data
 			packId, // label
 			(properties && properties.info && properties.info.tags) ? properties.info.tags.sort().join(', ') : '', // description
 			(properties && properties.info) ? properties.info.description : '', // tooltip
@@ -164,9 +175,10 @@ function computeDetails(properties: any): string {
 export class ProfileQuickPickItem extends QuickPickItem2 {
 	constructor(
 		public readonly id: string,
+		parent: TreeItem2 | undefined,
 		public readonly properties: any
 	) {
-		super(id, properties,// model data
+		super(id, parent, properties,// model data
 			id, // label
 			properties.current ? "[Current]" : undefined, // description
 			computeDetails(properties)); // details
@@ -188,9 +200,10 @@ export class ProfileTreeItem extends TreeItem2 {
 	constructor(
 		private readonly leafManager: LeafManager,
 		id: any,
+		parent: TreeItem2 | undefined,
 		properties: any
 	) {
-		super(id, properties, // model data
+		super(id, parent, properties, // model data
 			id, // label
 			(properties && properties.current) ? '[current]' : '', // description
 			computeDetails(properties), // tooltip
@@ -222,9 +235,10 @@ export class ProfileTreeItem extends TreeItem2 {
 export class TagQuickPickItem extends QuickPickItem2 {
 	constructor(
 		public readonly tag: string,
+		parent: TreeItem2 | undefined,
 		public readonly packCount: any
 	) {
-		super(tag, packCount,// model data
+		super(tag, parent, packCount,// model data
 			`@${tag}`, // label
 			TagQuickPickItem.createDescription(packCount), // description
 			undefined); // details
@@ -251,7 +265,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 	 * Set empty/default values then call refreshLabel()
 	 */
 	constructor(public builtinFilters: ReadonlyArray<FilterTreeItem>, public userFilters: FilterTreeItem[]) {
-		super("FilterContainer", undefined, // model data
+		super("FilterContainer", undefined, undefined, // model data
 			"Filters", // label
 			"", // description
 			"Filters", // tooltip
@@ -279,7 +293,7 @@ export class FilterTreeItem extends CheckboxTreeItem {
 		public readonly value: string,
 		contextValue: Context
 	) {
-		super(`Filter: ${value} `, undefined, // model data
+		super(`Filter: ${value} `, undefined, undefined, // model data
 			value, // label
 			'', // description
 			value, // tooltip
