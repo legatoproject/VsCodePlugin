@@ -1,13 +1,13 @@
 'use strict';
 
-import { Command, View, Context } from '../../commons/identifiers';
+import { Command, View } from '../../commons/identifiers';
 import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../../commons/uiUtils';
-import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, AvailablePackagesContainerTreeItem, InstalledPackagesContainerTreeItem } from './uiComponents';
+import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, AvailablePackagesContainerTreeItem, InstalledPackagesContainerTreeItem, LeafPackageContext } from './uiComponents';
 import { LeafManager } from '../api/core';
 import * as vscode from 'vscode';
 import { LeafBridgeElement } from '../../commons/utils';
 import { Mementos } from '../../commons/memento';
-
+import { spawn } from 'child_process';
 /**
  * Packages view and commands
  */
@@ -43,6 +43,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		this.createCommand(Command.LeafPackagesRemoveFilter, this.removeFilter);
 		this.createCommand(Command.LeafPackagesAddToProfile, this.addToProfile);
 		this.createCommand(Command.LeafPackagesToggleFilter, this.onFilterClicked);
+		this.createCommand(Command.LeafPackagesGoToDocumentation, this.goToDocumentation);
 	}
 
 	/**
@@ -194,7 +195,6 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private async addToProfile(selectedPackage: PackageTreeItem | PackageQuickPickItem | undefined): Promise<void> {
 		let title = "Add package to profile";
-
 		// Package (from selection or combo)
 		if (!selectedPackage) {
 			selectedPackage = await this.askForPackage(title);
@@ -227,13 +227,32 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		}
 	}
 
+	private async goToDocumentation(selectedPackage: PackageTreeItem | PackageQuickPickItem | undefined) {
+		let title = "Open the documentation";
+
+		// Package (from selection or combo)
+		if (!selectedPackage) {
+			selectedPackage = await this.askForPackage(title);
+			if (!selectedPackage) {
+				return; // User cancellation
+			}
+		}
+
+		if (selectedPackage && selectedPackage.properties.info && selectedPackage.properties.info.documentation) {
+			//no need of sequencer just to open a browser
+			spawn('xdg-open', [selectedPackage.properties.info.documentation]);
+		} else {
+			vscode.window.showWarningMessage(`No documentation found for the package ${selectedPackage.label}`);
+		}
+	}
+
 	/**
 	 * Ask user to select a package in combo
 	 */
 	private async askForPackage(title: string): Promise<PackageQuickPickItem | undefined> {
 		// Do not await. We want showMultiStepQuickPick to handle this long running operation while showing a busy box.
 		let itemsPromise = this.leafManager.mergedPackages.get().then(packs => toItems(packs, PackageQuickPickItem));
-		return showMultiStepQuickPick(title, 1, 2, "Please select the package to add", itemsPromise);
+		return showMultiStepQuickPick(title, 1, 2, "Please select the package", itemsPromise);
 	}
 
 	/**
@@ -343,7 +362,7 @@ abstract class Filter extends FilterTreeItem {
  */
 class BuiltinFilter extends Filter {
 	constructor(value: string, private readonly predicate: (packId: string, packProperties: any) => boolean, checked = true) {
-		super(value, Context.LeafPackagesBuiltinFilter);
+		super(value, LeafPackageContext.PackagesBuiltinFilter);
 		this.label = `[${value}]`;
 		this.setChecked(checked);
 	}
@@ -357,7 +376,7 @@ class BuiltinFilter extends Filter {
  */
 abstract class UserFilter extends Filter {
 	constructor(value: string) {
-		super(value, Context.LeafPackagesUserFilter);
+		super(value, LeafPackageContext.PackagesUserFilter);
 	}
 
 	/**

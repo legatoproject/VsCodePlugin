@@ -57,7 +57,7 @@
                 {
                     "id": "view-legato-system",
                     "name": "Hierarchy View",
-                    "when": "context-legato-system-enabled"
+                    "when": "context-legato-lsp-ready"
                 }
             ]
         },
@@ -114,7 +114,12 @@
                 },
                 {
                     "command": "cmd.leaf.pkg.addtoprofile",
-                    "when": "view == view-leaf-pkg && viewItem =~ /context-leaf-pkg-(installed|available)/",
+                    "when": "view == view-leaf-pkg && viewItem =~ /context-leaf-pkg-(installed|available)(.*)/",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.leaf.pkg.gotodoc",
+                    "when": "view == view-leaf-pkg && viewItem =~ /context-leaf-pkg-(.*)-documented(.*)/",
                     "group": "inline"
                 },
                 {
@@ -139,52 +144,52 @@
                 },
                 {
                     "command": "cmd.leaf.prf.pkgremove",
-                    "when": "view == view-leaf-prf && viewItem =~ /context-leaf-pkg-(installed|available)/",
+                    "when": "view == view-leaf-prf && viewItem =~ /context-leaf-pkg-(installed|available)(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.system.createApp",
-                    "when": "view == view-legato-system && viewItem == context-legato-apps-selected",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-apps(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.system.addApp",
-                    "when": "view == view-legato-system && viewItem == context-legato-apps-selected",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-apps(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.system.rename",
-                    "when": "view == view-legato-system && viewItem == context-legato-system-selected",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-sdef(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.app.rename",
-                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.app.newComponent",
-                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.app.addComponent",
-                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.app.remove",
-                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.component.rename",
-                    "when": "view == view-legato-system && viewItem == context-legato-component-current",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-cdef(.*)/",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.component.remove",
-                    "when": "view == view-legato-system && viewItem == context-legato-component-current",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-cdef(.*)/",
                     "group": "inline"
                 }
             ]
@@ -232,6 +237,11 @@
             {
                 "command": "cmd.leaf.pkg.addtoprofile",
                 "title": "Add to profile...",
+                "category": "Leaf/Packages"
+            },
+            {
+                "command": "cmd.leaf.pkg.gotodoc",
+                "title": "Help...",
                 "category": "Leaf/Packages"
             },
             {

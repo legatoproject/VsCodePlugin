@@ -1,11 +1,89 @@
 'use strict';
 import * as vscode from 'vscode';
-import { TreeItem2, QuickPickItem2, IUiItems, CheckboxTreeItem, toItems } from '../../commons/uiUtils';
-import { Context, Command } from '../../commons/identifiers';
-import { LeafManager } from '../api/core';
+import { Command } from '../../commons/identifiers';
+import { CheckboxTreeItem, IUiItems, QuickPickItem2, toItems, TreeItem2, NamespaceContext } from '../../commons/uiUtils';
 import { LeafBridgeElement } from '../../commons/utils';
+import { LeafManager } from '../api/core';
 
 // This module is used to declare model/ui mappings using vscode items
+
+/***************************
+ * Leaf namespaced contexts
+ **************************/
+class LeafContext extends NamespaceContext {
+
+	constructor(readonly particles: string[]) {
+		// #### LEAF (-leaf) ####
+		super('leaf', particles);
+	}
+}
+
+const enum LeafRemotePrefix { // (context)
+	// #### LEAF (-leaf) ####
+	// REMOTES (-rmt)
+	Root = "rmt",
+	Enabled = "enabled",
+	Disabled = "disabled",
+	// PROFILES (-prf)
+	LeafProfileCurrent = "context-leaf-prf-current",
+	LeafProfileOther = "context-leaf-prf-other",
+}
+export class LeafRemoteContext<T extends LeafRemotePrefix> extends LeafContext {
+	public static RemoteEnabled: NamespaceContext = new LeafRemoteContext(LeafRemotePrefix.Enabled);
+	public static RemoteDisabled: NamespaceContext = new LeafRemoteContext(LeafRemotePrefix.Disabled);
+
+	private constructor(readonly tag: T) {
+		super([LeafRemotePrefix.Root, tag]);
+	}
+}
+
+export const enum LeafPackagePrefix { // (context)
+	// #### LEAF (-leaf) ####
+	// PACKAGES (-pkg)
+	Root = "pkg",
+	Container = "container",
+	Installed = "installed",
+	Available = "available",
+	FilterContainer = "filters-container",
+	BuiltinFilter = "filters-builtin",
+	UserFilter = "filter-user",
+}
+export class LeafPackageContext<T extends LeafPackagePrefix> extends LeafContext {
+
+	// PACKAGES (-pkg)
+	public static PackagesContainer: NamespaceContext = new LeafPackageContext(LeafPackagePrefix.Container);
+
+	//filters
+	public static PackagesFilterContainer: NamespaceContext = new LeafPackageContext(LeafPackagePrefix.FilterContainer);
+	public static PackagesBuiltinFilter: NamespaceContext = new LeafPackageContext(LeafPackagePrefix.BuiltinFilter);
+	public static PackagesUserFilter: NamespaceContext = new LeafPackageContext(LeafPackagePrefix.UserFilter);
+
+	public constructor(readonly tag: T) {
+		super([LeafPackagePrefix.Root, tag]);
+	}
+
+	public setDocumented(documented: boolean): void {
+		if (documented) {
+			this.values.push("documented");
+		}
+	}
+}
+
+const enum LeafProfilePrefix { // (context)
+	// #### LEAF (-leaf) ####
+	// PROFILES (-prf)
+	Current = "current",
+	Other = "other",
+}
+export class LeafProfileContext<T extends LeafProfilePrefix> extends LeafContext {
+	public static Current: NamespaceContext = new LeafProfileContext(LeafProfilePrefix.Current);
+	public static Other: NamespaceContext = new LeafProfileContext(LeafProfilePrefix.Other);
+
+	private constructor(readonly prefixContext: T) {
+		super([LeafPackagePrefix.Root, prefixContext]);
+	}
+}
+
 
 /***************************
  *        REMOTES
@@ -34,7 +112,7 @@ export class RemoteTreeItem extends TreeItem2 {
 			properties.url, // description
 			properties.url, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties.enabled ? Context.LeafRemoteEnabled : Context.LeafRemoteDisabled, // contextValue
+			properties.enabled ? LeafRemoteContext.RemoteEnabled : LeafRemoteContext.RemoteDisabled, // context
 			properties.enabled ? "RemoteEnabled.svg" : "RemoteDisabled.svg"); // iconFileName
 	}
 }
@@ -72,7 +150,7 @@ abstract class PackagesContainerTreeItem extends TreeItem2 {
 			'', // description (will be filled on refresh)
 			'', // tooltip (will be filled on refresh)
 			collapsibleState, // collapsibleState
-			Context.LeafPackagesContainer, // contextValue
+			LeafPackageContext.PackagesContainer, // context
 			icon // iconFileName
 		);
 	}
@@ -143,7 +221,8 @@ export class PackageTreeItem extends TreeItem2 {
 			(properties && properties.info && properties.info.tags) ? properties.info.tags.sort().join(', ') : '', // description
 			(properties && properties.info) ? properties.info.description : '', // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			properties && properties.installed ? Context.LeafPackageInstalled : Context.LeafPackageAvailable, // contextValue
+			PackageTreeItem.toContext(properties), // contextValue
+			// properties && properties.installed ? Context.LeafPackageInstalled : Context.LeafPackageAvailable, // contextValue
 			properties && properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
 	}
 
@@ -159,6 +238,18 @@ export class PackageTreeItem extends TreeItem2 {
 			out += "-unknown";
 		}
 		return out;
+	}
+
+	private static toContext(properties: any | undefined): LeafPackageContext<any> {
+		let leafPackageContext: LeafPackageContext<any>;
+		if (properties && properties.installed) {
+			leafPackageContext = new LeafPackageContext(LeafPackagePrefix.Installed);
+		} else {
+			leafPackageContext = new LeafPackageContext(LeafPackagePrefix.Available);
+		}
+		//if the package provides documentation, the context is tagged as 'documented'
+		leafPackageContext.setDocumented(properties.info && properties.info.documentation);
+		return leafPackageContext;
 	}
 }
 
@@ -208,7 +299,7 @@ export class ProfileTreeItem extends TreeItem2 {
 			(properties && properties.current) ? '[current]' : '', // description
 			computeDetails(properties), // tooltip
 			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
-			properties.installed ? Context.LeafProfileCurrent : Context.LeafProfileOther, // contextValue
+			properties.installed ? LeafProfileContext.Current : LeafProfileContext.Other, // context
 			"Profile.svg"); // iconFileName
 	}
 
@@ -240,8 +331,8 @@ export class TagQuickPickItem extends QuickPickItem2 {
 	) {
 		super(tag, parent, packCount,// model data
 			`@${tag}`, // label
-			TagQuickPickItem.createDescription(packCount), // description
-			undefined); // details
+			TagQuickPickItem.createDescription(packCount) // description
+		); // no details
 	}
 
 	private static createDescription(packCount: number) {
@@ -270,7 +361,7 @@ export class FilterContainerTreeItem extends TreeItem2 {
 			"", // description
 			"Filters", // tooltip
 			vscode.TreeItemCollapsibleState.Expanded, // collapsibleState
-			Context.LeafPackagesFilterContainer, // contextValue
+			LeafPackageContext.PackagesFilterContainer, // context
 			"Filter.svg"); // iconFileName
 	}
 
@@ -291,14 +382,14 @@ export class FilterTreeItem extends CheckboxTreeItem {
 	 */
 	constructor(
 		public readonly value: string,
-		contextValue: Context
+		context: NamespaceContext
 	) {
 		super(`Filter: ${value} `, undefined, undefined, // model data
 			value, // label
 			'', // description
 			value, // tooltip
 			vscode.TreeItemCollapsibleState.None, // collapsibleState
-			contextValue, // contextValue
+			context, // contextValue
 			Command.LeafPackagesToggleFilter); // commandId
 	}
 }

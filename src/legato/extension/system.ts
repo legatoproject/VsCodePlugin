@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { DocumentSymbol, Range, SymbolKind, WorkspaceSymbolRequest, SymbolInformation } from "vscode-languageclient";
-import { Command, Context, View } from "../../commons/identifiers";
-import { ACTION_LABELS, TreeDataProvider2, TreeItem2 } from "../../commons/uiUtils";
+import { Command, View } from "../../commons/identifiers";
+import { ACTION_LABELS, TreeDataProvider2, TreeItem2, NamespaceContext } from "../../commons/uiUtils";
 import { LegatoManager } from "../api/core";
 import { showHint } from '../../commons/hints';
 import { LegatoLanguageManager, LegatoLanguageRequest } from "../api/language";
@@ -80,7 +80,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private async onLegatoDefFileChange(newActiveDeFile: vscode.Uri | undefined, oldActiveDeFile: vscode.Uri | undefined) {
 		//show or not the System view in activity bar
 		if (await this.legatoManager.languageServer.get()) {
-			vscode.commands.executeCommand(Command.VscodeSetContext, Context.LegatoSystemEnabled, newActiveDeFile !== undefined);
+			vscode.commands.executeCommand(Command.VscodeSetContext, LegatoContext.LanguageServerReady.getValue(), newActiveDeFile !== undefined);
 			if (newActiveDeFile) {
 				if (!pathExists(newActiveDeFile.fsPath)) {
 					this.showCreateSystemHint('The selected Legato definition file does not exist anymore; you can either select an existing one or create a new system.');
@@ -261,14 +261,37 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 }
 
 export enum LegatoType {
-	Sdef,
-	Mdef,
-	AppsSection,
-	Adef,
-	ComponentsSection,
-	Cdef,
-	Api,
-	Function
+	LanguageServerReady = "lsp-ready",
+	Sdef = "sdef",
+	Mdef = "mdef",
+	AppsSection = "apps",
+	Adef = "adef",
+	ComponentsSection = "components",
+	Cdef = "cdef",
+	Api = "api",
+	Function = "function"
+}
+
+
+export class LegatoContext<T extends LegatoType> extends NamespaceContext {
+	public static LanguageServerReady: NamespaceContext = new LegatoContext(LegatoType.LanguageServerReady);
+
+	public constructor(readonly prefixContext: T) {
+		//context-legato-*
+		super('legato', [prefixContext]);
+	}
+
+	public setAppToAddAvailable(addExisting: boolean) {
+		if (addExisting) {
+			this.values.push('add-existing');
+		}
+	}
+
+	public setNewApp(newApp: boolean) {
+		if (newApp) {
+			this.values.push('new');
+		}
+	}
 }
 export const symbolsKindToLegato: Map<SymbolKind, LegatoType> = new Map([
 	[SymbolKind.File, LegatoType.Sdef],
@@ -279,17 +302,6 @@ export const symbolsKindToLegato: Map<SymbolKind, LegatoType> = new Map([
 	[SymbolKind.Class, LegatoType.Cdef],
 	[SymbolKind.Function, LegatoType.Api],
 ]);
-
-const legatoTypesToContext: Map<LegatoType, Context> = new Map(
-	[
-		[LegatoType.Sdef, Context.LegatoSystemSelected],
-		[LegatoType.AppsSection, Context.LegatoAppsSelected],
-		[LegatoType.Adef, Context.LegatoAppCurrent],
-		[LegatoType.Mdef, Context.LegatoMdefSelected],
-		[LegatoType.ComponentsSection, Context.LegatoComponentsSelected],
-		[LegatoType.Cdef, Context.LegatoComponentCurrent]
-	]
-);
 
 /**
  * Icons association to display in treeview
@@ -303,12 +315,15 @@ const legatoTypesToIcon: Map<LegatoType, string> = new Map(
 	]
 );
 
-function context(symbolKind: SymbolKind, symbolName: string): Context {
+function toContext(symbolKind: SymbolKind): NamespaceContext {
 	let legatoType = symbolsKindToLegato.get(symbolKind);
-	let context: Context;
-	let matchingContext = legatoType !== undefined ? legatoTypesToContext.get(legatoType) : undefined;
-	context = matchingContext ? matchingContext : Context.LegatoSystemEnabled;
-	return context;
+	let matchingContext = legatoType !== undefined ? new LegatoContext<LegatoType>(legatoType) : undefined;
+	return matchingContext ? matchingContext : LegatoContext.LanguageServerReady;
+}
+
+function toIcon(symbolKind: SymbolKind): string | undefined {
+	const legatoType = symbolsKindToLegato.get(symbolKind);
+	return legatoType ? legatoTypesToIcon.get(legatoType) : undefined;
 }
 
 /**
@@ -337,8 +352,8 @@ class DocumentSymbolTreeItem extends TreeItem2 {
 	constructor(symbol: DefinitionObject, parent: DocumentSymbolTreeItem | undefined) {
 		super(processId(parent, symbol.name), parent, undefined, symbol.name, "", "",
 			(<any>symbol).defaultCollapsed ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.Expanded,
-			context(symbol.kind, symbol.name),
-			legatoTypesToIcon.get(symbol.kind));
+			toContext(symbol.kind),
+			toIcon(symbol.kind));
 		this.symbol = symbol;
 
 		this.setInitialState(symbol);

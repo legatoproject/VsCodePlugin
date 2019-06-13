@@ -1,9 +1,9 @@
 'use strict';
 
 import * as vscode from 'vscode';
-import { CommandRegister } from './manager';
-import { View, Command, Context } from './identifiers';
 import { extPromise } from '../extension';
+import { Command, View } from './identifiers';
+import { CommandRegister } from './manager';
 import { ExtensionPaths } from './resources';
 import { LeafBridgeElement } from './utils';
 
@@ -20,6 +20,24 @@ export const ACTION_LABELS = {
 	CHECK_AGAIN: "Check again",
 	IGNORE: "Ignore"
 };
+
+/**
+ * Base class to enable dynamic context.
+ */
+export abstract class NamespaceContext {
+
+	protected values: string[] = ['context'];
+	constructor(readonly prefix: string, particles: string[]) {
+		this.values.push(prefix, ...particles);
+	}
+
+	/**
+	 * The context value will be joined together with '-' character
+	 */
+	public getValue(): string {
+		return this.values.join('-');
+	}
+}
 
 /**
  * Base for QuickPickItem2 and TreeItem2
@@ -59,6 +77,7 @@ export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPic
  */
 export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 	public iconPath?: string;
+	public contextValue?: string;
 	constructor(
 		id: string,
 		parent: TreeItem2 | undefined,
@@ -67,11 +86,12 @@ export class TreeItem2 extends IUiItems implements vscode.TreeItem {
 		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly contextValue?: Context,
+		public readonly context?: NamespaceContext,
 		iconFileName?: string,
 		public command?: vscode.Command
 	) {
 		super(parent ? parent.id + id : id, parent, properties);
+		this.contextValue = this.context ? this.context.getValue() : undefined;
 		this.setIcon(iconFileName);
 	}
 
@@ -103,10 +123,10 @@ export class CheckboxTreeItem extends TreeItem2 {
 		public description: string,
 		public tooltip: string,
 		public readonly collapsibleState: vscode.TreeItemCollapsibleState,
-		public readonly contextValue: Context,
+		public readonly context: NamespaceContext,
 		commandId: Command
 	) {
-		super(id, parent, properties, label, description, tooltip, collapsibleState, contextValue);
+		super(id, parent, properties, label, description, tooltip, collapsibleState, context);
 		this.command = {
 			title: "Toggle checkbox",
 			command: commandId,

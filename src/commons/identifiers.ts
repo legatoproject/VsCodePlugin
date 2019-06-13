@@ -19,6 +19,7 @@ export const enum Command { // (cmd)
     LeafPackagesToggleFilter = "_cmd.leaf.pkg.filter.toggle", // internal
     LeafPackagesFetch = "cmd.leaf.pkg.fetch",
     LeafPackagesAddToProfile = "cmd.leaf.pkg.addtoprofile",
+    LeafPackagesGoToDocumentation = "cmd.leaf.pkg.gotodoc",
     // REMOTES (.rmt)
     LeafRemotesAdd = "cmd.leaf.rmt.add",
     LeafRemotesRemove = "cmd.leaf.rmt.remove",
@@ -53,22 +54,11 @@ export const enum Command { // (cmd)
     LegatoTmResetUserPartition = "cmd.legato.tm.reset.partition.user"
 }
 
+/**
+ * @deprecated
+ * Legato context to be migrated to NamespacedContext
+ */
 export const enum Context { // (context)
-    // #### LEAF (-leaf) ####
-    // PACKAGES (-pkg)
-    LeafPackagesContainer = "context-leaf-pkg-container",
-    LeafPackagesFilterContainer = "context-leaf-pkg-filters-container",
-    LeafPackagesBuiltinFilter = "context-leaf-pkg-filters-builtin",
-    LeafPackagesUserFilter = "context-leaf-pkg-filter-user",
-    LeafPackageInstalled = "context-leaf-pkg-installed",
-    LeafPackageAvailable = "context-leaf-pkg-available",
-    // REMOTES (-rmt)
-    LeafRemoteEnabled = "context-leaf-rmt-enabled",
-    LeafRemoteDisabled = "context-leaf-rmt-disabled",
-    // PROFILES (-prf)
-    LeafProfileCurrent = "context-leaf-prf-current",
-    LeafProfileOther = "context-leaf-prf-other",
-
     // #### LEGATO (-legato) ####
     LegatoSystemEnabled = "context-legato-system-enabled",
     LegatoSystemSelected = "context-legato-system-selected",
