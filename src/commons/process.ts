@@ -18,6 +18,12 @@ export function createReturnCodeError(returnCode: number) {
 }
 
 /**
+ * Leaf task name prefix
+ * This used to know which terminal is the leaf running task 
+ */
+export const LEAF_TASK_PREFIX: string = 'Leaf: ';
+
+/**
  * Process Launcher options
  * Used by TaskProcessLauncher and OutputChannelProcessLauncher
  */
@@ -204,7 +210,12 @@ export class TaskProcessLauncher extends ProcessLauncher {
         } else {
             execution = new vscode.ProcessExecution(cmdArray[0], cmdArray.slice(1), execOptions);
         }
-        let task = new vscode.Task(taskDefinition, vscode.TaskScope.Workspace, name, 'Leaf', execution);
+        let task = new vscode.Task(
+            taskDefinition, // The task definition as defined in the taskDefinitions extension point.
+            vscode.TaskScope.Workspace, // Specifies the task's scope. It is either a global or a workspace task or a task for a specific workspace folder.
+            LEAF_TASK_PREFIX + name, // The task's name. Is presented in the user interface.
+            'Leaf', // The task's source (e.g. 'gulp', 'npm', ...). Is presented in the user interface.
+            execution); // The process or shell execution.
         task.isBackground = false;
         task.presentationOptions = {
             reveal: vscode.TaskRevealKind.Always,

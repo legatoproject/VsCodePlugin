@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 import { ACTION_LABELS } from './uiUtils';
 import { WaitingPromise } from './promise';
+import { LEAF_TASK_PREFIX } from "./process";
 
 /**
  * Internal enum used to process waiting queue
@@ -177,6 +178,14 @@ export class PoliteSequencer extends Sequencer {
      * Show warning message with "Forget" and "Cancel" buttons
      */
     private async askUserAboutAddingToQueue(): Promise<Queueing> {
+        // Bring Leaf task terminal to top if exist
+        let taskTerm = vscode.window.terminals
+            .filter(term => term.name.startsWith(`Task - ${LEAF_TASK_PREFIX}`))
+            .shift();
+        if (taskTerm) {
+            taskTerm.show(false); // false: terminal will take focus
+        }
+
         // If there is already a popup, do nothing
         if (this.currentQueueingPopup) {
             return Queueing.Wait;
