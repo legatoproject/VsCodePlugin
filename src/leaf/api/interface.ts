@@ -41,7 +41,8 @@ export class LeafInterface extends DisposableBag {
         let bridgeInfos = this.requestBridgeInfo();
         let configFolder = this.getConfigFolder(bridgeInfos);
         let cacheFolder = this.getCacheFolder(bridgeInfos);
-        let watcher = this.toDispose(new LeafFileWatcher(configFolder, cacheFolder));
+        let packageFolder = this.getPackageFolder(bridgeInfos);
+        let watcher = this.toDispose(new LeafFileWatcher(configFolder, cacheFolder, packageFolder));
 
         // Use watcher to trig model refresh
         watcher.leafChanged
@@ -75,6 +76,13 @@ export class LeafInterface extends DisposableBag {
      */
     private async getCacheFolder(infos: Promise<LeafBridgeElement>): Promise<string> {
         return (await infos).cacheFolder;
+    }
+
+    /**
+     * This method is called only once by constructor
+     */
+    private async getPackageFolder(infos: Promise<LeafBridgeElement>): Promise<string> {
+        return (await infos).packageFolder;
     }
 
     /**

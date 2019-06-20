@@ -334,7 +334,7 @@ export class LeafManager extends CommandRegister {
     }
     let packagesArgs = ([] as string[]).concat(...packIds.map(packId => ['--rm-package', packId]));
     return this.processLauncher.executeInShell(
-      ExecKind.OutputChannel,
+      ExecKind.Task,
       `Remove[${packIds.join(' ')}]from profile ${profileName} `,
       `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`);
   }

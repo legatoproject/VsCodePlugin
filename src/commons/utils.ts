@@ -70,7 +70,6 @@ export class Debouncer {
      */
     public debounce(callback: (...args: any[]) => void) {
         if (this.fsWait) {
-            console.log(`[Debouncer] Ignore previous event due to another one less than ${this.delay}ms after`);
             clearTimeout(this.fsWait);
         }
         this.fsWait = setTimeout(() => {

@@ -1,8 +1,6 @@
 'use strict';
 
-
-import * as fs from "fs-extra";
-import * as vscode from "vscode";
+import * as chokidar from "chokidar";
 import { debounce } from '../../commons/utils';
 import { DisposableBag } from '../../commons/manager';
 import { LEAF_FILES, getWorkspaceFolderPath } from '../../commons/files';
@@ -13,11 +11,8 @@ import { join } from "path";
  * Listen to leaf files and generate events
  */
 export class LeafFileWatcher extends DisposableBag {
-    // leaf-data folder content watcher
-    private leafDataContentWatcher: fs.FSWatcher | undefined = undefined;
-
-    // remote folder (in cache folder) content watcher
-    private remotesContentWatcher: fs.FSWatcher | undefined = undefined;
+    // File watchers (used to dispose them)
+    private watchers: chokidar.FSWatcher[] = [];
 
     // Exposed events
     public readonly leafChanged = new Listenable("leafChanged", this);
@@ -30,7 +25,8 @@ export class LeafFileWatcher extends DisposableBag {
      */
     public constructor(
         private readonly configFolder: Promise<string>,
-        private readonly cacheFolder: Promise<string>
+        private readonly cacheFolder: Promise<string>,
+        private readonly packageFolder: Promise<string>
     ) {
         super();
         this.watchLeafFiles();
@@ -41,33 +37,73 @@ export class LeafFileWatcher extends DisposableBag {
      */
     private async watchLeafFiles() {
         try {
-            // Listen to leaf-data folder creation/deletion
-            this.watchLeafFileByVsCodeWatcher(
-                new vscode.RelativePattern(getWorkspaceFolderPath(), LEAF_FILES.DATA_FOLDER),
-                this.startWatchingLeafDataFolder, // File creation callback
-                undefined, // Do nothing on change (it's filtered by configuration 'files.watcherExclude' anyway)
-                this.stopWatchingLeafDataFolder // File deletion callback
-            );
-            // If leaf-data already exist, listen to it
-            if (await fs.pathExists(getWorkspaceFolderPath(LEAF_FILES.DATA_FOLDER))) {
-                this.startWatchingLeafDataFolder();
-            }
+            // Watch leaf workspace folder
+            // Emit fileChanged event when something change in 'leaf-data' folder or 'leaf-workspace.json' file
+            this.watch({
+                path: getWorkspaceFolderPath(),
+                callbacks: [this.notifyFilesChanged],
+                depth: 2,
+                filters: [LEAF_FILES.DATA_FOLDER, LEAF_FILES.WORKSPACE_FILE]
+            });
 
-            // Listen leaf-workspace.json (creation/deletion/change)
-            this.watchLeafFileByVsCodeWatcher(
-                getWorkspaceFolderPath(LEAF_FILES.WORKSPACE_FILE),
-                this.notifyFilesChanged, this.notifyFilesChanged, this.notifyFilesChanged);
+            // Watch leaf config folder
+            // Emit fileChanged and packageChanged event when something change
+            this.watch({
+                path: await this.configFolder,
+                callbacks: [this.notifyFilesChanged, this.notifyPackagesChanged],
+                filters: [LEAF_FILES.CONFIG_FILE]
+            });
 
-            // Listen config folder
-            this.watchLeafFolderByFsWatch(await this.configFolder, this.notifyFilesChanged);
+            // Watch leaf cache folder
+            // Emit packageChanged event when something change in 'remotes' folder,
+            this.watch({
+                path: await this.cacheFolder,
+                callbacks: [this.notifyPackagesChanged],
+                depth: 2,
+                filters: [LEAF_FILES.REMOTE_CACHE_FOLDER]
+            });
 
-            // Listen remotes.json in leaf cache folder
-            this.watchLeafFolderByFsWatch(await this.cacheFolder, this.onCacheFolderEvent);
-            this.onCacheFolderEvent(LEAF_FILES.REMOTE_CACHE_FOLDER); // Start watching remote folder if exist
+            // Watch leaf package folder
+            // Emit packageChanged event when something change
+            this.watch({
+                path: await this.packageFolder,
+                callbacks: [this.notifyPackagesChanged],
+                depth: 0
+            });
         } catch (reason) {
             // Catch and log because this method is never awaited
             console.error(reason);
         }
+    }
+
+    /**
+     * Watch a apth using chokidar, log it
+     * @param args.path the path to watch. Must exist !
+     * @param args.callbacks the callbacks to call when to files change
+     * @param args.depth If set, limits how many levels of subdirectories will be traversed
+     * @param args.filters a list of path (relative to args.path) that we want to listen. Can be non-existent
+     */
+    private watch(
+        args: {
+            path: string,
+            callbacks: (() => any)[],
+            depth?: number,
+            filters?: string[]
+        }
+    ) {
+        let filters = args.filters && args.filters.length > 0 ? args.filters.map(filter => join(args.path, filter)) : undefined;
+        console.log(`[LeafFileWatcher] Start listening '${args.path}' with depth limit: ${args.depth} and filters: ${args.filters ? args.filters.join(', ') : 'none'}`);
+        let watcher = chokidar.watch(args.path, {
+            depth: args.depth,
+            awaitWriteFinish: true,
+            followSymlinks: false
+        });
+        watcher.on('all', (_eventName, modifiedPath) => {
+            if (filters === undefined || filters.some(filter => modifiedPath.startsWith(filter))) {
+                args.callbacks.forEach(callback => callback.apply(this));
+            }
+        });
+        this.watchers.push(watcher);
     }
 
     /**
@@ -83,126 +119,16 @@ export class LeafFileWatcher extends DisposableBag {
      * Called when something change in remote.json in leaf cache folder
      * Check packages change and emit event if necessary
      */
-    @debounce(100) // This method call is debounced (100ms)
+    @debounce(300) // This method call is debounced (300ms)
     private notifyPackagesChanged() {
         this.packagesChanged.emit();
-    }
-
-    /**
-     * Create fs folder watcher on leaf-data
-     */
-    private startWatchingLeafDataFolder() {
-        this.stopWatchingLeafDataFolder(); // Close previous listener if any (should not)
-        let leafDataFolderPath = getWorkspaceFolderPath(LEAF_FILES.DATA_FOLDER);
-        this.leafDataContentWatcher = this.watchLeafFolderByFsWatch(leafDataFolderPath, this.notifyFilesChanged);
-    }
-
-    /**
-     * Close fs folder watcher on leaf-data
-     */
-    private stopWatchingLeafDataFolder() {
-        if (this.leafDataContentWatcher) {
-            this.leafDataContentWatcher.close();
-            this.leafDataContentWatcher = undefined;
-        }
-    }
-
-    /**
-     * @returns Remote folder path
-     */
-    private async getRemotesFolder(): Promise<string> {
-        return join(await this.cacheFolder, LEAF_FILES.REMOTE_CACHE_FOLDER);
-    }
-
-    /**
-     * Start watching remotes folder content
-     */
-    private async startWatchingRemotesFolder() {
-        this.stopWatchingRemotesFolder(); // Close previous listener if any (should not)
-        let remotesFolder = await this.getRemotesFolder();
-        this.remotesContentWatcher = this.watchLeafFolderByFsWatch(remotesFolder, this.notifyPackagesChanged);
-    }
-
-    /**
-     * Stop watching remotes folder content
-     */
-    private stopWatchingRemotesFolder() {
-        if (this.remotesContentWatcher) {
-            this.remotesContentWatcher.close();
-            this.remotesContentWatcher = undefined;
-        }
-    }
-
-    /**
-     * Called on file creation and deletion in cache folder
-     * Check if the remote folder is created. If yes, listen its content.
-     * No need to watch remotes folder deletion because watcher is automatically closed by fs library
-     * @param filename the name of the created/deleted file
-     */
-    private async onCacheFolderEvent(filename: string) {
-        if (filename === LEAF_FILES.REMOTE_CACHE_FOLDER && fs.pathExists(await this.getRemotesFolder())) {
-            this.startWatchingRemotesFolder();
-        }
-    }
-
-    /**
-    * Watch one Leaf file
-    * globPattern: The file to watch
-    * WARNING: This watcher cannot listen a folder outside the workspace.
-    * WARNING: This watcher cannot listen a folder touch.
-    */
-    private watchLeafFileByVsCodeWatcher(
-        globPattern: vscode.GlobPattern,
-        onDidCreateCb: (() => any) | undefined,
-        onDidChangeCb: (() => any) | undefined,
-        onDidDeleteCb: (() => any) | undefined
-    ): vscode.FileSystemWatcher {
-        console.log(`[FileWatcher] Watch folder using vscode watcher '${globPattern.toString()}'`);
-        let watcher: vscode.FileSystemWatcher = vscode.workspace.createFileSystemWatcher(globPattern);
-        this.toDispose(watcher);
-        if (onDidCreateCb) {
-            watcher.onDidCreate((uri: vscode.Uri) => {
-                console.log(`[FileWatcher] Created File: uri=${uri.fsPath}`);
-                onDidCreateCb.apply(this);
-            }, this);
-        }
-        if (onDidChangeCb) {
-            watcher.onDidChange((uri: vscode.Uri) => {
-                console.log(`[FileWatcher] Changed File: uri=${uri.fsPath}`);
-                onDidChangeCb.apply(this);
-            }, this);
-        }
-        if (onDidDeleteCb) {
-            watcher.onDidDelete((uri: vscode.Uri) => {
-                console.log(`[FileWatcher] Deleted File: uri=${uri.fsPath}`);
-                onDidDeleteCb.apply(this);
-            }, this);
-        }
-        return watcher;
-    }
-
-    /**
-     * Watch one Leaf folder
-     * folder: The folder to watch
-     * WARNING: This watcher is closed forever when the folder is deleted.
-     */
-    private watchLeafFolderByFsWatch(folder: string, callback: (filename: string) => any): fs.FSWatcher {
-        console.log(`[FileWatcher] Watch folder using fs '${folder}' for changes in any files}`);
-        let watcher = fs.watch(folder);
-        this.onDispose(() => watcher.close());
-        watcher.addListener("change", (eventType: string, filename: string | Buffer) => {
-            console.log(`[FileWatcher] fs fire an event: type=${eventType} filename=${filename.toString()}`);
-            callback.call(this, filename.toString());
-        });
-        return watcher;
     }
 
     /**
      * Dispose all file listeners
      */
     public dispose() {
-        this.stopWatchingLeafDataFolder();
-        this.stopWatchingRemotesFolder();
+        this.watchers.forEach(watcher => watcher.close());
         super.dispose();
     }
 }
