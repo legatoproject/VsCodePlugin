@@ -99,7 +99,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	private async addFilter() {
 		// Create quick pick
 		let box = vscode.window.createQuickPick<TagQuickPickItem>();
-		box.placeholder = "regex or '@tag'";
+		box.placeholder = "'regex' or @'tag'";
 
 		// Create tag quick pick items
 		let tags: { [key: string]: number } = await this.leafManager.tags.get();
@@ -118,7 +118,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			}
 			let availCount = this.countMatchingPackages(allPacks.availablePackages, newFilter);
 			let instCount = this.countMatchingPackages(allPacks.installedPackages, newFilter);
-			box.title = `Add filter (regex or @tag): ${availCount} available${availCount > 1 ? 's' : ''} and ${instCount} installed`;
+			box.title = `Add filter (regex or leaf tag): ${availCount} package${availCount > 1 ? 's' : ''} available and ${instCount} package${instCount > 1 ? 's' : ''} installed`;
 		};
 		box.onDidChangeValue(boxValueChangedListener);
 		boxValueChangedListener(box.value); // Set initial title
@@ -155,13 +155,21 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	}
 
 	/**
+	 * @param packs the packages map to filter
+	 * @param filter the currently typed filter or undefined if nothing is typed
 	 * @return count of matching packages
 	 */
 	private countMatchingPackages(packs: any, filter?: RegexFilter | TagFilter): number {
-		if (!filter) {
+		// Apply existing filters
+		packs = this.filterPackages(packs);
+
+		if (filter) {
+			// If the user start to type some filter, apply it
+			return Object.keys(packs).filter(packId => filter.match(packId, packs[packId])).length;
+		} else {
+			// If not, just return the packages filtered with existing filters
 			return Object.keys(packs).length;
 		}
-		return Object.keys(packs).filter(packId => filter.match(packId, packs[packId])).length;
 	}
 
 	/**
