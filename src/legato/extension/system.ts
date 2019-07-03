@@ -213,7 +213,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private async newComponent(applicationNode: DocumentSymbolTreeItem): Promise<void> {
 		let compName = await vscode.window.showInputBox({
 			prompt: "Please enter a name for your new component",
-			placeHolder: "newComp"
+			placeHolder: "newComponent"
 		});
 		if (compName) {
 			return this.legatoManager.mkEdit.newComponent(applicationNode.label, compName);
@@ -231,7 +231,13 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	}
 	private async removeComponent(cdef: DocumentSymbolTreeItem) {
 		if (cdef) {
-			return this.legatoManager.mkEdit.removeComponent(cdef.label);
+			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+				`Do you really want to remove the "${cdef.label}" component?`,
+				ACTION_LABELS.CANCEL,
+				ACTION_LABELS.OK);
+			if (confirmed) {
+				return this.legatoManager.mkEdit.removeComponent(cdef.label);
+			}
 		}
 	}
 
@@ -270,7 +276,9 @@ const legatoTypesToContext: Map<LegatoType, Context> = new Map(
 		[LegatoType.Sdef, Context.LegatoSystemSelected],
 		[LegatoType.AppsSection, Context.LegatoAppsSelected],
 		[LegatoType.Adef, Context.LegatoAppCurrent],
-		[LegatoType.Mdef, Context.LegatoMdefSelected]
+		[LegatoType.Mdef, Context.LegatoMdefSelected],
+		[LegatoType.ComponentsSection, Context.LegatoComponentsSelected],
+		[LegatoType.Cdef, Context.LegatoComponentCurrent]
 	]
 );
 
