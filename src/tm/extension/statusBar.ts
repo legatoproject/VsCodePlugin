@@ -1,12 +1,13 @@
 'use strict';
 
 import * as vscode from "vscode";
+import * as minimatch from 'minimatch';
 import { Configuration } from '../../commons/configuration';
 import { Command } from '../../commons/identifiers';
 import { CommandRegister } from '../../commons/manager';
 import { ReSpawnableTerminal, TerminalKind } from '../../commons/terminal';
 import { ACTION_LABELS } from '../../commons/uiUtils';
-import { listImageFiles, listUpdateFiles } from "../../legato/api/files";
+import { listImageFiles, listUpdateFiles, LEGATO_FILES_PATTERNS } from "../../legato/api/files";
 import { CommandsQuickPick } from "../../commons/commands";
 import { DeviceManager } from '../api/device';
 import { LegatoManager } from "../../legato/api/core";
@@ -111,18 +112,17 @@ export class DeviceStatusBar extends CommandRegister {
     selectedFile: vscode.Uri | undefined,
     selectedFiles: vscode.Uri[] | undefined,
     fileProvider: () => Thenable<vscode.Uri[]>,
-    messages: FileChooserMessage): Promise<vscode.Uri | undefined> {
-    let possibleFiles: vscode.Uri[] = await fileProvider();
+    messages: FileChooserMessage,
+    globPattern: string
+  ): Promise<vscode.Uri | undefined> {
 
     // If one file is selected and is selectable, return it
-    if (selectedFile && selectedFiles && selectedFiles.length === 1
-      && possibleFiles.map(uri => uri.toString()).indexOf(selectedFile.toString()) >= 0) {
+    if (selectedFile && selectedFiles && selectedFiles.length === 1 && minimatch(selectedFile.toString(), globPattern)) {
       return selectedFile;
     }
 
     // If not, ask user to pick one
-    let userSelection = await chooseFile(possibleFiles, messages);
-    return userSelection;
+    return await chooseFile(await fileProvider(), messages);
   }
 
   /**
@@ -133,7 +133,7 @@ export class DeviceStatusBar extends CommandRegister {
     return this.getSelectedFiles(selectedFile, selectedFiles, listImageFiles, {
       noFileFoundMessage: "Neither *.cwe nor .spk files found in workspace.",
       quickPickPlaceHolder: "Please select either .cwe or .spk file among ones available in the workspace..."
-    });
+    }, LEGATO_FILES_PATTERNS.IMAGE_FILES);
   }
 
   /**
@@ -145,7 +145,7 @@ export class DeviceStatusBar extends CommandRegister {
     let selectedUpdateFile = await this.getSelectedFiles(selectedFile, selectedFiles, listUpdateFiles, {
       noFileFoundMessage: "No *.update files found in workspace.",
       quickPickPlaceHolder: "Please select an update file among ones available in the workspace..."
-    });
+    }, LEGATO_FILES_PATTERNS.UPDATE_FILES);
     if (selectedUpdateFile) {
       return this.deviceManager.installOnDevice(selectedUpdateFile.path);
     }
