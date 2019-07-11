@@ -110,7 +110,8 @@ export class LegatoLanguageManager extends DisposableBag {
                     { scheme: 'file', language: 'sdef' },
                     { scheme: 'file', language: 'adef' },
                     { scheme: 'file', language: 'cdef' },
-                    { scheme: 'file', language: 'mdef' }
+                    { scheme: 'file', language: 'mdef' },
+                    { scheme: 'file', language: 'api' }
                 ],
                 synchronize: {
                     // Notify the server about file changes to '.clientrc files contained in the workspace
