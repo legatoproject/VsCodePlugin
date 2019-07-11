@@ -148,12 +148,27 @@
                     "group": "inline"
                 },
                 {
+                    "command": "cmd.legato.system.addApp",
+                    "when": "view == view-legato-system && viewItem == context-legato-apps-selected",
+                    "group": "inline"
+                },
+                {
                     "command": "cmd.legato.system.rename",
                     "when": "view == view-legato-system && viewItem == context-legato-system-selected",
                     "group": "inline"
                 },
                 {
                     "command": "cmd.legato.app.rename",
+                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.app.newComponent",
+                    "when": "view == view-legato-system && viewItem == context-legato-app-current",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.app.addComponent",
                     "when": "view == view-legato-system && viewItem == context-legato-app-current",
                     "group": "inline"
                 },

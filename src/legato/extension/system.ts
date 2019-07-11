@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DocumentSymbol, Range, SymbolKind } from "vscode-languageclient";
+import { DocumentSymbol, Range, SymbolKind, WorkspaceSymbolRequest, SymbolInformation } from "vscode-languageclient";
 import { Command, Context, View } from "../../commons/identifiers";
 import { ACTION_LABELS, TreeDataProvider2, TreeItem2 } from "../../commons/uiUtils";
 import { LegatoManager } from "../api/core";
@@ -121,24 +121,10 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	}
 
 	private async addExistingApplication() {
-		vscode.window.showErrorMessage('Waiting for workspaceSymbol(ADEF) request implementation to pick an existing adef to add');
-		// let client = this.legatoLanguageManager.lspClient;
-		// if (client) {
-		// 	//request all available ADEF in order to add it to the current SDEF
-		// 	let symbols = await client.sendRequest(WorkspaceSymbolRequest.type, { query: "adef" });
-		// 	if (symbols) {
-		// 		let symbolsCombo = vscode.window.createQuickPick();
-		// 		symbolsCombo.placeholder = 'Select the application you want to include';
-		// 		symbolsCombo.items = symbols.map((symb: SymbolInformation) => new SymbolQuickPickItem(symb));
-		// 		const addSelectedAdefCommand = (e: vscode.QuickPickItem[]) => {
-		// 			let existingAdef = (<SymbolQuickPickItem>e[0]).label;
-		// 			this.legatoManager.mkEdit.addExistingApplication(existingAdef);
-		// 			symbolsCombo.dispose();
-		// 		};
-		// 		symbolsCombo.onDidChangeSelection(addSelectedAdefCommand);
-		// 		symbolsCombo.show();
-		// 	}
-		// }
+		let symbol = await this.askUserToSelectSymbol('adef');
+		if (symbol) {
+			this.legatoManager.mkEdit.addExistingApplication(symbol.name);
+		}
 	}
 
 	private async createSystem(): Promise<void> {
@@ -199,15 +185,38 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	}
 
 	private async addExistingComponent(): Promise<void> {
-		//TODO quick pick to existing CDEF
-		vscode.window.showErrorMessage('Waiting for workspaceSymbol(CDEF) request implementation to pick an existing cdef to add');
-		// let newComponent = await vscode.window.showInputBox({
-		// 	prompt: "Please enter a name for your new component",
-		// 	placeHolder: "newComponent"
-		// });
-		// if (newComponent) {
-		//  return this.legatoManager.addExistingComponent(newComponent);
-		// }
+		let symbol = await this.askUserToSelectSymbol('cdef');
+		if (symbol) {
+			this.legatoManager.mkEdit.addExistingComponent(symbol.name);
+		}
+	}
+
+	private async querySymbol(query: 'adef' | 'cdef'): Promise<SymbolInformation[] | null> {
+		let client = this.legatoLanguageManager.languageClient;
+		if (client) {
+			// Request all available ADEF or CDEF in order to add it to the current SDEF
+			return client.sendRequest(WorkspaceSymbolRequest.type, { query: query });
+		} else {
+			throw new Error(`Cannot query ${query} symbols in workspace. Language server is not available.`);
+		}
+	}
+
+	private async askUserToSelectSymbol(query: 'adef' | 'cdef'): Promise<SymbolInformation | undefined> {
+		try {
+			let symbols: SymbolInformation[] | null = await this.querySymbol(query);
+			if (symbols) {
+				let items = symbols.map(symb => new SymbolQuickPickItem(symb));
+				let item = await vscode.window.showQuickPick(items, {
+					placeHolder: `Select the ${query === 'adef' ? 'application' : 'component'} you want to include`
+				});
+				if (item) {
+					return item.symbol;
+				}
+			}
+		} catch (error) {
+			console.log(error);
+			vscode.window.showErrorMessage(`Failed to query existing ${query} symbols in workspace from language server. ${error}`);
+		}
 	}
 
 	private async newComponent(applicationNode: DocumentSymbolTreeItem): Promise<void> {
@@ -357,4 +366,16 @@ async function showInFileCommand(rawPath: string, range: Range): Promise<vscode.
 		command: Command.LegatoSystemOpenFile,
 		arguments: [rawPath, range]
 	};
+}
+
+class SymbolQuickPickItem implements vscode.QuickPickItem {
+	label: string;
+	description?: string | undefined;
+	detail?: string | undefined;
+
+	constructor(public readonly symbol: SymbolInformation) {
+		this.label = symbol.name;
+		this.detail = symbol.location.uri.toString();
+		this.description = symbol.containerName;
+	}
 }
