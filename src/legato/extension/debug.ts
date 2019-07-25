@@ -58,6 +58,20 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
     }
 
     /**
+     * Create build and install task.
+     * Execute it if available. Throw an error if not.
+     * @returns An object representing an executed Task. It can be used to terminate a task.
+     */
+    private async buildAndInstall(): Promise<vscode.TaskExecution> {
+        let task = await this.legatoBuildTasks.createBuildAndInstallTask();
+        if (task) {
+            return vscode.tasks.executeTask(task);
+        } else {
+            throw new Error('Build and install command is not available. Please ensure that def file is set');
+        }
+    }
+
+    /**
      * Resolves a [debug configuration](#DebugConfiguration) by filling in missing values or by adding/changing/removing attributes.
      * If more than one debug configuration provider is registered for the same type, the resolveDebugConfiguration calls are chained
      * in arbitrary order and the initial debug configuration is piped through the chain.
@@ -87,15 +101,10 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
                 action);
             if (result === action) {
                 await this.leafManager.setEnvValue(this.legatoManager.debugDir.name, '.debug', LeafEnvScope.Workspace);
-                let task = await this.legatoBuildTasks.createBuildAndInstallTask();
-                if (task) {
-                    await vscode.tasks.executeTask(task);
-                    return;
-                }
-            } else {
-                // Use Cancellation
-                return;
+                await this.buildAndInstall();
             }
+            // Debug session canceled
+            return;
         }
 
         // Provision config
@@ -117,7 +126,16 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         // Check DevModeInstalled
         let installedApps = await this.remoteDeviceManager.getInstalledApps();
         if (!('devMode' in installedApps)) {
-            throw new Error('devMode app is not installed on device');
+            let action = "Build and install 'devMode' application";
+            let result = await vscode.window.showInformationMessage(
+                "'devMode' application is not installed, do you want to build and install it?",
+                action);
+            if (result === action) {
+                await this.leafManager.setEnvValue(this.legatoManager.devMode.name, '1', LeafEnvScope.Workspace);
+                await this.buildAndInstall();
+            }
+            // Debug session canceled
+            return;
         }
 
         // Check debugged app is installed
