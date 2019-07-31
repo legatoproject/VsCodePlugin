@@ -1,5 +1,14 @@
 # Change Log
 
+## 0.9.0
+
+- Bugs fixed
+- Toggle devMode build flag if not detected when launching debug session
+- Add commands on system view to add existing apps to the system
+- New commands on system view to create and remove components
+- New command in package view to display documentation for Legato SDK (from 19.07)
+- New command in profile view to upgrade a profile to the latest available SDK
+
 ## 0.8.0
 
 - Added verification steps before debug (debug symbols built, devMode app present, application started)

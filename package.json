@@ -148,6 +148,11 @@
                     "group": "inline"
                 },
                 {
+                    "command": "cmd.leaf.prf.pkgupgrade",
+                    "when": "view == view-leaf-prf && viewItem =~ /context-leaf-pkg-installed-upgradable(.*)/",
+                    "group": "inline"
+                },
+                {
                     "command": "cmd.legato.system.createApp",
                     "when": "view == view-legato-system && viewItem =~ /context-legato-apps(.*)/",
                     "group": "inline"
@@ -213,6 +218,11 @@
             {
                 "command": "cmd.leaf.prf.pkgremove",
                 "title": "Remove",
+                "category": "Leaf/Profiles/Packages"
+            },
+            {
+                "command": "cmd.leaf.prf.pkgupgrade",
+                "title": "Upgrade",
                 "category": "Leaf/Profiles/Packages"
             },
             {

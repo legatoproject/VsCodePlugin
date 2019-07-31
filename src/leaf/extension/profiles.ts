@@ -40,6 +40,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
     // Also, let's register leaf command
     this.createCommand(Command.LeafProfileRemove, this.deleteProfile, this);
     this.createCommand(Command.LeafProfilePackageRemove, this.removePackage, this);
+    this.createCommand(Command.LeafProfilePackageUpgrade, this.upgradePackage, this);
     this.createCommand(Command.LeafProfileSwitch, this.switchProfile, this);
     this.statusbar.command = Command.LeafProfileSwitch;
 
@@ -138,6 +139,17 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       throw new Error('Command not available from the palette; try the Leaf Profiles view');
     }
     return this.leafManager.removePackagesFromProfile(packageItem.parent.id, packageItem.packId);
+  }
+
+  /**
+  * Upgrade a package thath corrends to a SDK from its profile
+  * @param packageItem the SDK item selected in tree view
+  */
+  private async upgradePackage(packageItem: PackageTreeItem | undefined) {
+    if (!packageItem || !packageItem.parent) {
+      throw new Error('Command not available from the palette; try the Leaf Profiles view');
+    }
+    return this.leafManager.upgradePackageFromProfile(packageItem.parent.id, packageItem.packName);
   }
 
   /**

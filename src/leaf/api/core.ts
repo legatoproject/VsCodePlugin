@@ -15,6 +15,7 @@ import { ResourcesManager } from "../../commons/resources";
  * Ask user to update
  */
 const LEAF_MIN_VERSION = '1.9.2';
+export const LEAF_LATEST_TAG_VERSION = 'latest';
 
 /**
  * Leaf scope used to set an envvar
@@ -335,8 +336,24 @@ export class LeafManager extends CommandRegister {
     let packagesArgs = ([] as string[]).concat(...packIds.map(packId => ['--rm-package', packId]));
     return this.processLauncher.executeInShell(
       ExecKind.Task,
-      `Remove[${packIds.join(' ')}]from profile ${profileName} `,
+      `Remove [${packIds.join(' ')}] from profile ${profileName} `,
       `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`);
+  }
+
+  /**
+   * Upgrade packages of the given profile
+   * profileName: the profile to modify
+   * packNames: the list of package names to upgrade
+   * @return a void promise that can be wait until the operation is terminated
+   */
+  public async upgradePackageFromProfile(profileName: string, ...packNames: string[]): Promise<void> {
+    if (packNames.length === 0) {
+      throw new Error('No package to upgrade');
+    }
+    return this.processLauncher.executeInShell(
+      ExecKind.Task,
+      `Upgrade [${packNames.join(' ')}] in profile ${profileName} `,
+      `leaf profile config -p ${packNames.join(' -p ')} ${profileName} && leaf profile sync ${profileName} `);
   }
 
   /**

@@ -13,6 +13,8 @@ export const enum Command { // (cmd)
     LeafProfileSwitch = "cmd.leaf.prf.switch",
     LeafProfileRemove = "cmd.leaf.prf.remove",
     LeafProfilePackageRemove = "cmd.leaf.prf.pkgremove",
+    LeafProfilePackageUpgrade = "cmd.leaf.prf.pkgupgrade",
+
     // PACKAGES (.pkg)
     LeafPackagesAddFilter = "cmd.leaf.pkg.filter.add",
     LeafPackagesRemoveFilter = "cmd.leaf.pkg.filter.remove",

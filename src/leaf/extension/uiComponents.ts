@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { Command } from '../../commons/identifiers';
 import { CheckboxTreeItem, IUiItems, QuickPickItem2, toItems, TreeItem2, NamespaceContext } from '../../commons/uiUtils';
 import { LeafBridgeElement } from '../../commons/utils';
-import { LeafManager } from '../api/core';
+import { LeafManager, LEAF_LATEST_TAG_VERSION } from '../api/core';
 
 // This module is used to declare model/ui mappings using vscode items
 
@@ -67,6 +67,13 @@ export class LeafPackageContext<T extends LeafPackagePrefix> extends LeafContext
 			this.values.push("documented");
 		}
 	}
+
+
+    public setUpgradable(upgradable: boolean): void {
+        if (upgradable) {
+            this.values.push("upgradable");
+        }
+    }
 }
 
 const enum LeafProfilePrefix { // (context)
@@ -211,6 +218,7 @@ export class InstalledPackagesContainerTreeItem extends PackagesContainerTreeIte
 }
 
 export class PackageTreeItem extends TreeItem2 {
+	public packName: string;
 	constructor(
 		public readonly packId: string,
 		parent: TreeItem2 | undefined,
@@ -224,6 +232,7 @@ export class PackageTreeItem extends TreeItem2 {
 			PackageTreeItem.toContext(properties), // contextValue
 			// properties && properties.installed ? Context.LeafPackageInstalled : Context.LeafPackageAvailable, // contextValue
 			properties && properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
+			this.packName = properties.info.name;
 	}
 
 	private static getId(id: string, properties: any | undefined): string {
@@ -244,6 +253,9 @@ export class PackageTreeItem extends TreeItem2 {
 		let leafPackageContext: LeafPackageContext<any>;
 		if (properties && properties.installed) {
 			leafPackageContext = new LeafPackageContext(LeafPackagePrefix.Installed);
+			// if the package has not the tag 'latest', the context is tagged as 'upgradable'
+			leafPackageContext.setUpgradable(properties.info && !properties.info.tags.includes(LEAF_LATEST_TAG_VERSION));
+
 		} else {
 			leafPackageContext = new LeafPackageContext(LeafPackagePrefix.Available);
 		}
