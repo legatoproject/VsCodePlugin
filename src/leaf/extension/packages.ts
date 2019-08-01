@@ -122,9 +122,9 @@ export class LeafPackagesView extends TreeDataProvider2 {
 				}
 				let availCount = this.countMatchingPackages(allPacks.availablePackages, newFilter);
 				let instCount = this.countMatchingPackages(allPacks.installedPackages, newFilter);
-				box.title = `Add filter (regex or leaf tag): ${availCount} package${availCount > 1 ? 's' : ''} 
-						 available and ${instCount} package${instCount > 1 ? 's' : ''} installed`;
-			// Filter input contains invalid regex
+				box.title = `Add filter (regex or leaf tag): ${availCount} package${availCount === 1 ? '' : 's'}
+						 available and ${instCount} package${instCount === 1 ? '' : 's'} installed`;
+				// Filter input contains invalid regex
 			} else if (!newFilter) {
 				box.title = 'Add filter (regex or leaf tag): Input contains invalid regex';
 			}

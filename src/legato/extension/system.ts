@@ -124,12 +124,10 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		}
 	}
 
-	private async addExistingApplication() {
-		let symbol = await this.askUserToSelectSymbol('adef');
-		if (symbol) {
-			let filePath = vscode.Uri.parse(symbol.location.uri).fsPath;
-			this.legatoManager.mkEdit.addExistingApplication(filePath);
-		}
+	private async addExistingApplication(appsNode: DocumentSymbolTreeItem) {
+		// ADEF that are already referenced by the SDEF have to be ignored
+		const adefsToIgnore = childrenNames(appsNode.symbol);
+		await this.selectSymbolForAddAction('adef', adefsToIgnore);
 	}
 
 	private async createSystem(): Promise<void> {
@@ -184,19 +182,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		for (let i = 0; i < appsChildrens.length; i++) {
 			items.push(new SymbolQuickPickItemFromTreeView(appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
 		}
-		let item = await vscode.window.showQuickPick(items, {
-			placeHolder: `Select the application you want to remove`
-		});
-		if (item) {
-			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
-				`Do you really want to remove the "${item.label}" application?`,
-				ACTION_LABELS.CANCEL,
-				ACTION_LABELS.OK);
-			if (confirmed) {
-				let filePath = vscode.Uri.parse(item.detail).fsPath;
-				return this.legatoManager.mkEdit.removeApplication(filePath);
-			}
-		}
+		await this.selectSymbolForRemoveAction('app', items);
 	}
 
 	private async deleteApplicationInSystem(apps: DocumentSymbolTreeItem) {
@@ -226,18 +212,7 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		for (let i = 0; i < appsChildrens.length; i++) {
 			items.push(new SymbolQuickPickItemFromTreeView(appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
 		}
-		let item = await vscode.window.showQuickPick(items, {
-			placeHolder: `Select the component you want to remove`
-		});
-		if (item) {
-			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
-				`Do you really want to remove the "${item.label}" component?`,
-				ACTION_LABELS.CANCEL,
-				ACTION_LABELS.OK);
-			if (confirmed) {
-				return this.legatoManager.mkEdit.removeComponent(item.label);
-			}
-		}
+		await this.selectSymbolForRemoveAction('component', items);
 	}
 
 	private async deleteComponentInApp(applicationNode: DocumentSymbolTreeItem) {
@@ -275,10 +250,8 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 
 	private async addExistingComponent(applicationNode: DocumentSymbolTreeItem): Promise<void> {
 		let filePath = vscode.Uri.parse(applicationNode.symbol.defPath).fsPath;
-		let symbol = await this.askUserToSelectSymbol('cdef');
-		if (symbol) {
-			this.legatoManager.mkEdit.addExistingComponent(filePath, symbol.name);
-		}
+		const cdefsToIgnore = childrenNames(applicationNode.symbol);
+		await this.selectSymbolForAddAction('cdef', cdefsToIgnore, filePath);
 	}
 
 	private async querySymbol(query: 'adef' | 'cdef'): Promise<SymbolInformation[] | null> {
@@ -291,21 +264,153 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		}
 	}
 
-	private async askUserToSelectSymbol(query: 'adef' | 'cdef'): Promise<SymbolInformation | undefined> {
+	private async selectSymbolForAddAction(
+		query: 'adef' | 'cdef',
+		symbolsToIgnore: string[] = [],
+		filePath?: string) {
+
 		try {
 			let symbols: SymbolInformation[] | null = await this.querySymbol(query);
 			if (symbols) {
-				let items = symbols.map(symb => new SymbolQuickPickItem(symb));
-				let item = await vscode.window.showQuickPick(items, {
-					placeHolder: `Select the ${query === 'adef' ? 'application' : 'component'} you want to include`
-				});
-				if (item) {
-					return item.symbol;
+				let items = symbols.filter((symb: SymbolInformation) =>
+					!symbolsToIgnore.includes(symb.name)).map((symbol: SymbolInformation) =>
+						new SymbolQuickPickItem(symbol));
+
+				// Create quick pick
+				let box = vscode.window.createQuickPick<SymbolQuickPickItem>();
+
+				// Verify if the item list is empty or not
+				if (items.length > 0) {
+					// One or more item in selection list
+					box.placeholder =
+						`Select the ${query === 'adef' ? 'application' :
+						'component'} from the list below`;
+
+				} else {
+					// No items in selection list
+					box.placeholder =
+						`No available ${query === 'adef' ? 'application' :
+						'component'}s found in included ${query === 'adef' ? 'app' :
+						'component'}Search paths`;
 				}
+
+				box.items = items;
+				box.title = query === 'adef' ? `Add App: ${items.length} app${items.length === 1 ?
+					'' : 's'} available` : `Add Component: ${items.length}
+						component${items.length === 1 ? '' : 's'} available`;
+
+				box.onDidAccept(() => {
+					let result = box.selectedItems.length > 0 ? box.selectedItems[0] : undefined;
+					if (result) {
+						if (result.symbol) {
+							switch (query) {
+								case "adef": {
+									let filePath =
+										vscode.Uri.parse(result.symbol.location.uri).fsPath;
+									this.legatoManager.mkEdit.addExistingApplication(filePath);
+									break;
+								}
+								case "cdef": {
+									if (filePath) {
+										this.legatoManager.mkEdit.addExistingComponent(
+											filePath,
+											result.symbol.name);
+									}
+									break;
+								}
+								default: {
+									break;
+								}
+							}
+						}
+					}
+					box.hide();
+				});
+
+				box.show();
 			}
 		} catch (error) {
 			console.log(error);
-			vscode.window.showErrorMessage(`Failed to query existing ${query} symbols in workspace from language server. ${error}`);
+			vscode.window.showErrorMessage(
+				`Failed to query existing ${query} symbols ` +
+				`in workspace from language server. ${error}`);
+		}
+	}
+
+	private async selectSymbolForRemoveAction(
+		query: 'app' | 'component',
+		items: SymbolQuickPickItemFromTreeView[]) {
+
+		try {
+			// Create quick pick
+			let box = vscode.window.createQuickPick<SymbolQuickPickItemFromTreeView>();
+
+			// Verify if the item list is empty or not
+			if (items.length > 0) {
+				// One or more items in selection list
+				box.placeholder =
+					`Select the ${query === 'app' ? 'application' :
+					'component'} from the list below`;
+
+			} else {
+				// No items in selection list
+				box.placeholder =
+					`No available ${query === 'app' ? 'application' :
+					'component'}s to remove from ${query === 'app' ? 'system' : 'application'}`;
+			}
+
+			box.items = items;
+			box.title = query === 'app' ? `Remove App: ${items.length} app${items.length === 1 ?
+				'' : 's'} available` : `Remove Component: ${items.length}
+					component${items.length === 1 ? '' : 's'} available`;
+
+			box.onDidAccept(async () => {
+				let item = box.selectedItems.length > 0 ? box.selectedItems[0] : undefined;
+				if (item) {
+					switch (query) {
+						case "app": {
+							let confirmed =
+								ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+									`Do you really want to remove ` +
+									`the "${item.label}" application?`,
+									ACTION_LABELS.CANCEL,
+									ACTION_LABELS.OK);
+
+							// Verify if confirmed is true
+							if (confirmed) {
+								let filePath = vscode.Uri.parse(item.detail).fsPath;
+								return this.legatoManager.mkEdit.removeApplication(filePath);
+							}
+							break;
+						}
+						case "component": {
+							let confirmed =
+								ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+									`Do you really want to remove ` +
+									`the "${item.label}" component?`,
+									ACTION_LABELS.CANCEL,
+									ACTION_LABELS.OK);
+
+							// Verify if confirmed is true
+							if (confirmed) {
+								return this.legatoManager.mkEdit.removeComponent(item.label);
+							}
+							break;
+						}
+						default: {
+							break;
+						}
+					}
+				}
+				box.hide();
+			});
+
+			box.show();
+		} catch (error) {
+			console.log(error);
+			vscode.window.showErrorMessage(
+				`Failed to query existing ${query} symbols ` +
+				`in workspace from language server. ${error}`);
 		}
 	}
 
@@ -410,6 +515,17 @@ function toContext(symbolKind: SymbolKind): NamespaceContext {
 	let legatoType = symbolsKindToLegato.get(symbolKind);
 	let matchingContext = legatoType !== undefined ? new LegatoContext<LegatoType>(legatoType) : undefined;
 	return matchingContext ? matchingContext : LegatoContext.LanguageServerReady;
+}
+
+function childrenNames(symbol: DocumentSymbol): string[] {
+	let apps = [];
+	if (symbol) {
+		let { children } = symbol;
+		apps = children ? children.map((obj: any) => {
+			let { name } = obj; return name;
+		}) : [];
+	}
+	return apps;
 }
 
 function toIcon(symbolKind: SymbolKind): string | undefined {
