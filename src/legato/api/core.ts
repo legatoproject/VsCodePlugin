@@ -97,7 +97,7 @@ export class LegatoManager extends DisposableBag {
      * If it's the first, set it as active one
      */
     private async onDefFileCreated(defFile: vscode.Uri) {
-        let outOfSync = this.leafManager.outOfSync.get();
+        let outOfSync = await this.leafManager.outOfSync.get();
         let currentDefFile = await this.defFile.get();
         if (!outOfSync && !currentDefFile) {
             this.saveActiveDefFile(defFile);
@@ -109,7 +109,7 @@ export class LegatoManager extends DisposableBag {
      * If it's the current one, set it's new name in envvar
      */
     private async onDefFileRenamed(newFile: vscode.Uri, oldFile: vscode.Uri) {
-        let outOfSync = this.leafManager.outOfSync.get();
+        let outOfSync = await this.leafManager.outOfSync.get();
         let currentDefFile = await this.defFile.get();
         if (!outOfSync && currentDefFile && currentDefFile.toString() === oldFile.toString()) {
             this.saveActiveDefFile(newFile);
@@ -121,7 +121,7 @@ export class LegatoManager extends DisposableBag {
      * If it's the current one, let's update it in envvar
      */
     private async onDefFileDeleted(defFile: vscode.Uri) {
-        let outOfSync = this.leafManager.outOfSync.get();
+        let outOfSync = await this.leafManager.outOfSync.get();
         let currentDefFile = await this.defFile.get();
         if (!outOfSync && currentDefFile && currentDefFile.toString() === defFile.toString()) {
             this.saveActiveDefFile(undefined);
