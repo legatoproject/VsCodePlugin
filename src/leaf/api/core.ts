@@ -269,10 +269,10 @@ export class LeafManager extends CommandRegister {
    * profile: profile name to switch to
    */
   public async switchProfile(profile: string): Promise<void> {
-    return this.processLauncher.executeProcess(
+    return this.processLauncher.executeInShell(
       ExecKind.Task,
       `Switching to profile ${profile}`,
-      'leaf', 'select', profile);
+      `leaf --non-interactive select ${profile}`);
   }
 
   /**
@@ -292,12 +292,12 @@ export class LeafManager extends CommandRegister {
    * packs: the list of packages id to add to the created profile
    */
   public async createProfile(profile?: string, ...packs: string[]): Promise<void> {
-    let cmd = ['leaf', 'setup'];
+    let cmd = ['leaf', '--non-interactive', 'setup'];
     packs.forEach(id => cmd.push('-p', id));
     if (profile) {
       cmd.push(profile);
     }
-    return this.processLauncher.executeProcess(ExecKind.Task, `Create new profile`, ...cmd);
+    return this.processLauncher.executeInShell(ExecKind.Task, `Create new profile`, cmd.join(' '));
   }
 
   /**
@@ -314,11 +314,11 @@ export class LeafManager extends CommandRegister {
     let actionName = `Add [${packIds.join(' ')}] to profile ${profileName}`;
     if (profileName === await this.profileName.get()) {
       // Is current profile -> leaf update
-      let cmdArray = ['leaf', 'update', ...packagesArgs];
-      return this.processLauncher.executeProcess(ExecKind.Task, actionName, ...cmdArray);
+      let cmdArray = ['leaf', '--non-interactive', 'update', ...packagesArgs];
+      return this.processLauncher.executeInShell(ExecKind.Task, actionName, cmdArray.join(' '));
     } else {
       // Is another profile -> leaf profile config then leaf profile sync
-      let cmdLine = `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`;
+      let cmdLine = `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf --non-interactive profile sync ${profileName}`;
       return this.processLauncher.executeInShell(ExecKind.Task, actionName, cmdLine);
     }
   }
@@ -337,7 +337,7 @@ export class LeafManager extends CommandRegister {
     return this.processLauncher.executeInShell(
       ExecKind.Task,
       `Remove [${packIds.join(' ')}] from profile ${profileName} `,
-      `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf profile sync ${profileName}`);
+      `leaf profile config ${packagesArgs.join(' ')} ${profileName} && leaf --non-interactive profile sync ${profileName}`);
   }
 
   /**
@@ -353,7 +353,7 @@ export class LeafManager extends CommandRegister {
     return this.processLauncher.executeInShell(
       ExecKind.Task,
       `Upgrade [${packNames.join(' ')}] in profile ${profileName} `,
-      `leaf profile config -p ${packNames.join(' -p ')} ${profileName} && leaf profile sync ${profileName} `);
+      `leaf profile config -p ${packNames.join(' -p ')} ${profileName} && leaf --non-interactive profile sync ${profileName} `);
   }
 
   /**
@@ -361,10 +361,10 @@ export class LeafManager extends CommandRegister {
    * @returns the corresponding promise
    */
   public async syncCurrentProfile(): Promise<void> {
-    return this.processLauncher.executeProcess(
+    return this.processLauncher.executeInShell(
       ExecKind.Task,
       "Sync current profile",
-      'leaf', 'profile', 'sync');
+      "leaf --non-interactive profile sync");
   }
 
   /**
