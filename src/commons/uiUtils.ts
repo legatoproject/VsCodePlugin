@@ -49,6 +49,9 @@ export abstract class IUiItems {
 		public readonly properties: any | undefined // Parsed JSON properties from leaf interface)
 	) { }
 
+	/**
+	 * Used only in 'toItems' function to sort items
+	 */
 	public compareTo(other: IUiItems) {
 		if (this.id < other.id) { return -1; }
 		if (this.id > other.id) { return 1; }
@@ -59,17 +62,34 @@ export abstract class IUiItems {
 /**
  * Base for QuickPickItem
  */
-export abstract class QuickPickItem2 extends IUiItems implements vscode.QuickPickItem {
+export class QuickPickItem2 extends IUiItems implements vscode.QuickPickItem {
 	constructor(
 		id: string,
 		parent: TreeItem2 | undefined,
 		properties: any | undefined,
 		public readonly label: string,
 		public readonly description?: string,
-		public readonly details?: string
+		public readonly details?: string,
+		public readonly alwaysShow?: boolean
 	) {
 		super(id, parent, properties);
 	}
+}
+
+/**
+ * Create a quickpick item that is always shown with a light bulb icon
+ * Useful to show actions after a list of selectable elements
+ * @param label A human readable string which is rendered prominent.
+ * @param description A human readable string which is rendered less prominent.
+ */
+export function createActionAsQuickPickItem(label: string, description?: string): QuickPickItem2 {
+	return new QuickPickItem2(
+		label, // label as Id
+		undefined, undefined, // No parent or properties
+		`$(light-bulb) ${label}`, // label with light bulb icon
+		description, // description
+		"Additional action", // details (not shown in UI currently)
+		true); // always show this item.
 }
 
 /**

@@ -1,7 +1,7 @@
 'use strict';
 
 import { Command, View } from '../../commons/identifiers';
-import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems } from '../../commons/uiUtils';
+import { TreeItem2, TreeDataProvider2, showMultiStepQuickPick, showMultiStepInputBox, toItems, createActionAsQuickPickItem } from '../../commons/uiUtils';
 import { PackageTreeItem, PackageQuickPickItem, ProfileQuickPickItem, TagQuickPickItem, FilterContainerTreeItem, FilterTreeItem, AvailablePackagesContainerTreeItem, InstalledPackagesContainerTreeItem, LeafPackageContext } from './uiComponents';
 import { LeafManager } from '../api/core';
 import * as vscode from 'vscode';
@@ -210,7 +210,11 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			return; // User cancellation
 		}
 
-		if (!result.id) {
+
+		if (result.id && profiles && result.id in profiles) {
+			// Existing profile
+			return this.leafManager.addPackagesToProfile(result.id, selectedPackage.packId);
+		} else {
 			// New profile
 			let newProfileName = await this.askForProfileName(title, profiles);
 			if (newProfileName === undefined) {
@@ -221,9 +225,6 @@ export class LeafPackagesView extends TreeDataProvider2 {
 				newProfileName = undefined; // "" is a valid return for default profile name
 			}
 			return this.leafManager.createProfile(newProfileName, selectedPackage.packId);
-		} else if (profiles && result.id in profiles) {
-			// Existing profile
-			return this.leafManager.addPackagesToProfile(result.id, selectedPackage.packId);
 		}
 	}
 
@@ -262,15 +263,9 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		title: string, node: PackageTreeItem | PackageQuickPickItem,
 		profiles: LeafBridgeElement
 	): Promise<ProfileQuickPickItem | undefined> {
-		let createProfileItem: ProfileQuickPickItem = {
-			id: "",
-			parent: undefined,
-			properties: {},
-			label: "Create new profile...",
-			description: "You will be asked for a profile name",
-			details: undefined,
-			compareTo: value => 0
-		};
+		let createProfileItem = createActionAsQuickPickItem(
+			"Create new profile...",
+			"You will be asked for a profile name");
 
 		// If no profiles exist, let return the "Create profile" item right now
 		if (Object.keys(profiles).length === 0) {

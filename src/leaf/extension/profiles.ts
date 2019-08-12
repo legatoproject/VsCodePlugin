@@ -4,7 +4,7 @@ import { window, StatusBarItem, StatusBarAlignment, commands } from 'vscode';
 import { LeafManager } from '../api/core';
 import { Command, View } from '../../commons/identifiers';
 import { ProfileQuickPickItem, ProfileTreeItem, PackageTreeItem } from './uiComponents';
-import { showMultiStepQuickPick, toItems, TreeDataProvider2, QuickPickItem2, TreeItem2 } from '../../commons/uiUtils';
+import { showMultiStepQuickPick, toItems, TreeDataProvider2, QuickPickItem2, TreeItem2, createActionAsQuickPickItem } from '../../commons/uiUtils';
 
 // The icons used in status bar
 // Must be taken from the [octicon](https://octicons.github.com) icon set.
@@ -75,17 +75,22 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
   private async switchProfile(): Promise<void> {
     let profiles = await this.leafManager.profiles.get();
     let items: QuickPickItem2[] = toItems(profiles, ProfileQuickPickItem);
-    let syncProfileItem: QuickPickItem2 = {
-      id: "cmd",
-      parent: undefined,
-      properties: undefined,
-      label: "Fix profile",
-      description: "Execute 'leaf profile sync'",
-      compareTo: () => 0
-    };
+
+    // Create sync profile command item
+    let syncProfileItem = createActionAsQuickPickItem(
+      "Fix profile",
+      "Execute 'leaf profile sync'");
     if (await this.leafManager.outOfSync.get()) {
       items.push(syncProfileItem);
     }
+
+    // Create show leaf terminal command item
+    let showLeafTerminal = createActionAsQuickPickItem(
+      "Open leaf Shell",
+      "Bring to top if already exist");
+    items.push(showLeafTerminal);
+
+    // Swow quickpick
     let result = await showMultiStepQuickPick(
       "leaf profile switch",
       undefined,
@@ -99,10 +104,14 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       return this.leafManager.syncCurrentProfile();
     }
 
+    // User want to show Leaf terminal
+    if (result === showLeafTerminal) {
+      return commands.executeCommand(Command.LeafTerminalOpenLeaf);
+    }
+
     // User picked a profile to switch to
     result = result as ProfileQuickPickItem;
-    await this.leafManager.switchProfile(result.id);
-    return commands.executeCommand(Command.LeafTerminalOpenLeaf);
+    return this.leafManager.switchProfile(result.id);
   }
 
 	/**
