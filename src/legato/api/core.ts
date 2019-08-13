@@ -12,12 +12,13 @@ import { MkEditManager, MkEditOptions } from './mkEdit';
  * List of env vars used by Legato
  * Do not export this, use model element to expose/use env values
  */
-const LEGATO_ENV = {
+export const LEGATO_ENV = {
     LEGATO_ROOT: "LEGATO_ROOT",
     DEST_IP: "DEST_IP",
     DEF_FILE: "LEGATO_DEF_FILE",
     SNIPPETS: "LEGATO_SNIPPETS",
     LANGUAGE_SERVER: "LEGATO_LANGUAGE_SERVER",
+    VSCODE_VERSION: "LEGATO_VSCODE_VERSION",
 
     // Known options leveraging custom build
     TARGET: "LEGATO_TARGET",

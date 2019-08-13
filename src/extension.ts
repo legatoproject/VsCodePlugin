@@ -12,7 +12,7 @@ import { LeafPackagesView } from './leaf/extension/packages';
 import { LeafProfileStatusBar } from './leaf/extension/profiles';
 import { LeafRemotesView } from './leaf/extension/remotes';
 import { LeafTerminalManager } from './leaf/extension/terminal';
-import { LegatoManager } from './legato/api/core';
+import { LegatoManager, LEGATO_ENV } from './legato/api/core';
 import { LegatoLanguageManager } from './legato/api/language';
 import { LegatoBuildTasks } from './legato/extension/buildtasks';
 import { SnippetsManager } from './legato/extension/snippets';
@@ -70,6 +70,9 @@ class Extension extends DisposableBag {
 
         // Everything is fine, let's manage welcome page
         this.toDispose(new WelcomePageManager(versionManager, this.resourcesManager));
+
+        // Export extension version to environment
+        process.env[LEGATO_ENV.VSCODE_VERSION] = versionManager.currentVersion;
     }
 
     /**
