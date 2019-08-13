@@ -202,7 +202,7 @@
         "commands": [
             {
                 "command": "cmd.leaf.trm.openleaf",
-                "title": "Open Shell",
+                "title": "Open Leaf Shell",
                 "category": "Leaf"
             },
             {
@@ -341,7 +341,7 @@
             },
             {
                 "command": "cmd.legato.tm.shell",
-                "title": "Open Shell",
+                "title": "Open Target Shell",
                 "category": "Legato/Device"
             },
             {
