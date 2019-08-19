@@ -538,6 +538,12 @@
                     "description": "Specifies whether to show hint popups",
                     "scope": "window"
                 },
+                "leaf.common.showProfileSyncNotification": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Specifies whether to show whenever a profil is synced after more than 2 second being out of sync",
+                    "scope": "window"
+                },
                 "legato.tm.terminal.kind": {
                     "type": "string",
                     "enum": [

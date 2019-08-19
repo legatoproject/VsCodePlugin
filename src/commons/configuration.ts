@@ -85,6 +85,7 @@ export namespace Configuration {
     export namespace Common {
         export const showWhatsNewAfterUpgrades = new Section<boolean>("leaf.common.showWhatsNewAfterUpgrades");
         export const showHints = new Section<boolean>("leaf.common.showHints");
+        export const showProfileSyncNotification = new Section<boolean>("leaf.common.showProfileSyncNotification");
     }
 
     /**

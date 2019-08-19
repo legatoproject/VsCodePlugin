@@ -16,12 +16,15 @@ const HideHints = "Hide hints";
  * @returns the choosen action or undefined
  */
 export async function showHint<T extends string>(message: string, ...actions: T[]): Promise<T | undefined> {
-    let actionsAndHide = (actions as string[]).concat(HideHints);
-    let result = await vscode.window.showInformationMessage(message, ...actionsAndHide);
-    if (result === HideHints) {
-        Configuration.Common.showHints.update(false, vscode.ConfigurationTarget.Global);
+    let conf = Configuration.Common.showHints;
+    if (conf.getValue()) {
+        let actionsAndHide = (actions as string[]).concat(HideHints);
+        let result = await vscode.window.showInformationMessage(message, ...actionsAndHide);
+        if (result === HideHints) {
+            conf.update(false, vscode.ConfigurationTarget.Global);
+        }
+        return result as T;
     }
-    return result as T;
 }
 
 
