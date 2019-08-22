@@ -130,7 +130,7 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       "leaf profile switch",
       undefined,
       undefined,
-      "Please select the profile you want to switch to...",
+      "Select the active profile",
       items
     );
 

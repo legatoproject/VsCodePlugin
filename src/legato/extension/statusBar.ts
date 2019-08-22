@@ -48,7 +48,7 @@ export class LegatoStatusBar extends CommandRegister {
       defFile = await chooseFile(xdefs,
         {
           noFileFoundMessage: "Neither *.sdef nor *.adef files found in workspace.",
-          quickPickPlaceHolder: "Please select active definition file among ones available in the workspace..."
+          quickPickPlaceHolder: "Select the active definition file (this is what will be built and installed on your target)"
         });
       if (!defFile) {
         return; // User cancellation

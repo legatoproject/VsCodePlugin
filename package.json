@@ -346,32 +346,32 @@
             },
             {
                 "command": "cmd.legato.tm.logs",
-                "title": "Open Logs",
+                "title": "Open Target Logs",
                 "category": "Legato/Device"
             },
             {
                 "command": "cmd.legato.tm.set.ip",
-                "title": "Set IP address",
+                "title": "Set IP of Target",
                 "category": "Legato/Device"
             },
             {
                 "command": "cmd.legato.tm.install.on",
-                "title": "Install on device",
+                "title": "Install .update on R/W partition",
                 "category": "Legato/Device"
             },
             {
                 "command": "cmd.legato.tm.flash",
-                "title": "Flash image to device",
+                "title": "Flash .cwe/.spk to Target (via fwupdate)",
                 "category": "Legato/Device"
             },
             {
                 "command": "cmd.legato.tm.flash.recovery",
-                "title": "Flash image to device (recovery mode)",
+                "title": "Flash .cwe/.spk to Target (via swiflash)",
                 "category": "Legato/Device"
             },
             {
                 "command": "cmd.legato.tm.reset.partition.user",
-                "title": "Reset user partition (recovery mode)",
+                "title": "Reset user partition (delete all user data)",
                 "category": "Legato/Device"
             }
         ],
