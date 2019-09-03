@@ -7,6 +7,7 @@ import { DisposableBag } from '../../commons/manager';
 import { TaskDefinitionType } from '../../commons/identifiers';
 import { TaskProcessLauncher, ProcessLauncherOptions } from '../../commons/process';
 import { getWorkspaceFolderPath } from '../../commons/files';
+import { executeInShell } from '../../commons/utils';
 
 /**
  * Manage device ip and remote shell/logs commands 
@@ -61,7 +62,22 @@ export class DeviceManager extends DisposableBag {
      * @throws an error if dest ip is not sets
      */
     public async getRemoteLogsCmd(): Promise<string> {
-        return `ssh root@${await this.getMandatoryDestIp()} /sbin/logread -f`;
+        let remoteCmd = `ssh root@${await this.getMandatoryDestIp()} "/sbin/logread -f"`;
+        try {
+            await executeInShell('which ccze');
+            remoteCmd += ' | ccze -A'; // ccze is installed, let's use it
+        } catch {
+            // ccze is not installed
+        }
+        return remoteCmd;
+    }
+
+    /**
+     * @return the command to launch remote logs with colors using ccze
+     * @throws an error if dest ip is not sets
+     */
+    public async getColorizedRemoteLogsCmd(): Promise<string> {
+        return `ssh root@${await this.getMandatoryDestIp()} "/sbin/logread -f | ccze -A"`;
     }
 
     /**
