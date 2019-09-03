@@ -7,6 +7,8 @@ import { LegatoManager } from '../api/core';
 import { RemoteDeviceManager, AppStatus } from '../../tm/api/remote';
 import { LeafManager, LeafEnvScope } from '../../leaf/api/core';
 import { LegatoBuildTasks } from './buildtasks';
+import { basename } from 'path';
+import { executeInShell } from '../../commons/utils';
 
 /**
  * This configuration is automatically added to the launch.json created when the user try to launch
@@ -40,6 +42,7 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         super();
         this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato-attach", this));
         this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato-launch", this));
+        this.toDispose(vscode.debug.onDidTerminateDebugSession(this.onDidTerminateDebugSession, this));
     }
 
     /**
@@ -201,5 +204,20 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
             serverStarted: `Listening\\ on\\ port\\ ${remotePort}`,
             serverLaunchTimeout: 30000
         };
+    }
+
+    /**
+     * Ensure gdbserver is killed at the end of the session
+     * @param session the terminated debug session
+     */
+    public async onDidTerminateDebugSession(session: vscode.DebugSession) {
+        let gdbServerBinName = basename(this.remoteDeviceManager.gdbServerPath);
+        let deviceIp = await this.legatoManager.destIp.get() || "192.168.2.2";
+        let remoteCmd = `ssh root@${deviceIp} "killall -9 ${gdbServerBinName}"`;
+        try {
+            await executeInShell(remoteCmd);
+        } catch {
+            // No gdbserver to kill
+        }
     }
 }
