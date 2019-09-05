@@ -62,9 +62,9 @@ export abstract class ReSpawnableTerminal extends DisposableBag {
                     // Let's create it
                     this.integratedPromise = this.createNewIntegratedTerminal();
                 }
-                // Show terminal (without stealing focus)
+                // Show terminal (stealing focus)
                 console.log(`[ReSpawnableTerminal] Show integrated terminal [${this.name}]`);
-                (await this.integratedPromise).show(true);
+                (await this.integratedPromise).show();
                 break;
             case TerminalKind.External:
                 // Launch a new system terminal on each call
