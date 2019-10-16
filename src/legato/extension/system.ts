@@ -123,7 +123,8 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private async addExistingApplication() {
 		let symbol = await this.askUserToSelectSymbol('adef');
 		if (symbol) {
-			this.legatoManager.mkEdit.addExistingApplication(symbol.name);
+			let filePath = vscode.Uri.parse(symbol.location.uri).fsPath;
+			this.legatoManager.mkEdit.addExistingApplication(filePath);
 		}
 	}
 

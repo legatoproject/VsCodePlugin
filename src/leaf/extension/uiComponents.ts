@@ -69,11 +69,11 @@ export class LeafPackageContext<T extends LeafPackagePrefix> extends LeafContext
 	}
 
 
-    public setUpgradable(upgradable: boolean): void {
-        if (upgradable) {
-            this.values.push("upgradable");
-        }
-    }
+	public setUpgradable(upgradable: boolean): void {
+		if (upgradable) {
+			this.values.push("upgradable");
+		}
+	}
 }
 
 const enum LeafProfilePrefix { // (context)
@@ -232,7 +232,7 @@ export class PackageTreeItem extends TreeItem2 {
 			PackageTreeItem.toContext(properties), // contextValue
 			// properties && properties.installed ? Context.LeafPackageInstalled : Context.LeafPackageAvailable, // contextValue
 			properties && properties.installed ? "PackageInstalled.svg" : "PackageAvailable.svg"); // iconFileName
-			this.packName = properties.info.name;
+		this.packName = properties.info.name;
 	}
 
 	private static getId(id: string, properties: any | undefined): string {

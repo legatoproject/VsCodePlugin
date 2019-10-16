@@ -85,10 +85,12 @@ export class MkEditManager {
      * Invoke mkedit to add an existing application to the current system
      * @param name the name of the new application
      */
-    public addExistingApplication(name: string): Promise<void> {
+    public addExistingApplication(filePath: string): Promise<void> {
+        let name = path.basename(filePath, path.extname(filePath));
+
         return this.processLauncher.executeInShell(
             `Add existing application ${name}`,
-            `mkedit add app ${name}`);
+            `mkedit add app ${filePath}`);
     }
 
     /**
