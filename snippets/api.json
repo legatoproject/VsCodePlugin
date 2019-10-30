@@ -5,7 +5,9 @@
         "body": [
             "FUNCTION ${1|uint8,uint16,uint32,uint64,int8,int16,int32,int64,double,string,file,le_result_t,le_onoff_t|} ${2:functionName}",
             "(",
-            ");"
+            "\t$0",
+            ");",
+            ""
         ]
     },
     "parameter": {
@@ -21,7 +23,9 @@
         "body": [
             "EVENT ${1:eventType}",
             "(",
-            ");"
+            "\t$0",
+            ");",
+            ""
         ]
     },
     "define": {
@@ -37,7 +41,9 @@
         "body": [
             "ENUM ${1:name}",
             "{",
-            "};"
+            "\t$0",
+            "};",
+            ""
         ]
     },
     "struct": {
@@ -46,7 +52,9 @@
         "body": [
             "STRUCT ${1:name}",
             "{",
-            "};"
+            "\t$0",
+            "};",
+            ""
         ]
     },
     "handler": {
@@ -55,7 +63,9 @@
         "body": [
             "HANDLER ${1:handlerType}",
             "(",
-            ");"
+            "\t$0",
+            ");",
+            ""
         ]
     }
 }

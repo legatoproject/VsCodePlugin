@@ -477,6 +477,10 @@
                 "path": "./snippets/adef.json"
             },
             {
+                "language": "mdef",
+                "path": "./snippets/mdef.json"
+            },
+            {
                 "language": "sdef",
                 "path": "./snippets/sdef.json"
             },

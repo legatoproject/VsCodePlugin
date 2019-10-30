@@ -1,14 +1,179 @@
 {
-    "default": {
-        "prefix": "Default .sdef",
-        "description": "Generate default sdef for your adef file.",
+    "new.sdef": {
+        "prefix": "new.sdef",
+        "description": "Define a system of one or more applications that can be deployed to target devices in the field.",
         "body": [
             "#include \\$LEGATO_ROOT/default.sdef",
             "",
             "apps:",
             "{",
-              "    ${1:myAdef}",
-            "}"
+            "\t${0:myAdef}.adef",
+            "}",
+            ""
+        ]
+    },
+    "interfaceSearch": {
+        "prefix": "interfaceSearch",
+        "description": "Specify the search path for .api files referenced in your system, your applications, and the components that make up your applications.",
+        "body": [
+            "interfaceSearch:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "appSearch": {
+        "prefix": "appSearch",
+        "description": "Specify the search path for apps declared in your .sdef's apps: section. Instead of having to specify a full path to your applications, you can specify locations for where they should be found.",
+        "body": [
+            "appSearch:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "componentSearch": {
+        "prefix": "componentSearch",
+        "description": "Specify the search path to directories that the build system uses to find components.",
+        "body": [
+            "componentSearch:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "moduleSearch": {
+        "prefix": "moduleSearch",
+        "description": "Specify the search path for modules declared in your .sdef's kernelModules: section.  Instead of having to specify a full path to your kernel modules, you can specify locations for where they should be found.",
+        "body": [
+            "moduleSearch:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "apps": {
+        "prefix": "apps",
+        "description": "Declare one or more apps to be deployed to the target system.",
+        "body": [
+            "apps:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "maxPriority": {
+        "prefix": "maxPriority",
+        "description": "Specify the maximum priority level the app it permitted to use.",
+        "body": [
+            "maxPriority: $0"
+        ]
+    },
+    "preloaded": {
+        "prefix": "preloaded",
+        "description": "Specify whether or not an app must be preloaded onto the target device separately from the rest of the system.",
+        "body": [
+            "preloaded: $0"
+        ]
+    },
+    "bindings": {
+        "prefix": "bindings",
+        "description": "Specify IPC bindings that connect app's external IPC interfaces.",
+        "body": [
+            "bindings:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "buildVars": {
+        "prefix": "buildVars",
+        "description": "Define variables in the build tool's process environment at build time",
+        "body": [
+            "buildVars:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "cflags": {
+        "prefix": "cflags",
+        "description": "Specify command-line arguments to pass to the compiler when compiling C source code files.",
+        "body": [
+            "cflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "cxxflags": {
+        "prefix": "cxxflags",
+        "description": "Specify command-line arguments to pass to the compiler when compiling C++ source code files.",
+        "body": [
+            "cxxflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "ldflags": {
+        "prefix": "ldflags",
+        "description": "Specify command-line arguments to pass to the compiler when linking C/C++ object (.o) files together into a component shared library (.so) file.",
+        "body": [
+            "ldflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "kernelModules": {
+        "prefix": "kernelModules",
+        "description": "Declare a list of kernel modules to be bundled and installed with Legato.",
+        "body": [
+            "kernelModules:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "commands": {
+        "prefix": "commands",
+        "description": "Specify command-line tools that will be available to a root user who is logged-in to a shell on a target device tty (e.g., through secure shell [ssh] or a serial console).",
+        "body": [
+            "commands:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "extern": {
+        "prefix": "extern",
+        "description": "Indicate which of your system's RPC API interfaces should be made available for binding to the RPC API interfaces of other systems.",
+        "body": [
+            "extern:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "externalWatchdogKick": {
+        "prefix": "externalWatchdogKick",
+        "description": "Specify the interval for the internal watchdog daemon to kick the external watchdog.",
+        "body": [
+            "externalWatchdogKick: $0"
         ]
     }
 }

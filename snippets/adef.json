@@ -1,23 +1,356 @@
 {
-    "helloworld": {
-        "prefix": "helloworld",
-        "description": "Generate the helloWorld ADEF file",
+    "new.adef": {
+        "prefix": "new.adef",
+        "description": "Define an application that can be built, installed, and run on target devices.",
         "body": [
             "executables:",
             "{",
-            "    helloWorld = ( helloComponent )",
+            "\t${0:${TM_FILENAME_BASE}} = ( ${0:${TM_FILENAME_BASE}}Component )",
             "}",
+            "",
             "processes:",
             "{",
-            "    envVars:",
-            "    {",
-            "        LE_LOG_LEVEL = DEBUG",
-            "    }",
-            "    run:",
-            "    {",
-            "        ( helloWorld )",
-            "    }",
-            "}"
+            "\tenvVars:",
+            "\t{",
+            "\t\tLE_LOG_LEVEL = DEBUG",
+            "\t}",
+            "",
+            "\trun:",
+            "\t{",
+            "\t\t( ${0:${TM_FILENAME_BASE}} )",
+            "\t}",
+            "}",
+            ""
+        ]
+    },
+    "executables": {
+        "prefix": "executables",
+        "description": "List executables to be constructed and moved to the bin directory inside the app.",
+        "body": [
+            "executables:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "processes": {
+        "prefix": "processes",
+        "description": "Specify processes to run when the app is started including environment variables, command-line arguments, limits, and fault handling actions",
+        "body": [
+            "processes:",
+            "{",
+            "\trun:",
+            "\t{",
+            "\t\t$0",
+            "\t}",
+            "}",
+            ""
+        ]
+    },
+    "bundles": {
+        "prefix": "bundles",
+        "description": "List additional files or directories to be copied from the build host into the app so they’re available to the app at runtime.",
+        "body": [
+            "bundles:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "bindings": {
+        "prefix": "bindings",
+        "description": "Specify client-side IPC API interfaces (listed in the requires sections of Component.cdef files) to be bound to server-side interfaces (listed in the provides sections of Component.cdef files).",
+        "body": [
+            "bindings:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "components": {
+        "prefix": "components",
+        "description": "Specify components to be included in an app without being built into an executable.",
+        "body": [
+            "components:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "file": {
+        "prefix": "file",
+        "description": "Declare the specific files located on the target outside of the app, but made accessible to the app.",
+        "body": [
+            "file:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "dir": {
+        "prefix": "dir",
+        "description": "Declare directories located on the target outside of the app that are to be made accessible to the app.",
+        "body": [
+            "dir:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "groups": {
+        "prefix": "groups",
+        "description": "Add an app's user to groups on the target system.",
+        "body": [
+            "groups:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "extern": {
+        "prefix": "extern",
+        "description": "Indicate which of your app's IPC API interfaces should be made available for binding to the IPC API interfaces of other apps.",
+        "body": [
+            "extern:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "provides": {
+        "prefix": "provides",
+        "description": "Use when apps contain pre-built binary executables that have Legato IPC API interfaces",
+        "body": [
+            "provides:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "requires": {
+        "prefix": "requires",
+        "description": "Specify things the app needs from its runtime environment.",
+        "body": [
+            "requires:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "configTree": {
+        "prefix": "configTree",
+        "description": "Declare the app requires access to a specified configuration tree",
+        "body": [
+            "configTree:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "device": {
+        "prefix": "device",
+        "description": "Declare the device files that reside on the target outside of the app, but made accessible to the app.",
+        "body": [
+            "device:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "kernelModules": {
+        "prefix": "kernelModules",
+        "description": "Declare the app dependencies on kernel modules.",
+        "body": [
+            "kernelModules:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "pools": {
+        "prefix": "pools",
+        "description": "Set the number of memory pool blocks in a memory pool in a given component in a given process.",
+        "body": [
+            "pools:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "cpuShare": {
+        "prefix": "cpuShare",
+        "description": "Specify the relative cpu share for an app.",
+        "body": [
+            "cpuShare: $0"
+        ]
+    },
+    "maxFileSystemBytes": {
+        "prefix": "maxFileSystemBytes",
+        "description": "Specify the maximum amount of RAM that can be consumed by an app's temporary (volatile) file system at runtime.",
+        "body": [
+            "maxFileSystemBytes: $0"
+        ]
+    },
+    "maxMemoryBytes": {
+        "prefix": "maxMemoryBytes",
+        "description": "Specify the maximum amount of memory (in bytes) that all processes in an app can share.",
+        "body": [
+            "maxMemoryBytes: $0"
+        ]
+    },
+    "maxMQueueBytes": {
+        "prefix": "maxMQueueBytes",
+        "description": "Specify the maximum number of bytes that can be allocated for POSIX MQueues.",
+        "body": [
+            "maxMQueueBytes: $0"
+        ]
+    },
+    "maxQueuedSignals": {
+        "prefix": "maxQueuedSignals",
+        "description": "Specify the maximum number of signals that can be waiting for delivery to processes in the app.",
+        "body": [
+            "maxQueuedSignals: $0"
+        ]
+    },
+    "maxThreads": {
+        "prefix": "maxThreads",
+        "description": "Specify the maximum number of threads allowed to run at one time.",
+        "body": [
+            "maxThreads: $0"
+        ]
+    },
+    "maxSecureStorageBytes": {
+        "prefix": "maxSecureStorageBytes",
+        "description": "Specify the maximum number of bytes that can be stored in Secure Storage.",
+        "body": [
+            "maxSecureStorageBytes: $0"
+        ]
+    },
+    "run": {
+        "prefix": "run",
+        "description": "Name a process to be started by the Supervisor when the app is started.",
+        "body": [
+            "run:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "envVars": {
+        "prefix": "envVars",
+        "description": "Specify environment variables.",
+        "body": [
+            "envVars:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "faultAction": {
+        "prefix": "faultAction",
+        "description": "Specify the action the Supervisor should take when the process terminates with a non-zero exit code or because of an un-caught signal (e.g., SIGSEGV, SIGBUS, SIGKILL).",
+        "body": [
+            "faultAction: ${1|ignore,restart,restartApp,stopApp,reboot|}"
+        ]
+    },
+    "priority": {
+        "prefix": "priority",
+        "description": "Specify the starting (and maximum) scheduling priority.",
+        "body": [
+            "priority: $0"
+        ]
+    },
+    "maxCoreDumpFileBytes": {
+        "prefix": "maxCoreDumpFileBytes",
+        "description": "Specify the maximum size (in bytes) of core dump files that can be generated by processes.",
+        "body": [
+            "maxCoreDumpFileBytes: $0"
+        ]
+    },
+    "maxFileBytes": {
+        "prefix": "maxFileBytes",
+        "description": "Specify the maximum size processes can make files.",
+        "body": [
+            "maxFileBytes: $0"
+        ]
+    },
+    "maxFileDescriptors": {
+        "prefix": "maxFileDescriptors",
+        "description": "Specify the maximum number of file descriptors a process can have open at one time.",
+        "body": [
+            "maxFileDescriptors: $0"
+        ]
+    },
+    "maxLockedMemoryBytes": {
+        "prefix": "maxLockedMemoryBytes",
+        "description": "Specify the maximum bytes of memory the process can lock into physical RAM (e.g., using mlock()).",
+        "body": [
+            "maxLockedMemoryBytes: $0"
+        ]
+    },
+    "maxStackBytes": {
+        "prefix": "maxStackBytes",
+        "description": "Specify the maximum bytes of memory the process uses for its stack.",
+        "body": [
+            "maxStackBytes: $0"
+        ]
+    },
+    "watchdogAction": {
+        "prefix": "watchdogAction",
+        "description": "Specify the action the Supervisor should take when a process that is subscribed to the watchdog daemon fails to kick the watchdog before the process reaches it's timeout value.",
+        "body": [
+            "watchdogAction: ${1|ignore,restart,restartApp,stop,stopApp,reboot|}"
+        ]
+    },
+    "watchdogTimeout": {
+        "prefix": "watchdogTimeout",
+        "description": "Specify the timeout length (in milliseconds) for watchdogs called by processes in the enclosing processes section.",
+        "body": [
+            "watchdogTimeout: $0"
+        ]
+    },
+    "maxWatchdogTimeout": {
+        "prefix": "maxWatchdogTimeout",
+        "description": "Specify the maximum timeout length (in milliseconds) the app can be stopped. If the app is stopped longer than the timeout given in maxWatchdogTimeout, the system will try to recover itself and may reboot the target.",
+        "body": [
+            "maxWatchdogTimeout: $0"
+        ]
+    },
+    "sandboxed": {
+        "prefix": "sandboxed",
+        "description": "Specify if the app will be launched inside a sandbox.",
+        "body": [
+            "sandboxed: ${1|true,false|}"
+        ]
+    },
+    "start": {
+        "prefix": "start",
+        "description": "Specify if the app should start automatically at start-up",
+        "body": [
+            "start: ${1|auto,manual|}"
+        ]
+    },
+    "version": {
+        "prefix": "version",
+        "description": "Specify a string to use as the app's version string.",
+        "body": [
+            "version: $0"
         ]
     }
 }

@@ -1,12 +1,211 @@
 {
-    "helloworld": {
-        "prefix": "helloworld",
-        "description": "Generate the helloWorld CEF file",
+    "new.cdef": {
+        "prefix": "new.cdef",
+        "description": "Define a component that can contain any number of source code files, pre-compiled binary files and resource files.",
         "body": [
             "sources:",
             "{",
-            "    helloWorld.c",
-            "}"
+            "\t${0:sourceFileName}.c",
+            "}",
+            ""
+        ]
+    },
+    "bundles": {
+        "prefix": "bundles",
+        "description": "List additional files or directories to be copied from the build host into the app so they’re available to the app at runtime.",
+        "body": [
+            "bundles:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "file": {
+        "prefix": "file",
+        "description": "Declare the specific files located on the target outside of the app, but made accessible to the app.",
+        "body": [
+            "file:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "dir": {
+        "prefix": "dir",
+        "description": "Specify directories on target device to make accessible to the app.",
+        "body": [
+            "dir:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "cflags": {
+        "prefix": "cflags",
+        "description": "Specify command-line arguments to pass to the compiler when compiling C source code files.",
+        "body": [
+            "cflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "cxxflags": {
+        "prefix": "cxxflags",
+        "description": "Specify command-line arguments to pass to the compiler when compiling C++ source code files.",
+        "body": [
+            "cxxflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "externalBuild": {
+        "prefix": "externalBuild",
+        "description": "Specify commands required to build this component using an external build process.",
+        "body": [
+            "externalBuild:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "ldflags": {
+        "prefix": "ldflags",
+        "description": "Specify command-line arguments to pass to the compiler when linking C/C++ object (.o) files together into a component shared library (.so) file.",
+        "body": [
+            "ldflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "pools": {
+        "prefix": "pools",
+        "description": "Specify the number of memory pool blocks that each memory pool should contain.",
+        "body": [
+            "pools:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "provides": {
+        "prefix": "provides",
+        "description": "List things this component provides (exports) to other software either inside or outside of the app.",
+        "body": [
+            "provides:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "headerDir": {
+        "prefix": "headerDir",
+        "description": "Declare the path to header file",
+        "body": [
+            "headerDir:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "lib": {
+        "prefix": "lib",
+        "description": "List the libraries provided by the component.",
+        "body": [
+            "lib:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "requires": {
+        "prefix": "requires",
+        "description": "Specify things the component needs from its runtime environment.",
+        "body": [
+            "requires:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "api": {
+        "prefix": "api",
+        "description": "List IPC APIs used by this component.",
+        "body": [
+            "api:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "device": {
+        "prefix": "device",
+        "description": "Declare the device files that reside on the target outside of the app, but made accessible to the app.",
+        "body": [
+            "device:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "component": {
+        "prefix": "component",
+        "description": "Declare this component depends on another component.",
+        "body": [
+            "component:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "kernelModules": {
+        "prefix": "kernelModules",
+        "description": "Declare the component dependencies on kernel modules.",
+        "body": [
+            "kernelModules:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "javaPackage": {
+        "prefix": "javaPackage",
+        "description": "List Java packages to build when creating a Java based component.",
+        "body": [
+            "javaPackage:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "sources": {
+        "prefix": "sources",
+        "description": "Contain a list of source code files.",
+        "body": [
+            "sources:",
+            "{",
+            "\t$0",
+            "}",
+            ""
         ]
     }
 }

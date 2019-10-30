@@ -1,0 +1,163 @@
+{
+    "new.mdef": {
+        "prefix": "new.mdef",
+        "description": "Define a kernel module to be bundled with Legato and installed on the target system.",
+        "body": [
+            "sources:",
+            "{",
+            "\t${0:sourceFileName}.c",
+            "}",
+            ""
+        ]
+    },
+    "sources": {
+        "prefix": "sources",
+        "description": "Specify the path of the source code that is required to build the kernel module binary file.",
+        "body": [
+            "sources:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "preBuilt": {
+        "prefix": "preBuilt",
+        "description": "Specify the path to the pre-built kernel module binary file.",
+        "body": [
+            "preBuilt:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "externalBuild": {
+        "prefix": "externalBuild",
+        "description": "Specify commands required to build a kernel module using an external build process.",
+        "body": [
+            "externalBuild:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "params": {
+        "prefix": "params",
+        "description": "Specify module parameters that must be provided to the insmod command.",
+        "body": [
+            "params:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "cflags": {
+        "prefix": "cflags",
+        "description": "Specify options that need to be passed to the compiler during the driver build.",
+        "body": [
+            "cflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "ldflags": {
+        "prefix": "ldflags",
+        "description": "Specify options that need to be passed to the linker during the driver build.",
+        "body": [
+            "ldflags:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "bundles": {
+        "prefix": "bundles",
+        "description": "Add files and directories that will be bundled with the kernel module and copied from the build host to the target.",
+        "body": [
+            "bundles:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "file": {
+        "prefix": "file",
+        "description": "Declare files that will be bundled with the kernel module.",
+        "body": [
+            "file:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "dir": {
+        "prefix": "dir",
+        "description": "Declare directories that will be bundled with the kernel module.",
+        "body": [
+            "dir:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "scripts": {
+        "prefix": "scripts",
+        "description": "Specify installation and removal scripts for the kernel module.",
+        "body": [
+            "scripts:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "requires": {
+        "prefix": "requires",
+        "description": "Specify various requirements the module needs from its runtime environment.",
+        "body": [
+            "requires:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "kernelModules": {
+        "prefix": "kernelModules",
+        "description": "Declare a list of kernel modules that a module depends on.",
+        "body": [
+            "kernelModules:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "kernelModule": {
+        "prefix": "kernelModule",
+        "description": "Define a kernel module (in case defining many module objects in a single mdef instead of creating multiple mdef files and generating module objects separately).",
+        "body": [
+            "kernelModule:",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "load": {
+        "prefix": "load",
+        "description": "Specify if the module should load automatically at start-up.",
+        "body": [
+            "load: ${1|auto,manual|}"
+        ]
+    }
+}

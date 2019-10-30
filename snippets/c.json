@@ -1,14 +1,234 @@
 {
-    "helloworld": {
-        "description": "Generate the helloWorld C file",
-        "prefix": "helloworld",
+    "new.sample": {
+        "description": "Generate the new sample source file",
+        "prefix": "new.sample",
         "body": [
             "#include \"legato.h\"",
             "",
             "COMPONENT_INIT",
             "{",
-            "    LE_INFO(\"Hello, world.\");",
-            "}"
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "component_init": {
+        "prefix": "COMPONENT_INIT",
+        "description": "The main function is called at program startup.",
+        "body": [
+            "COMPONENT_INIT",
+            "{",
+            "\t$0",
+            "}",
+            ""
+        ]
+    },
+    "le.transaction.read": {
+        "prefix": "le.transaction.read",
+        "description": "Read transaction from the config tree",
+        "body": [
+            "le_cfg_IteratorRef_t ${1:iteratorRef} = le_cfg_CreateReadTxn(${2:basePath});",
+            "// Use the suitable function in le_cfg_GetString, le_cfg_GetBinary, le_cfg_GetInt, le_cfg_GetFloat, le_cfg_GetBool to read a value from a node",
+            "le_result_t ${3:result} = le_cfg_GetString(${1}, ${4:path}, ${5:value}, ${6:valueSize}, ${7:defaultValue});",
+            "le_cfg_CancelTxn(${1});"
+        ]
+    },
+    "le.transaction.write": {
+        "prefix": "le.transaction.write",
+        "description": "Write transaction to the config tree",
+        "body": [
+            "le_cfg_IteratorRef_t ${1:iteratorRef} = le_cfg_CreateWriteTxn(${2:basePath});",
+            "// Use the suitable function in le_cfg_SetString, le_cfg_SetBinary, le_cfg_SetInt, le_cfg_SetFloat, le_cfg_SetBool to write a value to the config tree",
+            "le_cfg_SetString(${1}, ${3:path}, ${4:value});",
+            "le_cfg_CommitTxn(${1});"
+        ]
+    },
+    "le.tree.query": {
+        "prefix": "le.tree.query",
+        "description": "Query the List of Trees",
+        "body": [
+            "le_cfgAdmin_IteratorRef_t ${1:iteratorRef} = le_cfgAdmin_CreateTreeIterator();",
+            "LE_INFO(\"Listing configuration Trees in the current system...\");",
+            "while (le_cfgAdmin_NextTree(${1}) == LE_OK)",
+            "{",
+            "\tchar ${2:treeName}[MAX_TREE_NAME_BYTES] = \"\";",
+            "\tif (le_cfgAdmin_GetTreeName(${1}, ${2:treeName}, sizeof(${2})) == LE_OK)",
+            "\t{",
+            "\t\tLE_INFO(\"Tree: '%s'\", ${2});",
+            "\t}",
+            "}",
+            "le_cfgAdmin_ReleaseTreeIterator(${1});"
+        ]
+    },
+    "le.tree.import": {
+        "prefix": "le.tree.import",
+        "description": "Importing a Tree",
+        "body": [
+            "le_cfg_IteratorRef_t ${1:iteratorRef} = le_cfg_CreateWriteTxn(${2:basePath});",
+            "le_result_t ${3:result} = le_cfgAdmin_ImportTree(${1}, ${4:filePath}, ${5:nodePath});",
+            "le_cfg_CommitTxn(${1});"
+        ]
+    },
+    "le.tree.export": {
+        "prefix": "le.tree.export",
+        "description": "Exporting a Tree",
+        "body": [
+            "le_cfg_IteratorRef_t ${1:iteratorRef} = le_cfg_CreateReadTxn(${2:basePath});",
+            "le_result_t ${3:result} = le_cfgAdmin_ExportTree(${1}, ${4:filePath}, ${5:nodePath});",
+            "le_cfg_CancelTxn(${1});"
+        ]
+    },
+    "le.airvantage.connector.start": {
+        "prefix": "le.airvantage.connector.start",
+        "description": "Start a session with the AirVantage server",
+        "body": [
+            "le_avc_AddStatusEventHandler(${1:avcStatusHandler}, NULL);",
+            "le_result_t ${2:result} = le_avc_StartSession();"
+        ]
+    },
+    "le.airvantage.connector.stop": {
+        "prefix": "le.airvantage.connector.stop",
+        "description": "Stop a session with the AirVantage server",
+        "body": [
+            "le_result_t ${1:result} = le_avc_StopSession()"
+        ]
+    },
+    "le.modem.default.route": {
+        "prefix": "le.modem.default.route",
+        "description": "Set the modem default route for the mobile data connection",
+        "body": [
+            "if (le_mdc_IsIPv4(${1:profileRef}))",
+            "{",
+            "\tLE_ASSERT_OK(le_mdc_GetIPv4GatewayAddress(${1}, ${2:ipv4GwAddr}, sizeof(${2})));",
+            "}",
+            "else if (le_mdc_IsIPv6(${1}))",
+            "{",
+            "\tLE_ASSERT_OK(le_mdc_GetIPv6GatewayAddress(${1}, ${3:ipv6GwAddr}, sizeof(${3})));",
+            "}",
+            "else",
+            "{",
+            "\tLE_ERROR(\"Profile is neither IPv4 nor IPv6!\");",
+            "}",
+            ""
+        ]
+    },
+    "le.sms.send": {
+        "prefix": "le.sms.send",
+        "description": "Send SMS",
+        "body": [
+            "le_result_t ${1:result};",
+            "le_sms_MsgRef_t ${2:msgRef} = le_sms_Create();",
+            "${1} = le_sms_SetDestination(${2}, ${3:destinationPtr});",
+            "${1} = le_sms_SetText(${2}, ${4:textPtr});",
+            "${1} = le_sms_Send(${2});",
+            "le_sms_Delete(${2});"
+        ]
+    },
+    "le.sms.content": {
+        "prefix": "le.sms.content",
+        "description": "get message information and data from SMS",
+        "body": [
+            "le_result_t ${1:result};",
+            "${1} = le_sms_GetSenderTel(${2:msgRef}, ${3:tel}, sizeof(${3}));",
+            "${1} = le_sms_GetTimeStamp(${2}, ${4:timestamp}, sizeof(${4}));",
+            "// Use the suitable function in le_sms_GetText, le_sms_GetBinary, le_sms_GetUCS2, le_sms_GetPDU to get message content",
+            "${1} = le_sms_GetText(${2}, ${5:text}, sizeof(${5}));"
+        ]
+    },
+    "le.timer.create": {
+        "prefix": "le.timer.create",
+        "description": "Create and Start timer",
+        "body": [
+            "le_result_t ${1:result};",
+            "le_timer_Ref_t ${2:timerRef} = le_timer_Create(${3:nameStr});",
+            "le_clk_Time_t ${4:interval} = {${5:DURATION_SECOND}, ${6:DURATION_MICROSECOND}};",
+            "${1} = le_timer_SetInterval(${2}, ${4});",
+            "${1} = le_timer_SetRepeat(${2}, ${7:repeatCount});",
+            "${1} = le_timer_SetHandler(${2}, ${8:timerHandler});",
+            "${1} = le_timer_Start(${2});"
+        ]
+    },
+    "le.timer.handler": {
+        "prefix": "le.timer.handler",
+        "description": "The callback handler for Legato timer",
+        "body": [
+            "static void ${1:TimerHandler} (le_timer_Ref_t ${2:handle})",
+            "{",
+            "\tLE_INFO(\"Entering ${1} timer handler; expired %d times\", le_timer_GetExpiryCount(${2}));",
+            "\t${0}",
+            "}",
+            ""
+        ]
+    },
+    "le.airvantage.data.start": {
+        "prefix": "le.airvantage.data.start",
+        "description": "Start AirVantage data connection",
+        "body": [
+            "le_avdata_SessionStateHandlerRef_t ${1:avcEventHandlerRef} = le_avdata_AddSessionStateHandler(${2:avcStatusHandler}, ${3:NULL});",
+            "le_avdata_RequestSessionObjRef_t ${4:sessionRequestRef} = le_avdata_RequestSession();"
+        ]
+    },
+    "le.avc.status.handler": {
+        "prefix": "le.avc.status.handler",
+        "description": "The callback handler for AirVantage data session",
+        "body": [
+            "static void ${1:avcStatusHandler}",
+            "(",
+            "\tle_avdata_SessionState_t ${2:updateStatus},",
+            "\tvoid* ${3:contextPtr}",
+            ")",
+            "{",
+            "\tswitch (${2})",
+            "\t{",
+            "\t\tcase LE_AVDATA_SESSION_STARTED:",
+            "\t\t\tLE_INFO(\"Legato session started successfully\");",
+            "\t\t\tbreak;",
+            "\t\tcase LE_AVDATA_SESSION_STOPPED:",
+            "\t\t\tLE_INFO(\"Legato session stopped\");",
+            "\t\t\tbreak;",
+            "\t}",
+            "}",
+            ""
+        ]
+    },
+    "le.airvantage.data.stop": {
+        "prefix": "le.airvantage.data.stop",
+        "description": "Close AirVantage data connection",
+        "body": [
+            "le_avdata_ReleaseSession(${1:sessionRequestRef});"
+        ]
+    },
+    "le.airvantage.data.push": {
+        "prefix": "le.airvantage.data.push",
+        "description": "Push resource data to AirVantage server",
+        "body": [
+            "le_result_t ${1:result};",
+            "${1} = le_avdata_CreateResource(${2:path}, ${3:LE_AVDATA_ACCESS_VARIABLE});",
+            "${1} = le_avdata_SetInt(${2}, ${4:value});",
+            "${1} = le_avdata_Push(${2}, ${5:PushCallbackHandler}, ${6:NULL});"
+        ]
+    },
+    "le.airvantage.push.handler": {
+        "prefix": "le.airvantage.push.handler",
+        "description": "The callback handler when pushing resource data to AirVantage server",
+        "body": [
+            "static void ${1:PushCallbackHandler}",
+            "(",
+            "\tle_avdata_PushStatus_t ${2:status},",
+            "\tvoid* ${3:contextPtr}",
+            ")",
+            "{",
+            "\tswitch (${2})",
+            "\t{",
+            "\t\tcase LE_AVDATA_PUSH_SUCCESS:",
+            "\t\t\tLE_INFO(\"Legato assetdata push successfully\");",
+            "\t\t\tbreak;",
+            "\t\tcase LE_AVDATA_PUSH_FAILED:",
+            "\t\t\tLE_INFO(\"Legato assetdata push failed\");",
+            "\t\t\tbreak;",
+            "\t}",
+            "}",
+            ""
         ]
     }
 }
