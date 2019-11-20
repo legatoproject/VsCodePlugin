@@ -8,6 +8,8 @@ import * as vscode from 'vscode';
 import { LeafBridgeElement } from '../../commons/utils';
 import { Mementos } from '../../commons/memento';
 import { spawn } from 'child_process';
+import { getDefaultCwd } from '../../commons/files';
+
 /**
  * Packages view and commands
  */
@@ -194,6 +196,13 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 * - Ask a profile name if the user select "New profile" in the previous step or if the is no profiles
 	 */
 	private async addToProfile(selectedPackage: PackageTreeItem | PackageQuickPickItem | undefined): Promise<void> {
+		// Check that there is an open workspace before executing this function
+		if (getDefaultCwd() === "") {
+			vscode.window.showWarningMessage(
+				"There is no workspace folder. Please open a workspace folder first.");
+			return;
+		}
+
 		let title = "Add package to profile";
 		// Package (from selection or combo)
 		if (!selectedPackage) {

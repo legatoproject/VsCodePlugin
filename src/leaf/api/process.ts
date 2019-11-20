@@ -5,7 +5,7 @@ import { EnvVars } from '../../commons/utils';
 import { DisposableBag } from '../../commons/manager';
 import { PoliteSequencer, Scheduler } from '../../commons/scheduler';
 import { ProcessLauncher, OutputChannelProcessLauncher, TaskProcessLauncher, ProcessLauncherOptions } from '../../commons/process';
-import { getWorkspaceFolderPath } from '../../commons/files';
+import { getDefaultCwd } from '../../commons/files';
 
 /**
  * Process can be launch in these modes
@@ -38,7 +38,7 @@ export class LeafProcessLauncher extends DisposableBag {
         super();
         this.sequencer = new PoliteSequencer('Leaf');
         let options: ProcessLauncherOptions = {
-            defaultCwd: getWorkspaceFolderPath(),
+            defaultCwd: getDefaultCwd(),
             scheduler: this.sequencer,
             envProvider: this.getEnv,
             thisArg: this
@@ -52,7 +52,7 @@ export class LeafProcessLauncher extends DisposableBag {
      */
     private getEnv(): Promise<EnvVars> {
         let env = process.env as EnvVars;
-        env["LEAF_WORKSPACE"] = getWorkspaceFolderPath();
+        env["LEAF_WORKSPACE"] = getDefaultCwd();
         return Promise.resolve(env);
     }
 

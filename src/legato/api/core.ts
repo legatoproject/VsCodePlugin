@@ -1,6 +1,6 @@
 'use strict';
 import * as vscode from "vscode";
-import { getWorkspaceFolderPath } from "../../commons/files";
+import { getDefaultCwd } from "../../commons/files";
 import { DisposableBag } from '../../commons/manager';
 import { fromEnvVarString, fromEnvVar, resolvePath } from "../../commons/model";
 import { LeafEnvScope, LeafManager } from "../../leaf/api/core";
@@ -74,7 +74,7 @@ export class LegatoManager extends DisposableBag {
         // Create tools managers
         let options: MkEditOptions = {
             defFile: this.defFile,
-            defaultCwd: getWorkspaceFolderPath(),
+            defaultCwd: getDefaultCwd(),
             envProvider: this.leafManager.envVars.get,
             thisArg: this.leafManager.envVars
         };

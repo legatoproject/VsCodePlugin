@@ -44,6 +44,19 @@ export function getWorkspaceFolderPath(...path: string[]): string {
 }
 
 /**
+ * @return the default folder path as a string
+ */
+export function getDefaultCwd(): string {
+    let defaultPath = ""
+    try {
+        defaultPath = getWorkspaceFolderPath();
+    } catch {
+        //defaultPath is empty
+    }
+    return defaultPath;
+}
+
+/**
  * Messages used by chooseFile function
  */
 export interface FileChooserMessage {

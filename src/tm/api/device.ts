@@ -6,7 +6,7 @@ import { LegatoManager } from "../../legato/api/core";
 import { DisposableBag } from '../../commons/manager';
 import { TaskDefinitionType } from '../../commons/identifiers';
 import { TaskProcessLauncher, ProcessLauncherOptions } from '../../commons/process';
-import { getWorkspaceFolderPath } from '../../commons/files';
+import { getDefaultCwd } from '../../commons/files';
 import { executeInShell } from '../../commons/utils';
 
 /**
@@ -29,7 +29,7 @@ export class DeviceManager extends DisposableBag {
 
         // Create the task process launcher (this class can launch a process as a vscode task)
         let options: ProcessLauncherOptions = {
-            defaultCwd: getWorkspaceFolderPath(),
+            defaultCwd: getDefaultCwd(),
             envProvider: this.leafManager.envVars.get,
             thisArg: this.leafManager.envVars
         };
