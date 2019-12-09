@@ -164,7 +164,9 @@ abstract class PackagesContainerTreeItem extends TreeItem2 {
 	public abstract async getPackages(): Promise<LeafBridgeElement | undefined>;
 
 	public async refresh() {
-		this.children = await this.createChildrenItems();
+		let childrenItems = await this.createChildrenItems();
+		// reorder packages from newest to oldest
+		this.children = childrenItems.sort((a, b) => (a.id > b.id ? -1 : 1));
 		this.description = `(${this.children.length})`;
 		this.tooltip = `${this.label} ${this.description}`;
 	}
