@@ -109,10 +109,11 @@ export class MkEditManager {
      * Invoke mkedit to remove an existing application
      * @param name the name of the application to remove
      */
-    public async removeApplication(name: string): Promise<void> {
+    public async removeApplication(filePath: string): Promise<void> {
+        let name = path.basename(filePath, path.extname(filePath));
         return this.processLauncher.executeInShell(
             `Remove application ${name}`,
-            `mkedit remove app ${name}`,
+            `mkedit remove app ${filePath}`,
             await this.getDefFileDirPath());
     }
 
@@ -132,10 +133,11 @@ export class MkEditManager {
      * @param appName the name of the application where to add the component
      * @param compName the name of the component to create in the application
      */
-    public async newComponent(appName: string, compName: string): Promise<void> {
+    public async newComponent(appPath: string, compName: string): Promise<void> {
+        let appName = path.basename(appPath, path.extname(appPath));
         return this.processLauncher.executeInShell(
             `Create new component ${compName} in application ${appName}`,
-            `mkedit create component ${compName} app ${appName}`,
+            `mkedit create component ${compName} app ${appPath}`,
             await this.getDefFileDirPath());
     }
 

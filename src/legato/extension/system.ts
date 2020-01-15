@@ -180,7 +180,8 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 				ACTION_LABELS.CANCEL,
 				ACTION_LABELS.OK);
 			if (confirmed) {
-				return this.legatoManager.mkEdit.removeApplication(app.label);
+				let filePath = vscode.Uri.parse(app.symbol.defPath).fsPath;
+				return this.legatoManager.mkEdit.removeApplication(filePath);
 			}
 		}
 	}
@@ -225,8 +226,9 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			prompt: "Please enter a name for your new component",
 			placeHolder: "newComponent"
 		});
+		let filePath = vscode.Uri.parse(applicationNode.symbol.defPath).fsPath;
 		if (compName) {
-			return this.legatoManager.mkEdit.newComponent(applicationNode.label, compName);
+			return this.legatoManager.mkEdit.newComponent(filePath, compName);
 		}
 	}
 
