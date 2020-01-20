@@ -26,11 +26,15 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		this.createCommand(Command.LegatoSystemOpenFile, (unresolvedPath, range) => this.gotoSymbol(unresolvedPath, range));
 		this.createCommand(Command.LegatoSystemCreateApplication, this.newApplication, this);
 		this.createCommand(Command.LegatoSystemAddApplication, this.addExistingApplication, this);
+		this.createCommand(Command.LegatoSystemRemoveApplication, this.removeApplicationInSystem, this);
+		this.createCommand(Command.LegatoSystemDeleteApplication, this.deleteApplicationInSystem, this);
 		this.createCommand(Command.LegatoSystemRename, this.renameSystem, this);
 		this.createCommand(Command.LegatoAppRename, this.renameApplication, this);
 		this.createCommand(Command.LegatoAppRemove, this.removeApplication, this);
 		this.createCommand(Command.LegatoAppAddComponent, this.addExistingComponent, this);
 		this.createCommand(Command.LegatoAppNewComponent, this.newComponent, this);
+		this.createCommand(Command.LegatoAppRemoveComponent, this.removeComponentInApp, this);
+		this.createCommand(Command.LegatoAppDeleteComponent, this.deleteComponentInApp, this);
 		this.createCommand(Command.LegatoComponentRename, this.renameComponent, this);
 		this.createCommand(Command.LegatoComponentRemove, this.removeComponent, this);
 
@@ -173,6 +177,89 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			return this.legatoManager.mkEdit.renameApplication(app.label, newApp);
 		}
 	}
+
+	private async removeApplicationInSystem(apps: DocumentSymbolTreeItem) {
+		let appsChildrens = await apps.getChildren();
+		let items: SymbolQuickPickItemFromTreeView[] = new Array;
+		for (let i = 0; i < appsChildrens.length; i++) {
+			items.push(new SymbolQuickPickItemFromTreeView(appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
+		}
+		let item = await vscode.window.showQuickPick(items, {
+			placeHolder: `Select the application you want to remove`
+		});
+		if (item) {
+			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+				`Do you really want to remove the "${item.label}" application?`,
+				ACTION_LABELS.CANCEL,
+				ACTION_LABELS.OK);
+			if (confirmed) {
+				let filePath = vscode.Uri.parse(item.detail).fsPath;
+				return this.legatoManager.mkEdit.removeApplication(filePath);
+			}
+		}
+	}
+
+	private async deleteApplicationInSystem(apps: DocumentSymbolTreeItem) {
+		let appsChildrens = await apps.getChildren();
+		let items: SymbolQuickPickItemFromTreeView[] = new Array;
+		for (let i = 0; i < appsChildrens.length; i++) {
+			items.push(new SymbolQuickPickItemFromTreeView(appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
+		}
+		let item = await vscode.window.showQuickPick(items, {
+			placeHolder: `Select the application you want to delete`
+		});
+		if (item) {
+			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+				`Do you really want to delete the "${item.label}" application?`,
+				ACTION_LABELS.CANCEL,
+				ACTION_LABELS.OK);
+			if (confirmed) {
+				let filePath = vscode.Uri.parse(item.detail).fsPath;
+				return this.legatoManager.mkEdit.deleteApplication(filePath);
+			}
+		}
+	}
+
+	private async removeComponentInApp(applicationNode: DocumentSymbolTreeItem) {
+		let appsChildrens = await applicationNode.getChildren();
+		let items: SymbolQuickPickItemFromTreeView[] = new Array;
+		for (let i = 0; i < appsChildrens.length; i++) {
+			items.push(new SymbolQuickPickItemFromTreeView(appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
+		}
+		let item = await vscode.window.showQuickPick(items, {
+			placeHolder: `Select the component you want to remove`
+		});
+		if (item) {
+			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+				`Do you really want to remove the "${item.label}" component?`,
+				ACTION_LABELS.CANCEL,
+				ACTION_LABELS.OK);
+			if (confirmed) {
+				return this.legatoManager.mkEdit.removeComponent(item.label);
+			}
+		}
+	}
+
+	private async deleteComponentInApp(applicationNode: DocumentSymbolTreeItem) {
+		let appsChildrens = await applicationNode.getChildren();
+		let items: SymbolQuickPickItemFromTreeView[] = new Array;
+		for (let i = 0; i < appsChildrens.length; i++) {
+			items.push(new SymbolQuickPickItemFromTreeView(appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
+		}
+		let item = await vscode.window.showQuickPick(items, {
+			placeHolder: `Select the component you want to delete`
+		});
+		if (item) {
+			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+				`Do you really want to delete the "${item.label}" component?`,
+				ACTION_LABELS.CANCEL,
+				ACTION_LABELS.OK);
+			if (confirmed) {
+				return this.legatoManager.mkEdit.deleteComponent(item.label);
+			}
+		}
+	}
+
 	private async removeApplication(app: DocumentSymbolTreeItem) {
 		if (app) {
 			let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
@@ -186,10 +273,11 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		}
 	}
 
-	private async addExistingComponent(): Promise<void> {
+	private async addExistingComponent(applicationNode: DocumentSymbolTreeItem): Promise<void> {
+		let filePath = vscode.Uri.parse(applicationNode.symbol.defPath).fsPath;
 		let symbol = await this.askUserToSelectSymbol('cdef');
 		if (symbol) {
-			this.legatoManager.mkEdit.addExistingComponent(symbol.name);
+			this.legatoManager.mkEdit.addExistingComponent(filePath, symbol.name);
 		}
 	}
 
@@ -366,7 +454,7 @@ class DocumentSymbolTreeItem extends TreeItem2 {
 		this.command = await showInFileCommand((this.symbol.defPath), symbol.range);
 	}
 
-	public async getChildren(): Promise<TreeItem2[]> {
+	public async getChildren(): Promise<DocumentSymbolTreeItem[]> {
 		if (this.symbol.children) {
 			return Promise.resolve(this.symbol.children.map((value: DocumentSymbol) => {
 				return new DocumentSymbolTreeItem((<DefinitionObject>value), this);
@@ -395,5 +483,17 @@ class SymbolQuickPickItem implements vscode.QuickPickItem {
 		this.label = symbol.name;
 		this.detail = symbol.location.uri.toString();
 		this.description = symbol.containerName;
+	}
+}
+
+class SymbolQuickPickItemFromTreeView implements vscode.QuickPickItem {
+	label: string;
+	description?: string | undefined;
+	detail: string;
+
+	constructor(name: string, defPath: string) {
+		this.label = name;
+		this.detail = defPath;
+		this.description = "";
 	}
 }

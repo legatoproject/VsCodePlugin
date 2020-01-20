@@ -118,13 +118,25 @@ export class MkEditManager {
     }
 
     /**
+     * Invoke mkedit to delete an existing application
+     * @param name the name of the application to delete
+     */
+    public async deleteApplication(filePath: string): Promise<void> {
+        let name = path.basename(filePath, path.extname(filePath));
+        return this.processLauncher.executeInShell(
+            `Delete application ${name}`,
+            `mkedit delete app ${filePath}`,
+            await this.getDefFileDirPath());
+    }
+
+    /**
      * Invoke mkedit to add an existing component to the current system
      * @param name the name of the existing component to add
      */
-    public async addExistingComponent(name: string): Promise<void> {
+    public async addExistingComponent(appFilePath: string, componentName: string): Promise<void> {
         return this.processLauncher.executeInShell(
-            `Add existing component ${name}`,
-            `mkedit add component ${name}`,
+            `Add existing component ${componentName}`,
+            `mkedit add component ${componentName} app ${appFilePath}`,
             await this.getDefFileDirPath());
     }
 
@@ -161,6 +173,17 @@ export class MkEditManager {
         return this.processLauncher.executeInShell(
             `Remove component ${name}`,
             `mkedit remove component ${name}`,
+            await this.getDefFileDirPath());
+    }
+
+    /**
+     * Invoke mkedit to delete an existing component
+     * @param name the name of the component to delete
+     */
+    public async deleteComponent(name: string): Promise<void> {
+        return this.processLauncher.executeInShell(
+            `Delete component ${name}`,
+            `mkedit delete component ${name}`,
             await this.getDefFileDirPath());
     }
 }

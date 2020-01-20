@@ -168,6 +168,16 @@
                     "group": "inline"
                 },
                 {
+                    "command": "cmd.legato.system.deleteApp",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-apps(.)/",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.system.removeApp",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-apps(.*)/",
+                    "group": "inline"
+                },
+                {
                     "command": "cmd.legato.app.rename",
                     "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.)/",
                     "group": "inline"
@@ -179,11 +189,16 @@
                 },
                 {
                     "command": "cmd.legato.app.addComponent",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.*)/",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.legato.app.deleteComponent",
                     "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.)/",
                     "group": "inline"
                 },
                 {
-                    "command": "cmd.legato.app.remove",
+                    "command": "cmd.legato.app.removeComponent",
                     "when": "view == view-legato-system && viewItem =~ /context-legato-adef(.*)/",
                     "group": "inline"
                 },
@@ -194,7 +209,7 @@
                 },
                 {
                     "command": "cmd.legato.component.remove",
-                    "when": "view == view-legato-system && viewItem =~ /context-legato-cdef(.*)/",
+                    "when": "view == view-legato-system && viewItem =~ /context-legato-cdef(.)/",
                     "group": "inline"
                 }
             ]
@@ -296,12 +311,22 @@
             },
             {
                 "command": "cmd.legato.system.createApp",
-                "title": "New app",
+                "title": "New",
                 "category": "Legato/System"
             },
             {
                 "command": "cmd.legato.system.addApp",
-                "title": "Add app",
+                "title": "Add",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.system.deleteApp",
+                "title": "Del",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmd.legato.system.removeApp",
+                "title": "Rem app",
                 "category": "Legato/System"
             },
             {
@@ -321,12 +346,22 @@
             },
             {
                 "command": "cmd.legato.app.addComponent",
-                "title": "Add component",
+                "title": "Add",
                 "category": "Legato/App"
             },
             {
                 "command": "cmd.legato.app.newComponent",
-                "title": "New component",
+                "title": "New",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmd.legato.app.deleteComponent",
+                "title": "Del",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmd.legato.app.removeComponent",
+                "title": "Rem comp",
                 "category": "Legato/App"
             },
             {
