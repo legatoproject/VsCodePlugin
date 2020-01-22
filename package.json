@@ -326,7 +326,7 @@
             },
             {
                 "command": "cmd.legato.system.removeApp",
-                "title": "Rem app",
+                "title": "Remove app",
                 "category": "Legato/System"
             },
             {
@@ -361,7 +361,7 @@
             },
             {
                 "command": "cmd.legato.app.removeComponent",
-                "title": "Rem comp",
+                "title": "Remove comp",
                 "category": "Legato/App"
             },
             {
