@@ -114,14 +114,20 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		// Update items and title on value change
 		let boxValueChangedListener = async (value: string) => {
 			let newFilter = this.toFilter(value);
-			if (value.startsWith('@')) {
-				box.items = tagItems;
-			} else if (value.length > 0) {
-				box.items = [];
+			if (newFilter || value.length === 0) {
+				if (value.startsWith('@')) {
+					box.items = tagItems;
+				} else if (value.length > 0) {
+					box.items = [];
+				}
+				let availCount = this.countMatchingPackages(allPacks.availablePackages, newFilter);
+				let instCount = this.countMatchingPackages(allPacks.installedPackages, newFilter);
+				box.title = `Add filter (regex or leaf tag): ${availCount} package${availCount > 1 ? 's' : ''} 
+						 available and ${instCount} package${instCount > 1 ? 's' : ''} installed`;
+			// Filter input contains invalid regex
+			} else if (!newFilter) {
+				box.title = 'Add filter (regex or leaf tag): Input contains invalid regex';
 			}
-			let availCount = this.countMatchingPackages(allPacks.availablePackages, newFilter);
-			let instCount = this.countMatchingPackages(allPacks.installedPackages, newFilter);
-			box.title = `Add filter (regex or leaf tag): ${availCount} package${availCount > 1 ? 's' : ''} available and ${instCount} package${instCount > 1 ? 's' : ''} installed`;
 		};
 		box.onDidChangeValue(boxValueChangedListener);
 		boxValueChangedListener(box.value); // Set initial title
@@ -131,9 +137,17 @@ export class LeafPackagesView extends TreeDataProvider2 {
 			let result = box.selectedItems.length > 0 ? box.selectedItems[0].label : box.value;
 			let filter = this.toFilter(result);
 			if (filter) {
-				this.userFilters.push(filter);
-				this.refresh();
-				this.saveUserFilters();
+				// Only add distinct filters
+				let distinctUserFilter = this.userFilters.findIndex(x => x.value === result) === -1;
+				let distinctBuiltinFilter = this.builtinFilters.findIndex(x => x.value === result) === -1;
+				if (distinctUserFilter && distinctBuiltinFilter) {
+					this.userFilters.push(filter);
+					this.refresh();
+					this.saveUserFilters();
+				}
+			} else if (result.length > 0) {
+				vscode.window.showErrorMessage(`Add filter: Input "${result}" contained invalid regex 
+					and was not added`);
 			}
 			box.hide();
 		});
@@ -147,6 +161,13 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	 */
 	private toFilter(value: string, checked: boolean = true): RegexFilter | TagFilter | undefined {
 		let out = undefined;
+		try {
+			// @ts-ignore only checks if regex is valid, value is never used
+			const testRegex = new RegExp(value);
+		} catch {
+			return out;
+		}
+
 		if (value.startsWith('@')) {
 			out = new TagFilter(value);
 			out.setChecked(checked);
