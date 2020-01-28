@@ -1,5 +1,16 @@
 # Change Log
 
+## 1.0.0
+
+- Bugs fixes
+- Legato System view enhancements, ability to add existing apps/components, create new apps/components, and remove apps/components
+- Leaf packages are now shown newest to oldest
+- User Interface enhancements
+
+## 0.9.1
+
+- Bug fixes
+
 ## 0.9.0
 
 - Bugs fixed
