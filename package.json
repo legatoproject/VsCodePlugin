@@ -3,7 +3,7 @@
     "displayName": "Legato",
     "description": "Legato plugin for Visual Studio Code",
     "version": "0.0.0",
-    "preview": true,
+    "preview": false,
     "icon": "resources/legato-icon.png",
     "publisher": "legato",
     "repository": {

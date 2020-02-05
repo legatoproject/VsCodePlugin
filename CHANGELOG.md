@@ -1,5 +1,8 @@
 # Change Log
 
+## 1.0.1
+- Remove preview tag from marketplace page
+
 ## 1.0.0
 
 - Bugs fixes
