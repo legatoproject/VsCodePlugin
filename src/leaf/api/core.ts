@@ -301,6 +301,22 @@ export class LeafManager extends CommandRegister {
   }
 
   /**
+   * Create a new blank profile
+   * profileName: the new profile name
+   */
+  public async createBlankProfile(profileName: string): Promise<void> {
+    let cmd: string[];
+    let workspaceReadyStatus = await this.workspaceReady.get()
+    if (workspaceReadyStatus) {
+      cmd = ['leaf', 'profile', 'create'];
+    } else {
+      cmd = ['leaf', 'init', ';', 'leaf', 'profile', 'create'];
+    }
+    cmd.push(profileName);
+    return this.processLauncher.executeInShell(ExecKind.Task, `Create a new blank profile`, cmd.join(' '));
+  }
+
+  /**
    * Add packages to an existing profile
    * profileName: the profile to modify
    * packIds: the list of packages id to add to the profile

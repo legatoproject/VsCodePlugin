@@ -10,6 +10,7 @@ export const enum Command { // (cmd)
     // TERMINAL (.trm)
     LeafTerminalOpenLeaf = "cmd.leaf.trm.openleaf",
     // PROFILES (.prf)
+    LeafProfileAdd = "cmd.leaf.prf.add",
     LeafProfileSwitch = "cmd.leaf.prf.switch",
     LeafProfileRemove = "cmd.leaf.prf.remove",
     LeafProfilePackageRemove = "cmd.leaf.prf.pkgremove",

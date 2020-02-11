@@ -1,10 +1,13 @@
 'use strict';
-
+import * as vscode from 'vscode';
 import { window, StatusBarItem, StatusBarAlignment, commands, ConfigurationTarget } from 'vscode';
 import { LeafManager } from '../api/core';
 import { Command, View } from '../../commons/identifiers';
 import { ProfileQuickPickItem, ProfileTreeItem, PackageTreeItem } from './uiComponents';
-import { showMultiStepQuickPick, toItems, TreeDataProvider2, QuickPickItem2, TreeItem2, createActionAsQuickPickItem } from '../../commons/uiUtils';
+import {
+  ACTION_LABELS, showMultiStepQuickPick, toItems, TreeDataProvider2,
+  QuickPickItem2, TreeItem2, createActionAsQuickPickItem
+} from '../../commons/uiUtils';
 import { debounce } from '../../commons/utils';
 import { Configuration } from '../../commons/configuration';
 
@@ -107,46 +110,52 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
   /**
    * Ask user to select a profile then switch to it
    */
-  private async switchProfile(): Promise<void> {
-    let profiles = await this.leafManager.profiles.get();
-    let items: QuickPickItem2[] = toItems(profiles, ProfileQuickPickItem);
+  private async switchProfile(item: ProfileTreeItem | undefined): Promise<void> {
+    let profileId: string;
+    if (item) {
+      profileId = item.id;
+    } else {
+      let profiles = await this.leafManager.profiles.get();
+      let items: QuickPickItem2[] = toItems(profiles, ProfileQuickPickItem);
 
-    // Create sync profile command item
-    let syncProfileItem = createActionAsQuickPickItem(
-      "Fix profile",
-      "Execute 'leaf profile sync'");
-    if (await this.leafManager.outOfSync.get()) {
-      items.push(syncProfileItem);
+      // Create sync profile command item
+      let syncProfileItem = createActionAsQuickPickItem(
+        "Fix profile",
+        "Execute 'leaf profile sync'");
+      if (await this.leafManager.outOfSync.get()) {
+        items.push(syncProfileItem);
+      }
+
+      // Create show leaf terminal command item
+      let showLeafTerminal = createActionAsQuickPickItem(
+        "Open leaf Shell",
+        "Bring to top if already exist");
+      items.push(showLeafTerminal);
+
+      // Show quickpick
+      let result = await showMultiStepQuickPick(
+        "leaf profile switch",
+        undefined,
+        undefined,
+        "Select the active profile",
+        items
+      );
+
+      // User want to sync current profile
+      if (result === syncProfileItem) {
+        return this.leafManager.syncCurrentProfile();
+      }
+
+      // User want to show Leaf terminal
+      if (result === showLeafTerminal) {
+        return commands.executeCommand(Command.LeafTerminalOpenLeaf);
+      }
+
+      // User picked a profile to switch to
+      result = result as ProfileQuickPickItem;
+      profileId = result.id;
     }
-
-    // Create show leaf terminal command item
-    let showLeafTerminal = createActionAsQuickPickItem(
-      "Open leaf Shell",
-      "Bring to top if already exist");
-    items.push(showLeafTerminal);
-
-    // Swow quickpick
-    let result = await showMultiStepQuickPick(
-      "leaf profile switch",
-      undefined,
-      undefined,
-      "Select the active profile",
-      items
-    );
-
-    // User want to sync current profile
-    if (result === syncProfileItem) {
-      return this.leafManager.syncCurrentProfile();
-    }
-
-    // User want to show Leaf terminal
-    if (result === showLeafTerminal) {
-      return commands.executeCommand(Command.LeafTerminalOpenLeaf);
-    }
-
-    // User picked a profile to switch to
-    result = result as ProfileQuickPickItem;
-    return this.leafManager.switchProfile(result.id);
+    return this.leafManager.switchProfile(profileId);
   }
 
 	/**
@@ -170,7 +179,13 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
       }
     }
     if (profileId) {
-      return this.leafManager.deleteProfile(profileId);
+      let confirmed = ACTION_LABELS.OK === await vscode.window.showWarningMessage(
+        `Do you really want to remove the "${profileId}" profile?`,
+        ACTION_LABELS.CANCEL,
+        ACTION_LABELS.OK);
+      if (confirmed) {
+        return this.leafManager.deleteProfile(profileId);
+      }
     }
   }
 

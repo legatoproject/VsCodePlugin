@@ -46,6 +46,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		this.createCommand(Command.LeafPackagesAddToProfile, this.addToProfile);
 		this.createCommand(Command.LeafPackagesToggleFilter, this.onFilterClicked);
 		this.createCommand(Command.LeafPackagesGoToDocumentation, this.goToDocumentation);
+		this.createCommand(Command.LeafProfileAdd, this.addProfile, this);
 	}
 
 	/**
@@ -325,6 +326,41 @@ export class LeafPackagesView extends TreeDataProvider2 {
 				}
 				if (value.includes(' ')) {
 					return 'the profile name cannot containts a space';
+				}
+				return undefined;
+			});
+	}
+
+	/**
+	 * Add a blank profile
+	 */
+	private async addProfile() {
+		// New profile
+		let newProfileName = await this.askForBlankProfileName();
+		if (newProfileName === undefined) {
+			return; // User cancellation
+		}
+		if (newProfileName.length === 0) {
+			return; // User cancellation
+		}
+		return this.leafManager.createBlankProfile(newProfileName);
+	}
+
+	/**
+	 * Ask user a profile name
+	 */
+	private async askForBlankProfileName(): Promise<string | undefined> {
+		let title = "Create a blank profile";
+		let profiles = await this.leafManager.profiles.get();
+		return showMultiStepInputBox(title, undefined, undefined,
+			"Please enter the name of the profile to create",
+			undefined,
+			(value: string) => {
+				if (profiles && value in profiles) {
+					return 'This profile name already exists';
+				}
+				if (value.includes(' ')) {
+					return 'The profile name cannot contain spaces';
 				}
 				return undefined;
 			});

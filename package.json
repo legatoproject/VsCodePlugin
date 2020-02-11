@@ -99,6 +99,11 @@
                     "command": "cmd.leaf.rmt.add",
                     "when": "view == view-leaf-rmt",
                     "group": "navigation"
+                },
+                {
+                    "command": "cmd.leaf.prf.add",
+                    "when": "view == view-leaf-prf",
+                    "group": "navigation"
                 }
             ],
             "view/item/context": [
@@ -140,6 +145,11 @@
                 {
                     "command": "cmd.leaf.prf.remove",
                     "when": "view == view-leaf-prf && viewItem =~ /context-leaf-prf-.*/",
+                    "group": "inline"
+                },
+                {
+                    "command": "cmd.leaf.prf.switch",
+                    "when": "view == view-leaf-prf && viewItem =~ /context-leaf-prf-other.*/",
                     "group": "inline"
                 },
                 {
@@ -222,12 +232,17 @@
             },
             {
                 "command": "cmd.leaf.prf.switch",
-                "title": "Switch to Another Profile",
+                "title": "Select",
                 "category": "Leaf/Profiles"
             },
             {
                 "command": "cmd.leaf.prf.remove",
                 "title": "Remove",
+                "category": "Leaf/Profiles"
+            },
+            {
+                "command": "cmd.leaf.prf.add",
+                "title": "Add",
                 "category": "Leaf/Profiles"
             },
             {

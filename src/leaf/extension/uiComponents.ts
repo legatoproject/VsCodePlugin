@@ -79,6 +79,7 @@ export class LeafPackageContext<T extends LeafPackagePrefix> extends LeafContext
 const enum LeafProfilePrefix { // (context)
 	// #### LEAF (-leaf) ####
 	// PROFILES (-prf)
+	Root = "prf",
 	Current = "current",
 	Other = "other",
 }
@@ -87,7 +88,7 @@ export class LeafProfileContext<T extends LeafProfilePrefix> extends LeafContext
 	public static Other: NamespaceContext = new LeafProfileContext(LeafProfilePrefix.Other);
 
 	private constructor(readonly prefixContext: T) {
-		super([LeafPackagePrefix.Root, prefixContext]);
+		super([LeafProfilePrefix.Root, prefixContext]);
 	}
 }
 
@@ -313,23 +314,26 @@ export class ProfileTreeItem extends TreeItem2 {
 			(properties && properties.current) ? '[current]' : '', // description
 			computeDetails(properties), // tooltip
 			vscode.TreeItemCollapsibleState.Collapsed, // collapsibleState
-			properties.installed ? LeafProfileContext.Current : LeafProfileContext.Other, // context
+			properties.current ? LeafProfileContext.Current : LeafProfileContext.Other, // context
 			"Profile.svg"); // iconFileName
 	}
 
 	public async getChildren(): Promise<TreeItem2[]> {
-		// Find package properties
-		let packs = await this.leafManager.mergedPackages.get();
-		let model: { [key: string]: any } = {};
-		if (packs) {
-			for (let [packName, packVersion] of Object.entries(this.properties.packages)) {
-				let packId = packName + '_' + packVersion;
-				model[packId] = packs[packId];
+		if (this.properties.packages) {
+			// Find package properties
+			let packs = await this.leafManager.mergedPackages.get();
+			let model: { [key: string]: any } = {};
+			if (packs) {
+				for (let [packName, packVersion] of Object.entries(this.properties.packages)) {
+					let packId = packName + '_' + packVersion;
+					model[packId] = packs[packId];
+				}
 			}
+			// Return items
+			return toItems(model, PackageTreeItem, this);
+		} else {
+			return [];
 		}
-
-		// Return items
-		return toItems(model, PackageTreeItem, this);
 	}
 }
 
