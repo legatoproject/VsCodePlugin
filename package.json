@@ -678,7 +678,16 @@
                             }
                         }
                     }
-                }
+                },
+                "initialConfigurations": [
+                    {
+                        "name": "Debug Legato application (attach)",
+                        "type": "legato-attach",
+                        "request": "attach",
+                        "application": "myNewApp",
+                        "executable": "myNewAppComponentExe"
+                    }
+                ]
             },
             {
                 "type": "legato-launch",
@@ -717,7 +726,16 @@
                             }
                         }
                     }
-                }
+                },
+                "initialConfigurations": [
+                    {
+                        "name": "Debug Legato application (launch)",
+                        "type": "legato-launch",
+                        "request": "launch",
+                        "application": "myNewApp",
+                        "executable": "myNewAppComponentExe"
+                    }
+                ]
             }
         ]
     },

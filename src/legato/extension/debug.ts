@@ -11,19 +11,6 @@ import { basename } from 'path';
 import { executeInShell } from '../../commons/utils';
 
 /**
- * This configuration is automatically added to the launch.json created when the user try to launch
- * a Legato debug session while no launch.json exist
- */
-const DEFAULT_ATTACH_CONF: vscode.DebugConfiguration = {
-    name: "Debug Legato application (attach)",
-    type: "legato-attach",
-    request: "attach",
-    application: "myNewApp",
-    executable: "myNewAppComponentExe"
-};
-
-
-/**
  * Provide Debug configuration and convert Legato conf to cppdebugger conf
  */
 export class LegatoDebugManager extends DisposableBag implements vscode.DebugConfigurationProvider {
@@ -43,21 +30,6 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato-attach", this));
         this.toDispose(vscode.debug.registerDebugConfigurationProvider("legato-launch", this));
         this.toDispose(vscode.debug.onDidTerminateDebugSession(this.onDidTerminateDebugSession, this));
-    }
-
-    /**
-     * Provides initial [debug configuration](#DebugConfiguration). If more than one debug configuration provider is
-     * registered for the same type, debug configurations are concatenated in arbitrary order.
-     *
-     * @param _folder The workspace folder for which the configurations are used or `undefined` for a folderless setup.
-     * @param _token A cancellation token.
-     * @return An array of [debug configurations](#DebugConfiguration).
-     */
-    provideDebugConfigurations(
-        _folder: vscode.WorkspaceFolder | undefined,
-        _token?: vscode.CancellationToken
-    ): vscode.ProviderResult<vscode.DebugConfiguration[]> {
-        return [DEFAULT_ATTACH_CONF];
     }
 
     /**
@@ -116,7 +88,6 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         let remotePort: number = legatoDebugConf.remotePort || 2000;
         let applicationName: string = legatoDebugConf.application;
         let executableName: string = legatoDebugConf.executable;
-        let sysroot = await this.toolchainManager.getSysroot();
         let soLibPaths = await this.toolchainManager.getSOLibPaths(applicationName);
         let sshWrapper = this.resourcesManager.getExtensionPath(ExtensionPaths.DebugSshWrapper);
         let appStagging = await this.toolchainManager.getAppStaging(applicationName);
@@ -150,16 +121,19 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
         let debugLaunchModeProcesses: string[];
         let gdbserverArgs: string;
         let stopAtEntry: boolean;
+        let sysroot: string;
         if (legatoDebugConf.request === 'attach') {
             // Attach mode
             debugLaunchModeProcesses = [];
             gdbserverArgs = `--attach \$(pidof ${executableName})`;
             stopAtEntry = false;
+            sysroot = await this.toolchainManager.getSysroot();
         } else {
             // Launch mode
             debugLaunchModeProcesses = [executableName];
             gdbserverArgs = executablePathFromDevice;
             stopAtEntry = true;
+            sysroot = "remote:/";
         }
         // Stop app if running or paused
         if (installedApps[applicationName] !== AppStatus.Stopped) {
