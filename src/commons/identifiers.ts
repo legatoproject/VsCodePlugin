@@ -44,6 +44,7 @@ export const enum Command { // (cmd)
     LegatoAppDeleteComponent = "cmd.legato.app.deleteComponent",
     LegatoComponentRename = "cmd.legato.component.rename",
     LegatoComponentRemove = "cmd.legato.component.remove",
+    LegatoComponentGenerateApiStubFile = "cmd.legato.component.generateApiStubFile",
     // #### LEGATO (.legato) ####
     // COMMON (.common)
     LegatoCommonShowWelcomePage = "cmd.legato.common.showwelcomepage",

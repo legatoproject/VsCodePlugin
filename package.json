@@ -390,6 +390,11 @@
                 "category": "Legato/Component"
             },
             {
+                "command": "cmd.legato.component.generateApiStubFile",
+                "title": "Generate API stub files",
+                "category": "Legato"
+            },
+            {
                 "command": "cmd.legato.tm.shell",
                 "title": "Open Target Shell",
                 "category": "Legato/Device"

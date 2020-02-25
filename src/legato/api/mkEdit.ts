@@ -186,4 +186,17 @@ export class MkEditManager {
             `mkedit delete component ${name}`,
             await this.getDefFileDirPath());
     }
+
+    /**
+     * Invoke ifgen to generate API file
+     * @param apiPath the path of the api file
+     * @param outputPath the path of output folder
+     */
+    public async genApiStubFile(apiPath: string, outputPath: string): Promise<void> {
+        let apiName = path.basename(apiPath);
+        return this.processLauncher.executeInShell(
+            `Generate API file for ${apiName}`,
+            `ifgen --gen-server-stub ${apiPath} --output-dir ${outputPath}`,
+            await this.getDefFileDirPath());
+    }
 }

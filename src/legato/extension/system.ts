@@ -7,6 +7,7 @@ import { showHint } from '../../commons/hints';
 import { LegatoLanguageManager, LegatoLanguageRequest } from "../api/language";
 import { DefinitionObject } from '../../@types/legato-languages';
 import { pathExists } from 'fs-extra';
+import { getWorkspaceFolder, getWorkspaceFolderPath } from '../../commons/files';
 
 export class LegatoSystemTreeview extends TreeDataProvider2 {
 	private symbols: DefinitionObject | undefined;
@@ -37,6 +38,8 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		this.createCommand(Command.LegatoAppDeleteComponent, this.deleteComponentInApp, this);
 		this.createCommand(Command.LegatoComponentRename, this.renameComponent, this);
 		this.createCommand(Command.LegatoComponentRemove, this.removeComponent, this);
+		this.createCommand(
+			Command.LegatoComponentGenerateApiStubFile, this.generateApiStubFile, this);
 
 		this.legatoManager.defFile.addListener(this.onLegatoDefFileChange, this);
 		this.legatoLanguageManager.defFileModel.addListener(this.onLogicalViewRefresh, this);
@@ -254,7 +257,9 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 		await this.selectSymbolForAddAction('cdef', cdefsToIgnore, filePath);
 	}
 
-	private async querySymbol(query: 'adef' | 'cdef'): Promise<SymbolInformation[] | null> {
+	private async querySymbol(
+		query: 'adef' | 'cdef' | 'api'): Promise<SymbolInformation[] | null> {
+
 		let client = this.legatoLanguageManager.languageClient;
 		if (client) {
 			// Request all available ADEF or CDEF in order to add it to the current SDEF
@@ -443,6 +448,42 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			if (confirmed) {
 				return this.legatoManager.mkEdit.removeComponent(cdef.label);
 			}
+		}
+	}
+
+	private async generateApiStubFile() {
+		try {
+			let apiSymbols: SymbolInformation[] | null = await this.querySymbol('api');
+			if (apiSymbols) {
+				let apiItems = apiSymbols.map(symb => new SymbolQuickPickItem(symb));
+				let apiItem = await vscode.window.showQuickPick(apiItems, {
+					placeHolder: 'Select the api file to generate code'
+				});
+				if (apiItem && apiItem.detail) {
+					let dialogPath: string | undefined;
+					dialogPath = getWorkspaceFolderPath("components");
+					if (!await pathExists(dialogPath)) {
+						dialogPath = getWorkspaceFolder().uri.fsPath;
+					}
+					let componentItem = await vscode.window.showOpenDialog({
+						defaultUri: dialogPath ? vscode.Uri.parse(dialogPath) : undefined,
+						canSelectFiles: false,
+						canSelectFolders: true,
+						canSelectMany: false,
+						openLabel: "Select folder"
+					});
+
+					if (componentItem) {
+						let apiPath = vscode.Uri.parse(apiItem.detail).fsPath;
+						let filePath = componentItem[0].fsPath;
+						return this.legatoManager.mkEdit.genApiStubFile(apiPath, filePath);
+					}
+				}
+			}
+		} catch (error) {
+			console.log(error);
+			vscode.window.showErrorMessage('Failed to query existing api symbols in workspace' +
+				`from language server. ${error}`);
 		}
 	}
 
