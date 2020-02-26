@@ -67,9 +67,14 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
             return null;
         }
 
-        // Check debug dir
-        let symbolsFolder = await this.legatoManager.debugDir.get();
-        if (!symbolsFolder) {
+        // Get legato root directory
+        let legatoRoot = await this.legatoManager.rootPath.get();
+        // Debug folders from installed packages
+        let debugFileFolders = await this.legatoManager.debugFileDir.get();
+
+        // Check workspace debug folder
+        let wsSymbolsFolder = await this.legatoManager.debugDir.get();
+        if (!wsSymbolsFolder) {
             let action = 'Toggle the build in debug mode';
             let result = await vscode.window.showInformationMessage(
                 'Debug symbols not found. Do you want to toggle the build in debug mode?',
@@ -158,7 +163,12 @@ export class LegatoDebugManager extends DisposableBag implements vscode.DebugCon
                 },
                 {
                     description: "Set symbols location",
-                    text: `set debug-file-directory ${symbolsFolder}`,
+                    text: `set debug-file-directory ${wsSymbolsFolder}:${debugFileFolders}`,
+                    ignoreFailures: false
+                },
+                {
+                    description: "Set substitute path for source",
+                    text: `set substitute-path /ws/work/legato/ ${legatoRoot}`,
                     ignoreFailures: false
                 }
             ],

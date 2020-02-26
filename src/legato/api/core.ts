@@ -25,6 +25,7 @@ export const LEGATO_ENV = {
     OUTPUT_DIR: "LEGATO_OUTPUT_DIR",
     OBJECT_DIR: "LEGATO_OBJECT_DIR",
     DEBUG_DIR: "LEGATO_DEBUG_DIR",
+    DEBUG_FILE_DIR: "DEBUG_FILE_DIR",
     DEV_MODE: "LEGATO_DEV_MODE_ENABLE",
     UPDATE_FILE: "LEGATO_UPDATE_FILE"
 };
@@ -57,6 +58,7 @@ export class LegatoManager extends DisposableBag {
     public readonly objectDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.OBJECT_DIR, this, resolvePath);
     public readonly outputDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.OUTPUT_DIR, this, resolvePath);
     public readonly debugDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.DEBUG_DIR, this, resolvePath);
+    public readonly debugFileDir = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.DEBUG_FILE_DIR, this, resolvePath);
     public readonly devMode = fromEnvVarString(this.leafManager.envVars, LEGATO_ENV.DEV_MODE, this);
     public readonly updateFile = fromEnvVar<string | undefined>(this.leafManager.envVars, LEGATO_ENV.UPDATE_FILE, this, resolvePath);
 
