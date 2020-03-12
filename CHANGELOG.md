@@ -1,9 +1,13 @@
 # Change Log
 
-## 1.0.1
-- Remove preview tag from marketplace page
+## 1.1.0
 
-## 1.0.0
+- Bug fixes
+- Debugging Support including debugging symbols now included with Legato 20.04
+- Legato: Generate API file added to assist developers with creating new .api files
+- User Interface enhancements
+
+## 1.0.1
 
 - Bugs fixes
 - Legato System view enhancements, ability to add existing apps/components, create new apps/components, and remove apps/components
