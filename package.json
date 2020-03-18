@@ -521,27 +521,27 @@
         "snippets": [
             {
                 "language": "api",
-                "path": "./snippets/api.json"
+                "path": "./out/snippets/api.json"
             },
             {
                 "language": "cdef",
-                "path": "./snippets/cdef.json"
+                "path": "./out/snippets/cdef.json"
             },
             {
                 "language": "adef",
-                "path": "./snippets/adef.json"
+                "path": "./out/snippets/adef.json"
             },
             {
                 "language": "mdef",
-                "path": "./snippets/mdef.json"
+                "path": "./out/snippets/mdef.json"
             },
             {
                 "language": "sdef",
-                "path": "./snippets/sdef.json"
+                "path": "./out/snippets/sdef.json"
             },
             {
                 "language": "c",
-                "path": "./snippets/c.json"
+                "path": "./out/snippets/c.json"
             }
         ],
         "taskDefinitions": [

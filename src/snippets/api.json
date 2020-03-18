@@ -67,5 +67,30 @@
             ");",
             ""
         ]
+    },
+    "bitmask": {
+        "prefix": "BITMASK",
+        "description": "Declare a bitmask",
+        "body": [
+            "BITMASK ${1:name}",
+            "{",
+            "\t$0",
+            "};",
+            ""
+        ]
+    },
+    "reference": {
+        "prefix": "REFERENCE",
+        "description": "Declare a reference",
+        "body": [
+            "REFERENCE ${1:name};"
+        ]
+    },
+    "usetypes": {
+        "prefix": "USETYPES",
+        "description": "Declare a usetypes",
+        "body": [
+            "USETYPES ${1:name};"
+        ]
     }
 }

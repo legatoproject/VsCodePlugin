@@ -15,7 +15,7 @@ import { LeafTerminalManager } from './leaf/extension/terminal';
 import { LegatoManager, LEGATO_ENV } from './legato/api/core';
 import { LegatoLanguageManager } from './legato/api/language';
 import { LegatoBuildTasks } from './legato/extension/buildtasks';
-import { SnippetsManager } from './legato/extension/snippets';
+// import { SnippetsManager } from './legato/extension/snippets';
 import { LegatoStatusBar } from './legato/extension/statusBar';
 import { LegatoSystemTreeview } from './legato/extension/system';
 import { DeviceManager } from './tm/api/device';
@@ -24,6 +24,7 @@ import { LegatoToolchainManager } from './legato/api/toolchain';
 import { LegatoDebugManager } from './legato/extension/debug';
 import { onEvent } from './commons/model';
 import { RemoteDeviceManager } from './tm/api/remote';
+import { LegatoHoverProvider } from './commons/hover';
 
 /**
  * Manage the entire extension life-cycle
@@ -112,7 +113,9 @@ class Extension extends DisposableBag {
                     new DeviceStatusBar(this.legatoManager, this.deviceManager),
                     new LegatoStatusBar(this.legatoManager),
                     buildTasks,
-                    new SnippetsManager(this.legatoManager),
+                    // Disable the global snippets, only use the language snippets that is defined
+                    // on package.json.
+                    // new SnippetsManager(this.legatoManager),
                     new LegatoDebugManager(
                         this.resourcesManager,
                         this.leafManager,
@@ -156,6 +159,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Resolve awaiting callers
     (extPromise as DelayedPromise<Extension>).resolve(extension);
+
+    // Start hover provider
+    new LegatoHoverProvider(context);
 }
 
 // this method is called when your extension is deactivated
