@@ -369,8 +369,11 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 			let appsChildrens = await applicationNode.getChildren();
 			let items: SymbolQuickPickItemFromTreeView[] = new Array;
 			for (let i = 0; i < appsChildrens.length; i++) {
-				items.push(new SymbolQuickPickItemFromTreeView(
-					appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
+				// Add the component to the list of items
+				if (appsChildrens[i].symbol.kind === SymbolKind.Class) {
+					items.push(new SymbolQuickPickItemFromTreeView(
+						appsChildrens[i].symbol.name, appsChildrens[i].symbol.defPath));
+				}
 			}
 			await this.selectSymbolForRemoveAction('component', items);
 		}
@@ -497,9 +500,10 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 								}
 								case "cdef": {
 									if (filePath) {
-										this.legatoManager.mkEdit.addExistingComponent(
-											filePath,
-											result.symbol.name);
+										let compPath = path.dirname(
+											vscode.Uri.parse(result.symbol.location.uri).fsPath);
+										this.legatoManager.mkEdit.addExistingComponent(filePath,
+											compPath);
 									}
 									break;
 								}
@@ -578,7 +582,9 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 
 							// Verify if confirmed is true
 							if (confirmed) {
-								return this.legatoManager.mkEdit.removeComponent(item.label);
+								// The path of the component
+								let compPath = path.dirname(vscode.Uri.parse(item.detail).fsPath);
+								return this.legatoManager.mkEdit.removeComponent(compPath);
 							}
 							break;
 						}
@@ -635,7 +641,9 @@ export class LegatoSystemTreeview extends TreeDataProvider2 {
 				placeHolder: "newComponent"
 			});
 			if (compName) {
-				return this.legatoManager.mkEdit.renameComponent(cdef.label, compName);
+				let compOldPath = path.dirname(vscode.Uri.parse(cdef.symbol.defPath).fsPath);
+				let compNewPath = path.join(path.dirname(compOldPath), compName);
+				return this.legatoManager.mkEdit.renameComponent(compOldPath, compNewPath);
 			}
 		}
 	}
