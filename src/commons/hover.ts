@@ -6,6 +6,7 @@ import * as apiJson from './../snippets/api.json';
 import * as cdefJson from './../snippets/cdef.json';
 import * as mdefJson from './../snippets/mdef.json';
 import * as sdefJson from './../snippets/sdef.json';
+import * as cJson from './../snippets/c.json';
 
 /**
  * Manage the Legato hover provider
@@ -22,6 +23,11 @@ export class LegatoHoverProvider {
             vscode.languages.registerHoverProvider({ language: "mdef" }, new MdefHoverProvider()));
         context.subscriptions.push(
             vscode.languages.registerHoverProvider({ language: "sdef" }, new SdefHoverProvider()));
+
+        if (cJson) {
+            // The hover text is not supported for .c file in current. Just import c.json file to
+            // the outDir folder as the other snippets .json files
+        }
     }
 }
 
