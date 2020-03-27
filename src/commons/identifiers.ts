@@ -59,7 +59,21 @@ export const enum Command { // (cmd)
     LegatoTmInstallOn = "cmd.legato.tm.install.on",
     LegatoTmDeviceFlashImage = "cmd.legato.tm.flash",
     LegatoTmFlashImageRecovery = "cmd.legato.tm.flash.recovery",
-    LegatoTmResetUserPartition = "cmd.legato.tm.reset.partition.user"
+    LegatoTmResetUserPartition = "cmd.legato.tm.reset.partition.user",
+    // Command Palette (cmdPalette)
+    CmdPaletteLegatoSystemCreate = "cmdPalette.legato.system.create",
+    CmdPaletteLegatoSystemRename = "cmdPalette.legato.system.rename",
+    CmdPaletteLegatoAppCreate = "cmdPalette.legato.app.create",
+    CmdPaletteLegatoAppAdd = "cmdPalette.legato.app.add",
+    CmdPaletteLegatoAppDelete = "cmdPalette.legato.app.delete",
+    CmdPaletteLegatoAppRemove = "cmdPalette.legato.app.remove",
+    CmdPaletteLegatoAppRename = "cmdPalette.legato.app.rename",
+    CmdPaletteLegatoComponentCreate = "cmdPalette.legato.component.create",
+    CmdPaletteLegatoComponentAdd = "cmdPalette.legato.component.add",
+    CmdPaletteLegatoComponentDelete = "cmdPalette.legato.component.delete",
+    CmdPaletteLegatoComponentRemove = "cmdPalette.legato.component.remove",
+    CmdPaletteLegatoComponentRename = "cmdPalette.legato.component.rename",
+    CmdPaletteLeafRemoteFetch = "cmdPalette.leaf.rmt.fetch"
 }
 
 /**

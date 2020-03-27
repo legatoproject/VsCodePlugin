@@ -200,11 +200,14 @@ export class LeafPackagesView extends TreeDataProvider2 {
 	/**
 	 * Remove filter from filter list
 	 */
-	private removeFilter(item: UserFilter | undefined) {
+	private async removeFilter(item: UserFilter | undefined) {
 		if (!item) {
-			// No selection, lo and exit
-			console.log("[LeafPackagesView] Remove filter command called without item");
-			return;
+			// No selection, get the removing filter from user input
+			const title = "Select filter to remove";
+			item = await this.askForFilter(title);
+			if (!item) {
+				return; // User cancelation
+			}
 		}
 		this.userFilters.splice(this.userFilters.indexOf(item), 1);
 		this.refresh();
@@ -228,7 +231,7 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		let title = "Add package to profile";
 		// Package (from selection or combo)
 		if (!selectedPackage) {
-			selectedPackage = await this.askForPackage(title);
+			selectedPackage = await this.askForFilterPackage(title);
 			if (!selectedPackage) {
 				return; // User cancellation
 			}
@@ -276,6 +279,28 @@ export class LeafPackagesView extends TreeDataProvider2 {
 		} else {
 			vscode.window.showWarningMessage(`No documentation found for the package ${selectedPackage.label}`);
 		}
+	}
+
+	/**
+	 * Ask user to select a filter to remove
+	 */
+	private async askForFilter(title: string): Promise<Filter | undefined> {
+		let items = this.memento.User.get(this.context);
+		let filters = Object.keys(items);
+		let filterItems: any[] = [];
+		filters.map(filter => {
+			filterItems.push(this.toFilter(filter, items[filter]));
+		});
+		return showMultiStepQuickPick(title, 1, 1, "Please select the filter", filterItems);
+	}
+
+	/**
+	 * Ask user to select a package after filtering it with the current condition
+	 */
+	private async askForFilterPackage(title: string): Promise<PackageQuickPickItem | undefined> {
+		let filterPackage = this.filterPackages(await this.leafManager.mergedPackages.get());
+		let items = toItems(filterPackage, PackageQuickPickItem);
+		return showMultiStepQuickPick(title, 1, 2, "Please select the package", items);
 	}
 
 	/**

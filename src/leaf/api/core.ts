@@ -131,6 +131,9 @@ export class LeafManager extends CommandRegister {
     // Create fetch command
     this.createCommand(Command.LeafPackagesFetch, this.fetchRemote);
 
+    // Create fetch command for Command Palette
+    this.createCommand(Command.CmdPaletteLeafRemoteFetch, this.fetchRemote);
+
     // Synchronize leaf env with current running process
     this.envVars.addListener(env => Object.entries(env).forEach(([key, value]) => process.env[key] = value), this);
   }

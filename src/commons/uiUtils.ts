@@ -282,3 +282,23 @@ export function toItems<T extends IUiItems>(
 	out.sort((itemA, itemB) => itemA.compareTo(itemB));
 	return out;
 }
+
+/**
+ * Convert model object to a RemoteItem array
+ */
+export function toRemoteItems<T extends IUiItems>(
+	model: LeafBridgeElement,
+	ItemClass: new (id: string, properties: any | undefined) => T,
+	type: "all" | "enable" | "disable"
+): T[] {
+	let out: T[] = [];
+	for (let id in model) {
+		if (type === "all" || (type === "enable" && !model[id].enabled) ||
+			(type === "disable" && model[id].enabled)) {
+			let newItem = new ItemClass(id, model[id]);
+			out.push(newItem);
+		}
+	}
+	out.sort((itemA, itemB) => itemA.compareTo(itemB));
+	return out;
+}

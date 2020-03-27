@@ -102,10 +102,11 @@ export class RemoteQuickPickItem extends QuickPickItem2 {
 		public readonly id: string,
 		public readonly properties: any
 	) {
-		super(id, properties, // model data
+		super(id, // id
+			undefined, // parent
+			properties, // model data
 			id, // label
-			properties.enabled ? "[Enabled]" : "[Disabled]", // description
-			properties.url); // details
+			properties.url); // description
 	}
 }
 
@@ -318,7 +319,7 @@ export class ProfileTreeItem extends TreeItem2 {
 			"Profile.svg"); // iconFileName
 	}
 
-	public async getChildren(): Promise<TreeItem2[]> {
+	public async getChildren(): Promise<PackageTreeItem[]> {
 		if (this.properties.packages) {
 			// Find package properties
 			let packs = await this.leafManager.mergedPackages.get();

@@ -222,6 +222,80 @@
                     "when": "view == view-legato-system && viewItem =~ /context-legato-cdef(.)/",
                     "group": "inline"
                 }
+            ],
+            "commandPalette": [
+                {
+                    "command": "cmd.legato.system.create",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.system.openFile",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.system.createApp",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.system.addApp",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.system.deleteApp",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.system.removeApp",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.system.rename",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.app.rename",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.app.remove",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.app.addComponent",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.app.newComponent",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.app.deleteComponent",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.app.removeComponent",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.component.remove",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.legato.component.rename",
+                    "when": "false"
+                },
+                {
+                    "command": "cmd.leaf.pkg.fetch",
+                    "when": "false"
+                },
+                {
+                    "command": "cmdPalette.legato.app.delete",
+                    "when": "false"
+                },
+                {
+                    "command": "cmdPalette.legato.component.delete",
+                    "when": "false"
+                }
             ]
         },
         "commands": [
@@ -428,6 +502,71 @@
                 "command": "cmd.legato.tm.reset.partition.user",
                 "title": "Reset user partition (delete all user data)",
                 "category": "Legato/Device"
+            },
+            {
+                "command": "cmdPalette.legato.system.create",
+                "title": "New",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmdPalette.legato.system.rename",
+                "title": "Rename",
+                "category": "Legato/System"
+            },
+            {
+                "command": "cmdPalette.legato.app.create",
+                "title": "New",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmdPalette.legato.app.add",
+                "title": "Add",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmdPalette.legato.app.delete",
+                "title": "Delete",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmdPalette.legato.app.remove",
+                "title": "Remove",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmdPalette.legato.app.rename",
+                "title": "Rename",
+                "category": "Legato/App"
+            },
+            {
+                "command": "cmdPalette.legato.component.add",
+                "title": "Add",
+                "category": "Legato/Component"
+            },
+            {
+                "command": "cmdPalette.legato.component.create",
+                "title": "New",
+                "category": "Legato/Component"
+            },
+            {
+                "command": "cmdPalette.legato.component.delete",
+                "title": "Delete",
+                "category": "Legato/Component"
+            },
+            {
+                "command": "cmdPalette.legato.component.remove",
+                "title": "Remove",
+                "category": "Legato/Component"
+            },
+            {
+                "command": "cmdPalette.legato.component.rename",
+                "title": "Rename",
+                "category": "Legato/Component"
+            },
+            {
+                "command": "cmdPalette.leaf.rmt.fetch",
+                "title": "Fetch",
+                "category": "Leaf/Remotes"
             }
         ],
         "languages": [

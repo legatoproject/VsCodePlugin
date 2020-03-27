@@ -3,7 +3,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs-extra';
 import { View, Command } from '../../commons/identifiers';
-import { TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox, showMultiStepQuickPick, toItems } from '../../commons/uiUtils';
+import {
+	TreeItem2, TreeDataProvider2, ACTION_LABELS, showMultiStepInputBox,
+	showMultiStepQuickPick, toItems, toRemoteItems
+} from '../../commons/uiUtils';
 import { RemoteQuickPickItem, RemoteTreeItem } from './uiComponents';
 import { LeafManager } from '../api/core';
 import { LeafBridgeElement } from '../../commons/utils';
@@ -34,7 +37,11 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 */
 	private async enableRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined, enabled: boolean = true): Promise<void> {
 		if (!node) {
-			node = await this.askRemoteToUser(`${enabled ? "Enable" : "Disable"} Leaf remote`);
+			if (enabled) {
+				node = await this.askRemoteToUser("Enable Leaf remote", "enable");
+			} else {
+				node = await this.askRemoteToUser("Disable Leaf remote", "disable");
+			}
 		}
 		if (node) {
 			return this.leafManager.enableRemote(node.id, enabled);
@@ -118,7 +125,7 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	 */
 	private async removeRemote(node: RemoteTreeItem | RemoteQuickPickItem | undefined): Promise<void> {
 		if (!node) {
-			node = await this.askRemoteToUser("Remove Leaf remote");
+			node = await this.askRemoteToUser("Remove Leaf remote", "all");
 		}
 		if (node && ACTION_LABELS.REMOVE === await vscode.window.showWarningMessage("Do you really want to permanently delete this remote?", ACTION_LABELS.CANCEL, ACTION_LABELS.REMOVE)) {
 			return this.leafManager.removeRemote(node.id);
@@ -128,9 +135,10 @@ export class LeafRemotesView extends TreeDataProvider2 {
 	/**
 	 * Ask user to select a remote from existing ones
 	 */
-	private async askRemoteToUser(title: string): Promise<RemoteQuickPickItem | undefined> {
+	private async askRemoteToUser(title: string,
+		type: "all" | "enable" | "disable"): Promise<RemoteQuickPickItem | undefined> {
 		let remotes = await this.leafManager.remotes.get();
-		let items = toItems(remotes, RemoteQuickPickItem);
+		let items = toRemoteItems(remotes, RemoteQuickPickItem, type);
 		return showMultiStepQuickPick(title, undefined, undefined, "Please select the remote", items);
 	}
 

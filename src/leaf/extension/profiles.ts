@@ -194,10 +194,14 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
    * @param packageItem the package item selected in tree view
    */
   private async removePackage(packageItem: PackageTreeItem | undefined) {
-    if (!packageItem || !packageItem.parent) {
-      throw new Error('Command not available from the palette; try the Leaf Profiles view');
+    if (!packageItem) {
+      let profileItem = await this.getProfileItem();
+      packageItem = await this.getPackageItem(profileItem);
     }
-    return this.leafManager.removePackagesFromProfile(packageItem.parent.id, packageItem.packId);
+
+    if (packageItem && packageItem.parent) {
+      return this.leafManager.removePackagesFromProfile(packageItem.parent.id, packageItem.packId);
+    }
   }
 
   /**
@@ -205,10 +209,15 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
   * @param packageItem the SDK item selected in tree view
   */
   private async upgradePackage(packageItem: PackageTreeItem | undefined) {
-    if (!packageItem || !packageItem.parent) {
-      throw new Error('Command not available from the palette; try the Leaf Profiles view');
+    if (!packageItem) {
+      let profileItem = await this.getProfileItem();
+      packageItem = await this.getPackageItem(profileItem);
     }
-    return this.leafManager.upgradePackageFromProfile(packageItem.parent.id, packageItem.packName);
+
+    if (packageItem && packageItem.parent) {
+      return this.leafManager.upgradePackageFromProfile(
+        packageItem.parent.id, packageItem.packName);
+    }
   }
 
   /**
@@ -221,5 +230,75 @@ export class LeafProfileStatusBar extends TreeDataProvider2 {
         super(lm, id, parent, properties);
       }
     });
+  }
+
+  /**
+   * Get Profile symbol
+   */
+  private async getProfileItem(): Promise<ProfileTreeItem | undefined> {
+    let profileSymbols: ProfileTreeItem[] | undefined;
+    if (this.leafManager) {
+      profileSymbols = await this.getRootElements();
+    }
+    if (profileSymbols) {
+      let items: ProfileSymbolItem[] = new Array;
+      for (let i = 0; i < profileSymbols.length; i++) {
+        items.push(new ProfileSymbolItem(
+          profileSymbols[i].id, profileSymbols[i]));
+      }
+      let item = await vscode.window.showQuickPick(items, {
+        placeHolder: `Select the profile you want to make action`
+      });
+      if (item && item.symbol) {
+        return item.symbol;
+      }
+    }
+  }
+
+  /**
+   * Get Package symbol
+   */
+  private async getPackageItem(
+    profileSymbol: ProfileTreeItem | undefined): Promise<PackageTreeItem | undefined> {
+    if (profileSymbol) {
+      let packageSymbols = await profileSymbol.getChildren();
+      let items: PackageSymbolItem[] = new Array;
+      for (let i = 0; i < packageSymbols.length; i++) {
+        let itemLabel = "[" + profileSymbol.label + "] " + packageSymbols[i].label;
+        items.push(new PackageSymbolItem(itemLabel, packageSymbols[i]));
+      }
+      let item = await vscode.window.showQuickPick(items, {
+        placeHolder: `Select the package you want to make action`
+      });
+      if (item && item.symbol) {
+        return item.symbol;
+      }
+    }
+  }
+}
+
+/**
+ * Define Profile Quick Pick Item
+ */
+class ProfileSymbolItem implements vscode.QuickPickItem {
+  label: string;
+  symbol: ProfileTreeItem;
+
+  constructor(name: string, symbol: ProfileTreeItem) {
+    this.label = name;
+    this.symbol = symbol;
+  }
+}
+
+/**
+ * Define Package Quick Pick Item
+ */
+class PackageSymbolItem implements vscode.QuickPickItem {
+  label: string;
+  symbol: PackageTreeItem;
+
+  constructor(name: string, symbol: PackageTreeItem) {
+    this.label = name;
+    this.symbol = symbol;
   }
 }
