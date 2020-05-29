@@ -20,13 +20,31 @@ export const enum WorkspaceResource {
     VsCode = '.vscode'
 }
 
+function validateFolders(folders: vscode.WorkspaceFolder[]): boolean {
+    let regex = new RegExp('[^-_.A-Za-z0-9]');
+    for (var folder of folders) {
+        if (regex.test(folder.name)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /**
  * @returns the root workspace folder as a vscode.WorkspaceFolder
  * @throws an Error if not workspace folder is open
  */
 export function getWorkspaceFolder(): vscode.WorkspaceFolder {
-    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
-        return vscode.workspace.workspaceFolders[0];
+    let wsFolders = vscode.workspace.workspaceFolders;
+    if (wsFolders && wsFolders.length > 0) {
+        if (validateFolders(wsFolders)) {
+            return wsFolders[0];
+        } else {
+            vscode.window.showWarningMessage(
+                "Invalid Workspace folder name. " +
+                "Only the following characters are permitted: a-z, A-Z, 0-9, ., - and _.");
+            throw new Error('Workspace folder name is invalid');
+        }
     }
     throw new Error('There is no workspace folder');
 }
@@ -47,7 +65,7 @@ export function getWorkspaceFolderPath(...path: string[]): string {
  * @return the default folder path as a string
  */
 export function getDefaultCwd(): string {
-    let defaultPath = ""
+    let defaultPath = "";
     try {
         defaultPath = getWorkspaceFolderPath();
     } catch {
