@@ -24,6 +24,12 @@
         "*"
     ],
     "contributes": {
+        "viewsWelcome": [
+            {
+                "view": "view-leaf-welcome",
+                "contents": "Leaf Workspace was not found [learn more](https://docs.legato.io/latest/tools_vsCode.html).\n[Open Leaf Workspace](command:vscode.openFolder)\nOpen and select a new or existing Leaf Workspace."
+            }
+        ],
         "viewsContainers": {
             "activitybar": [
                 {
@@ -41,16 +47,24 @@
         "views": {
             "viewcontainer-leaf": [
                 {
+                    "id": "view-leaf-welcome",
+                    "name": "No Workspace Opened",
+                    "when": "workbenchState==empty"
+                },
+                {
                     "id": "view-leaf-pkg",
-                    "name": "Packages"
+                    "name": "Packages",
+                    "when": "workbenchState!=empty"
                 },
                 {
                     "id": "view-leaf-rmt",
-                    "name": "Remotes"
+                    "name": "Remotes",
+                    "when": "workbenchState!=empty"
                 },
                 {
                     "id": "view-leaf-prf",
-                    "name": "Profiles"
+                    "name": "Profiles",
+                    "when": "workbenchState!=empty"
                 }
             ],
             "viewcontainer-legato": [
