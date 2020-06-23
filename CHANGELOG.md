@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.2.0
+
+- Bug fixes
+- Add code snippets for Legato API files
+- Add hover text for API and xDEF file keywords
+- Add clickable log messages for errors in API and xDEF files
+- Add error notifications for errors in API and xDEF files dynamically
+- Add a license link
+- Add leaf commands to comand palette
+
 ## 1.1.0
 
 - Bug fixes
