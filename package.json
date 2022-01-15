@@ -934,7 +934,7 @@
     "dependencies": {
         "chokidar": "^3.0.1",
         "fs-extra": "^7.0.1",
-        "marked": "^0.7.0",
+        "marked": "^4.0.10",
         "minimatch": "^3.0.4",
         "vscode-languageclient": "^5.2.1",
         "vscode-cpptools": "^2.1.2"
